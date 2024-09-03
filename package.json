@@ -615,6 +615,7 @@
     "@ai-sdk/azure": "^0.0.14",
     "@ai-sdk/google": "^0.0.27",
     "@ai-sdk/openai": "^0.0.37",
+    "@google-cloud/vertexai": "^1.7.0",
     "@types/minimatch": "^5.1.2",
     "abort-controller": "^3.0.0",
     "ai": "^3.2.32",
