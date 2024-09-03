@@ -13,17 +13,12 @@
  * copies or substantial portions of the Software.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
 import AbortController from "abort-controller";
-import { ChatGptViewProvider } from "./chatgptViewProvider";
-import { CommandHandler } from "./commandHandler";
-import { ConfigurationManager } from "./configurationManager";
+import { createChatGptViewProvider } from "./factory";
 import { Logger } from "./logger";
-import { ModelManager } from "./modelManager";
-import { WebviewManager } from "./webviewManager";
 
 global.AbortController = AbortController;
 
@@ -46,19 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
   let adhocCommandPrefix: string =
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
-  const logger = new Logger("ChatGPT Copilot");
-  const webviewManager = new WebviewManager(logger);
-  const commandHandler = new CommandHandler();
-  const modelManager = new ModelManager();
-  const configurationManager = new ConfigurationManager(logger, modelManager);
-  const provider = new ChatGptViewProvider({
-    context,
-    logger,
-    webviewManager,
-    commandHandler,
-    modelManager,
-    configurationManager
-  });
+  const logger = Logger.getInstance("ChatGPT Copilot");
+
+  const provider = createChatGptViewProvider(context, logger);
 
   const view = vscode.window.registerWebviewViewProvider(
     "chatgpt-copilot.view",
@@ -302,36 +287,5 @@ export async function activate(context: vscode.ExtensionContext) {
 
   setContext();
 }
-
-async function findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
-  try {
-    // TODO: replace hardcoded value later, as I encounted some issues testing
-    // the extension currently.
-    // const rootPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-    const rootPath = "/home/jean/git/chatgpt-copilot/src";
-    if (!rootPath) {
-      throw new Error('Workspace root path is not defined.');
-    }
-
-    const files = fs.readdirSync(rootPath);
-
-    const inclusionRegex = new RegExp(inclusionPattern);
-    const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
-
-    const matchedFiles = files.filter(file => {
-      const fullPath = path.join(rootPath, file);
-      const isFileIncluded = inclusionRegex.test(fullPath);
-      const isFileExcluded = exclusionRegex ? exclusionRegex.test(fullPath) : false;
-      return isFileIncluded && !isFileExcluded;
-    });
-
-    return matchedFiles;
-  } catch (err) {
-    const errorMessage = `Error in findMatchingFiles: ${err.message}\n${err.stack}`;
-    fs.appendFileSync(logFilePath, `${new Date().toISOString()} - ${errorMessage}\n`);
-    throw err;
-  }
-}
-
 
 export function deactivate() { }

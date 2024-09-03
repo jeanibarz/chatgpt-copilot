@@ -7,7 +7,7 @@ import { initGeminiModel } from './llm_models/gemini';
 import { initGptModel } from './llm_models/openai';
 import { initGptLegacyModel } from './llm_models/openai-legacy';
 import { LogLevel, Logger } from "./logger";
-import { ModelConfig } from "./model-config";
+import { ModelConfig, ModelSource } from "./model-config";
 
 /**
  * The ModelManager class is responsible for managing the AI model configuration 
@@ -27,6 +27,9 @@ export class ModelManager {
         logger.log(LogLevel.Info, "loading configuration from vscode workspace");
 
         const configuration = viewProvider.getWorkspaceConfiguration();
+
+        // Determine which model to use based on configuration
+        const modelSource = configuration.get("chatgpt.gpt3.modelSource") as ModelSource;
 
         if (this.model === "custom") {
             logger.log(LogLevel.Info, "custom model, retrieving model name");
@@ -78,7 +81,14 @@ export class ModelManager {
 
             logger.log(LogLevel.Info, "instantiating model config");
             this.modelConfig = new ModelConfig({
-                apiKey, apiBaseUrl, maxTokens, temperature, topP, organization, systemPrompt
+                apiKey,
+                apiBaseUrl,
+                maxTokens,
+                temperature,
+                topP,
+                organization,
+                systemPrompt,
+                modelSource,
             });
 
             logger.log(LogLevel.Info, "initializing model");

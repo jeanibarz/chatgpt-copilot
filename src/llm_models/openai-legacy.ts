@@ -20,7 +20,7 @@ import { ChatGptViewProvider } from "../chatgptViewProvider";
 import { Logger, LogLevel } from "../logger";
 import { ModelConfig } from "../model-config";
 
-const logger = new Logger("ChatGPT Copilot");
+const logger = Logger.getInstance("ChatGPT Copilot");
 
 // initGptLegacyModel initializes the GPT legacy model.
 export function initGptLegacyModel(viewProvider: ChatGptViewProvider, config: ModelConfig) {
@@ -60,10 +60,10 @@ export async function chatCompletion(
         logger.log(LogLevel.Info, `chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
         // Add the user's question to the provider's chat history (without additionalContext)
-        provider.chatHistory.push({ role: "user", content: question });
+        provider.chatHistoryManager.addMessage('user', question);
 
         // Create a temporary chat history, including the additionalContext
-        const tempChatHistory = [...provider.chatHistory];
+        const tempChatHistory = [...provider.chatHistoryManager.getHistory()]; // Get history from ChatHistoryManager
         const fullQuestion = additionalContext ? `${additionalContext}\n\n${question}` : question;
         tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion }; // Replace the user's question with the full question in the temp history
 
@@ -86,16 +86,13 @@ export async function chatCompletion(
 
         const chunks = [];
         for await (const textPart of result.textStream) {
-            // logger.appendLine(
-            //     `INFO: chatgpt.model: ${provider.model} chatgpt.question: ${question} response: ${JSON.stringify(textPart, null, 2)}`
-            // );
             updateResponse(textPart);
             chunks.push(textPart);
         }
         provider.response = chunks.join("");
 
         // Add the assistant's response to the provider's chat history (without additionalContext)
-        provider.chatHistory.push({ role: "assistant", content: provider.response });
+        provider.chatHistoryManager.addMessage('assistant', provider.response);
 
         logger.log(LogLevel.Info, `chatgpt.response: ${provider.response}`);
     } catch (error) {

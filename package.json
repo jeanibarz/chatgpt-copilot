@@ -373,6 +373,16 @@
           "description": "Enable the prompt prefix used for adhoc command for the selected code in the context menu",
           "order": 24
         },
+        "chatgpt.gpt3.modelSource": {
+          "type": "string",
+          "enum": [
+            "googleai",
+            "vertexai"
+          ],
+          "default": "googleai",
+          "description": "Select the model source: 'googleai' for Gemini from Google AI or 'vertexai' for Gemini from Google Cloud Vertex AI.",
+          "order": 29
+        },
         "chatgpt.gpt3.apiKey": {
           "type": "string",
           "markdownDescription": "OpenAI API key. [Get your API Key from OpenAI](https://beta.openai.com/account/api-keys). \n\n**Please enable OpenAI API Key method to use this setting.**",
@@ -605,6 +615,7 @@
     "@ai-sdk/azure": "^0.0.14",
     "@ai-sdk/google": "^0.0.27",
     "@ai-sdk/openai": "^0.0.37",
+    "@google-cloud/vertexai": "^1.7.0",
     "@types/minimatch": "^5.1.2",
     "abort-controller": "^3.0.0",
     "ai": "^3.2.32",
