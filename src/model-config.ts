@@ -14,6 +14,11 @@
  * copies or substantial portions of the Software.
 */
 
+export enum ModelSource {
+    GoogleAI = "GoogleAI",
+    VertexAI = "VertexAI",
+}
+
 export class ModelConfig {
     apiKey: string;
     apiBaseUrl: string;
@@ -22,8 +27,27 @@ export class ModelConfig {
     topP: number;
     organization: string;
     systemPrompt: string;
+    modelSource: ModelSource;
 
-    constructor({ apiKey, apiBaseUrl, maxTokens, temperature, topP, organization, systemPrompt }: { apiKey: string; apiBaseUrl: string; maxTokens: number; temperature: number; topP: number; organization: string; systemPrompt: string; }) {
+    constructor({
+        apiKey,
+        apiBaseUrl,
+        maxTokens,
+        temperature,
+        topP,
+        organization,
+        systemPrompt,
+        modelSource,
+    }: {
+        apiKey: string;
+        apiBaseUrl: string;
+        maxTokens: number;
+        temperature: number;
+        topP: number;
+        organization: string;
+        systemPrompt: string;
+        modelSource: ModelSource;
+    }) {
         this.apiKey = apiKey;
         this.apiBaseUrl = apiBaseUrl;
         this.maxTokens = maxTokens;
@@ -31,5 +55,6 @@ export class ModelConfig {
         this.topP = topP;
         this.organization = organization;
         this.systemPrompt = systemPrompt;
+        this.modelSource = modelSource;
     }
 }

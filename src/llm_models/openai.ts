@@ -61,16 +61,12 @@ export async function chatGpt(
         logger.log(LogLevel.Info, `chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
         // Add the user's question to the provider's chat history (without additionalContext)
-        provider.chatHistory.push({ role: "user", content: question });
+        provider.chatHistoryManager.addMessage('user', question);
 
         // Create a temporary chat history, including the additionalContext
-        const tempChatHistory = [...provider.chatHistory];
-
-        // Prepend the additional context to the user's question in the temp chat history
-        if (additionalContext) {
-            const fullQuestion = `${additionalContext}\n\n${question}`;
-            tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion };
-        }
+        const tempChatHistory = [...provider.chatHistoryManager.getHistory()]; // Get history from ChatHistoryManager
+        const fullQuestion = additionalContext ? `${additionalContext}\n\n${question}` : question;
+        tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion }; // Replace last message with full question
 
         const chunks = [];
         const result = await streamText({
@@ -93,7 +89,7 @@ export async function chatGpt(
         provider.response = chunks.join("");
 
         // Add the assistant's response to the provider's chat history (without additionalContext)
-        provider.chatHistory.push({ role: "assistant", content: chunks.join("") });
+        provider.chatHistoryManager.addMessage('assistant', chunks.join(""));
 
         logger.log(LogLevel.Info, `chatgpt.response: ${provider.response}`);
     } catch (error) {

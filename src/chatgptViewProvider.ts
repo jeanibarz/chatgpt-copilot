@@ -17,19 +17,20 @@
 
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
-import { CoreMessage } from "ai";
-import delay from "delay";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import { ChatHistoryManager } from "./chatHistoryManager";
 import { CommandHandler } from "./commandHandler";
 import { getConfig, onConfigurationChanged } from "./config/configuration";
 import { ConfigurationManager } from "./configurationManager";
-import { chatGpt } from "./llm_models/openai";
-import { chatCompletion } from "./llm_models/openai-legacy";
+import { ErrorHandler } from "./errorHandler";
+import { ChatModelFactory } from './llm_models/chatModelFactory';
+import { IChatModel } from './llm_models/IChatModel';
 import { LogLevel, Logger } from "./logger";
 import { ModelManager } from "./modelManager";
 import { WebviewManager } from "./webviewManager";
+import { WebviewMessageHandler } from "./webviewMessageHandler";
 
 const logFilePath = path.join(__dirname, 'error.log');
 
@@ -55,6 +56,7 @@ export interface ChatGptViewProviderOptions {
   commandHandler: CommandHandler;
   modelManager: ModelManager;
   configurationManager: ConfigurationManager;
+  chatHistoryManager: ChatHistoryManager;
 }
 
 export class ChatGptViewProvider implements vscode.WebviewViewProvider {
@@ -64,6 +66,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public webviewManager: WebviewManager; // Responsible for handling webview initialization and interactions.
   public modelManager: ModelManager;
   public configurationManager: ConfigurationManager; // Responsible for managing and loading configuration values.
+  public chatHistoryManager: ChatHistoryManager;
+  public messageHandler: WebviewMessageHandler;
+  public errorHandler: ErrorHandler;
   public commandHandler: CommandHandler; // CommandHandler: Responsible for managing command execution.
   // ChatHistoryManager: Manages chat history and conversation state.
   // APIManager: Handles API interactions with different models.
@@ -77,7 +82,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public abortController?: AbortController;
   public currentMessageId: string = "";
   public response: string = "";
-  public chatHistory: CoreMessage[] = [];
 
   /**
    * Message to be rendered lazily if they haven't been rendered
@@ -86,14 +90,16 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private leftOverMessage?: any;
 
   constructor(options: ChatGptViewProviderOptions) {
-    const { context, logger, webviewManager, commandHandler, modelManager, configurationManager } = options;
+    const { context, logger, webviewManager, commandHandler, modelManager, configurationManager, chatHistoryManager } = options;
     this.context = context;
     this.logger = logger;
     this.webviewManager = webviewManager;
     this.commandHandler = commandHandler;
     this.modelManager = modelManager;
     this.configurationManager = configurationManager;
-
+    this.chatHistoryManager = new ChatHistoryManager();
+    this.messageHandler = new WebviewMessageHandler(logger, commandHandler);
+    this.errorHandler = new ErrorHandler(logger);
     this.configurationManager.loadConfiguration();
 
     onConfigurationChanged(() => {
@@ -121,34 +127,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.log(LogLevel.Info, "resolveWebviewView called");
 
     this.webView = webviewView;
-    this.webviewManager.setupWebview(webviewView, this.context.extensionUri, this.getRandomId());
-    this.handleWebviewMessages(webviewView);
-  }
-
-  /**
-   * Handles incoming messages from the webview and dispatches them to the appropriate command handlers.
-   * @param webviewView - The webview view that is sending messages.
-   */
-  private handleWebviewMessages(webviewView: vscode.WebviewView) {
-    webviewView.webview.onDidReceiveMessage(async (data: {
-      type: CommandType;
-      value: any;
-      language?: string;
-    }) => {
-      this.logger.log(LogLevel.Info, `Message received of type: ${data.type}`);
-
-      try {
-        await this.commandHandler.executeCommand(data.type, data, this);
-      } catch (error) {
-        // Specify the expected error type if possible
-        if (error instanceof Error) {
-          this.logger.log(LogLevel.Error, `Error handling command ${data.type}: ${error.message}`);
-        } else {
-          // Handle unexpected error types
-          this.logger.log(LogLevel.Error, `Unexpected error handling command ${data.type}: ${String(error)}`);
-        }
-      }
-    });
+    this.webviewManager.initializeWebView(webviewView, this.context.extensionUri, this.getRandomId());
+    this.messageHandler.handleMessages(webviewView, this);
   }
 
   public sendMessage(message: any) {
@@ -169,8 +149,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleAddFreeTextQuestion(question: string) {
     // Clear chat history if conversationHistoryEnabled is false
     if (!this.configurationManager.conversationHistoryEnabled) {
-      this.chatHistory = [];
+      this.chatHistoryManager.clearHistory();
     }
+    this.chatHistoryManager.addMessage('user', question); // Add user message
     this.sendApiRequest(question, { command: "freeText" });
   }
 
@@ -201,7 +182,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   public async handleClearConversation() {
     this.conversationId = undefined;
-    this.chatHistory = [];
+    this.chatHistoryManager.clearHistory();
     this.logger.log(LogLevel.Info, "conversation-cleared");
   }
 
@@ -367,7 +348,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       ? `${question}${language ? ` (The following code is in ${language} programming language)` : ""}: ${code}`
       : question;
 
-    // Append the context content to the question
     this.logger.log(LogLevel.Info, "returning question processed...");
     return formattedQuestion;
 
@@ -416,9 +396,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
     // Retrieve the additional context
     const additionalContext = await this.retrieveContextForPrompt();
-
     const formattedQuestion = await this.processQuestion(prompt, options.code, options.language);
-    this.logger.log(LogLevel.Info, "processQuestion done");
 
     // If the ChatGPT view is not in focus/visible; focus on it to render Q&A
     if (this.webView == null) {
@@ -426,6 +404,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     } else {
       this.webView?.show?.(true);
     }
+
+    // Use the factory to create the appropriate chat model
+    const chatModel: IChatModel = ChatModelFactory.createChatModel(this);
 
     this.inProgress = true;
     this.abortController = new AbortController();
@@ -437,102 +418,84 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     });
     this.currentMessageId = this.getRandomId();
 
-    this.sendMessage({
-      type: "addQuestion",
-      value: prompt,
-      code: options.code,
-      autoScroll: this.configurationManager.autoScroll,
-    });
-
     try {
-      await this.getChatResponse(formattedQuestion, additionalContext, options);
+      this.sendMessage({
+        type: "addQuestion",
+        value: prompt,
+        code: options.code,
+        autoScroll: this.configurationManager.autoScroll,
+      });
+      await this.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); // Centralized response handling
     } catch (error: any) {
-      this.handleError(error, formattedQuestion, options);
+      this.handleApiError(error, formattedQuestion, options);
     } finally {
       this.inProgress = false;
       this.sendMessage({ type: "showInProgress", inProgress: this.inProgress });
     }
   }
 
-  /**
-   * Sends a prompt to the AI model and receives a response while updating the 
-   * response incrementally. It handles the streaming of the AI's response and 
-   * updates the chat history accordingly.
-   * 
-   * @param prompt - The prompt to be sent to the AI model.
-   * @param additionalContext - Additional contextual information to prefix to the prompt, if provided.
-   * @param options - An object containing command options, including any previous responses.
-   * @throws Throws an error if the response cannot be generated due to an issue with the API.
-   */
-  private async getChatResponse(
+  private async handleChatResponse(
+    model: IChatModel,
     prompt: string,
     additionalContext: string,
-    options: { command: string; previousAnswer?: string; },
+    options: { command: string; previousAnswer?: string; }
   ) {
     const responseInMarkdown = !this.modelManager.isCodexModel;
     const updateResponse = (message: string) => {
       this.response += message;
-      this.sendMessage({
-        type: "addResponse",
-        value: this.response,
-        id: this.currentMessageId,
-        messageId: this.currentMessageId,
-        autoScroll: this.configurationManager.autoScroll,
-        responseInMarkdown,
-      });
+      this.sendResponseUpdate();
     };
 
-    if (this.modelManager.isGpt35Model || this.modelManager.isClaude || this.modelManager.isGemini) {
-      this.logger.log(LogLevel.Info, `Using AI model: ${this.modelManager.model} for prompt: ${prompt}`);
-      await chatGpt(this, prompt, updateResponse, additionalContext);
-    } else {
-      this.logger.log(LogLevel.Info, `Using legacy model for prompt: ${prompt}`);
-      await chatCompletion(this, prompt, updateResponse, additionalContext);
+    try {
+      await model.sendMessage(prompt, additionalContext, updateResponse);
+      await this.finalizeResponse(options);
+    } catch (error) {
+      this.handleApiError(error, prompt, options);
     }
+  }
 
-    // Check for previous answer and append it to the response if applicable
+  private async finalizeResponse(options: { command: string; previousAnswer?: string; }) {
     if (options.previousAnswer != null) {
       this.response = options.previousAnswer + this.response; // Combine with previous answer
     }
 
-    // Handling potential incomplete responses
-    const hasContinuation = this.response.split("```").length % 2 === 0;
-    if (hasContinuation) {
-      this.response = this.response + " \r\n ```\r\n";
-      vscode.window
-        .showInformationMessage(
-          "It looks like ChatGPT didn't complete their answer for your coding question. You can ask it to continue and combine the answers.",
-          "Continue and combine answers",
-        )
-        .then(async (choice) => {
-          if (choice === "Continue and combine answers") {
-            this.sendApiRequest("Continue", {
-              command: options.command,
-              code: undefined,
-              previousAnswer: this.response,
-            });
-          }
-        });
+    this.chatHistoryManager.addMessage('assistant', this.response); // Add assistant response
+
+    if (this.isResponseIncomplete()) {
+      await this.promptToContinue(options);
     }
 
+    this.sendResponseUpdate(true); // Send final response indicating completion
+  }
+
+  private sendResponseUpdate(done: boolean = false) {
     this.sendMessage({
       type: "addResponse",
       value: this.response,
-      done: true,
+      done,
       id: this.currentMessageId,
       autoScroll: this.configurationManager.autoScroll,
-      responseInMarkdown,
+      responseInMarkdown: !this.modelManager.isCodexModel,
     });
+  }
 
-    if (this.configurationManager.subscribeToResponse) {
-      vscode.window
-        .showInformationMessage(
-          "ChatGPT responded to your question.",
-          "Open conversation",
-        )
-        .then(async () => {
-          await vscode.commands.executeCommand("chatgpt-copilot.view.focus");
-        });
+  private isResponseIncomplete(): boolean {
+    return this.response.split("```").length % 2 === 0;
+  }
+
+  private async promptToContinue(options: { command: string; }) {
+    const choice = await vscode.window.showInformationMessage(
+      "It looks like the response was incomplete. Would you like to continue?",
+      "Continue",
+      "Cancel"
+    );
+
+    if (choice === "Continue") {
+      await this.sendApiRequest("Continue", {
+        command: options.command,
+        code: undefined,
+        previousAnswer: this.response,
+      });
     }
   }
 
@@ -543,64 +506,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param prompt - The original prompt that was being processed.
    * @param options - Options related to the API request that failed.
    */
-  private handleError(error: any, prompt: string, options: any) {
-    let message;
-    let apiMessage =
-      error?.response?.data?.error?.message ||
-      error?.tostring?.() ||
-      error?.message ||
-      error?.name;
-
-    this.logger.log(LogLevel.Error, "api-request-failed");
-
-    if (error?.response?.status || error?.response?.statusText) {
-      message = `${error?.response?.status || ""} ${error?.response?.statusText || ""
-        }`;
-
-      vscode.window
-        .showErrorMessage(
-          "An error occured. If this is due to max_token you could try `ChatGPT: Clear Conversation` command and retry sending your prompt.",
-          "Clear conversation and retry",
-        )
-        .then(async (choice) => {
-          if (choice === "Clear conversation and retry") {
-            await vscode.commands.executeCommand("chatgpt-copilot.clearConversation");
-            await delay(250);
-            this.sendApiRequest(prompt, {
-              command: options.command,
-              code: options.code,
-            });
-          }
-        });
-    } else if (error.statusCode === 400) {
-      message = `Your model: '${this.modelManager.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
-    } else if (error.statusCode === 401) {
-      message =
-        "Make sure you are properly signed in. If you are using Browser Auto-login method, make sure the browser is open (You could refresh the browser tab manually if you face any issues, too). If you stored your API key in settings.json, make sure it is accurate. If you stored API key in session, you can reset it with `ChatGPT: Reset session` command. (HTTP 401 Unauthorized) Potential reasons: \r\n- 1.Invalid Authentication\r\n- 2.Incorrect API key provided.\r\n- 3.Incorrect Organization provided. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.";
-    } else if (error.statusCode === 403) {
-      message =
-        "Your token has expired. Please try authenticating again. (HTTP 403 Forbidden)";
-    } else if (error.statusCode === 404) {
-      message = `Your model: '${this.modelManager.model}' may be incompatible or you may have exhausted your ChatGPT subscription allowance. (HTTP 404 Not Found)`;
-    } else if (error.statusCode === 429) {
-      message =
-        "Too many requests try again later. (HTTP 429 Too Many Requests) Potential reasons: \r\n 1. You exceeded your current quota, please check your plan and billing details\r\n 2. You are sending requests too quickly \r\n 3. The engine is currently overloaded, please try again later. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.";
-    } else if (error.statusCode === 500) {
-      message =
-        "The server had an error while processing your request, please try again. (HTTP 500 Internal Server Error)\r\n See https://platform.openai.com/docs/guides/error-codes for more details.";
-    }
-
-    if (apiMessage) {
-      message = `${message ? message + " " : ""} ${apiMessage}`;
-    }
-
-    this.sendMessage({
-      type: "addError",
-      value: message,
-      autoScroll: this.configurationManager.autoScroll,
-    });
-
-    return;
+  private handleApiError(error: any, prompt: string, options: any) {
+    this.errorHandler.handleApiError(error, prompt, options, this.sendMessage.bind(this), this.configurationManager);
   }
 
   /**
@@ -771,6 +678,14 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
     return fileContents.join('\n\n'); // Join all file contents with double line breaks
   };
+
+  public handleCommandError(error: any, commandType: CommandType) {
+    if (error instanceof Error) {
+      this.logger.log(LogLevel.Error, `Error handling command ${commandType}: ${error.message}`);
+    } else {
+      this.logger.log(LogLevel.Error, `Unexpected error handling command ${commandType}: ${String(error)}`);
+    }
+  }
 }
 
 /**

@@ -1,82 +1,79 @@
 import { ChatGptViewProvider, CommandType } from "./chatgptViewProvider";
+import { ICommand } from "./command";
 
-interface Command {
-    execute(data: any, provider: ChatGptViewProvider): Promise<void>;
-}
-
-class AddFreeTextQuestionCommand implements Command {
+class AddFreeTextQuestionCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleAddFreeTextQuestion(data.value);
     }
 }
 
-class EditCodeCommand implements Command {
+class EditCodeCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleEditCode(data.value);
     }
 }
 
-class OpenNewCommand implements Command {
+class OpenNewCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleOpenNew(data.value || '', data.language || '');
     }
 }
 
-class ClearConversationCommand implements Command {
+class ClearConversationCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleClearConversation();
     }
 }
 
-class ClearBrowserCommand implements Command {
+class ClearBrowserCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleClearBrowser();
     }
 }
 
-class ClearGpt3Command implements Command {
+class ClearGpt3Command implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleClearGpt3();
     }
 }
-class LoginCommand implements Command {
+class LoginCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleLogin();
     }
 }
 
-class OpenSettingsCommand implements Command {
+class OpenSettingsCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleOpenSettings();
     }
 }
 
-class OpenSettingsPromptCommand implements Command {
+class OpenSettingsPromptCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleOpenSettingsPrompt();
     }
 }
 
-class ListConversationsCommand implements Command {
+class ListConversationsCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleListConversations();
     }
 }
 
-class ShowConversationCommand implements Command {
+class ShowConversationCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleShowConversation();
     }
 }
 
-class StopGeneratingCommand implements Command {
+class StopGeneratingCommand implements ICommand {
     async execute(data: any, provider: ChatGptViewProvider) {
         await provider.handleStopGenerating();
     }
 }
 
 export class CommandHandler {
-    private commandMap: Map<CommandType, Command>;
+    private commandMap: Map<CommandType, ICommand>;
 
     constructor() {
         this.commandMap = new Map();
@@ -98,7 +95,7 @@ export class CommandHandler {
         this.registerCommand(CommandType.StopGenerating, new StopGeneratingCommand());
     }
 
-    private registerCommand(commandType: CommandType, command: Command) {
+    private registerCommand(commandType: CommandType, command: ICommand) {
         this.commandMap.set(commandType, command);
     }
 
