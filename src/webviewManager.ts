@@ -26,8 +26,13 @@ export class WebviewManager {
       this.webviewView.webview.html = this.generateWebviewHtml(extensionUri, nonce);
       this.logger.log(LogLevel.Info, "Webview HTML set");
     } catch (error) {
-      this.logger.log(LogLevel.Error, `Failed to generate webview HTML: ${error.message}`);
-      throw error; // Rethrow to inform caller
+      // Type guard to check if error is an instance of Error
+      if (error instanceof Error) {
+        this.logger.log(LogLevel.Error, `Failed to generate webview HTML: ${error.message}`);
+      } else {
+        this.logger.log(LogLevel.Error, `Failed to generate webview HTML: ${String(error)}`);
+      }
+      throw error;
     }
   }
 

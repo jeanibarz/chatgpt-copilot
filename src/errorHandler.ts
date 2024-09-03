@@ -1,26 +1,39 @@
 // errorHandler.ts
 import * as vscode from "vscode";
 import { Logger, LogLevel } from "./logger";
+import { delay } from "./utils/delay";
+
+type ErrorHandlerFunction = (error: any, options: any, sendMessage: (message: any) => void) => string;
 
 export class ErrorHandler {
     private logger: Logger;
+    private handlers: Map<number, ErrorHandlerFunction> = new Map();
 
     constructor(logger: Logger) {
         this.logger = logger;
+    }
+
+    public registerHandler(statusCode: number, handler: ErrorHandlerFunction) {
+        this.handlers.set(statusCode, handler);
+    }
+
+    public unregisterHandler(statusCode: number) {
+        this.handlers.delete(statusCode);
     }
 
     public handleApiError(error: any, prompt: string, options: any, sendMessage: (message: any) => void, configurationManager: any) {
         let message;
         let apiMessage =
             error?.response?.data?.error?.message ||
-            error?.tostring?.() ||
+            error?.toString?.() ||
             error?.message ||
             error?.name;
 
         this.logger.log(LogLevel.Error, "api-request-failed");
 
-        if (error?.response?.status || error?.response?.statusText) {
-            message = `${error?.response?.status || ""} ${error?.response?.statusText || ""}`;
+        if (error?.response) {
+            const { status, statusText } = error.response;
+            message = `${status || ""} ${statusText || ""}`;
 
             vscode.window
                 .showErrorMessage(
@@ -34,18 +47,14 @@ export class ErrorHandler {
                         // Call the API request again if necessary
                     }
                 });
-        } else if (error.statusCode === 400) {
-            message = `Your model: '${options.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
-        } else if (error.statusCode === 401) {
-            message = "Make sure you are properly signed in. ... (HTTP 401 Unauthorized)";
-        } else if (error.statusCode === 403) {
-            message = "Your token has expired. Please try authenticating again. (HTTP 403 Forbidden)";
-        } else if (error.statusCode === 404) {
-            message = `Your model: '${options.model}' may be incompatible or you may have exhausted your ChatGPT subscription allowance. (HTTP 404 Not Found)`;
-        } else if (error.statusCode === 429) {
-            message = "Too many requests; try again later. (HTTP 429 Too Many Requests)";
-        } else if (error.statusCode === 500) {
-            message = "The server had an error while processing your request. (HTTP 500 Internal Server Error)";
+        }
+
+        const handler = this.handlers.get(error?.statusCode);
+        if (handler) {
+            message = handler(error, options, sendMessage);
+        } else {
+            // Fallback for unhandled status codes
+            message = this.getDefaultErrorMessage(error, options);
         }
 
         if (apiMessage) {
@@ -57,5 +66,24 @@ export class ErrorHandler {
             value: message,
             autoScroll: configurationManager.autoScroll,
         });
+    }
+
+    private getDefaultErrorMessage(error: any, options: any): string {
+        switch (error?.statusCode) {
+            case 400:
+                return `Your model: '${options.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
+            case 401:
+                return "Make sure you are properly signed in. ... (HTTP 401 Unauthorized)";
+            case 403:
+                return "Your token has expired. Please try authenticating again. (HTTP 403 Forbidden)";
+            case 404:
+                return `Your model: '${options.model}' may be incompatible or you may have exhausted your ChatGPT subscription allowance. (HTTP 404 Not Found)`;
+            case 429:
+                return "Too many requests; try again later. (HTTP 429 Too Many Requests)";
+            case 500:
+                return "The server had an error while processing your request. (HTTP 500 Internal Server Error)";
+            default:
+                return "An unknown error occurred."; // Default message for unhandled status codes
+        }
     }
 }
