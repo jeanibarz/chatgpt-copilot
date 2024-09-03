@@ -43,3 +43,12 @@ export async function initGeminiModel(viewProvider: ChatGptViewProvider, config:
         viewProvider.apiChat = gemini("models/" + model);
     }
 }
+
+export async function chatCompletion(
+    provider: ChatGptViewProvider,
+    question: string,
+    updateResponse: (message: string) => void,
+    additionalContext: string = "",
+) {
+    throw Error('Not implemented yet');
+}

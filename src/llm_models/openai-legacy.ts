@@ -20,7 +20,7 @@ import { ChatGptViewProvider } from "../chatgptViewProvider";
 import { Logger, LogLevel } from "../logger";
 import { ModelConfig } from "../model-config";
 
-const logger = new Logger("ChatGPT Copilot");
+const logger = Logger.getInstance("ChatGPT Copilot");
 
 // initGptLegacyModel initializes the GPT legacy model.
 export function initGptLegacyModel(viewProvider: ChatGptViewProvider, config: ModelConfig) {

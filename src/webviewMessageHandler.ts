@@ -27,7 +27,7 @@ export class WebviewMessageHandler {
             this.logger.log(LogLevel.Info, `Message received of type: ${data.type}`);
 
             try {
-                await this.commandHandler.executeCommand(data.type, data, chatGptViewProvider);
+                await this.commandHandler.executeCommand(data.type, data);
             } catch (error) {
                 chatGptViewProvider.handleCommandError(error, data.type);
             }

@@ -19,30 +19,44 @@ import { streamText } from 'ai';
 import { ChatGptViewProvider } from "../chatgptViewProvider";
 import { Logger, LogLevel } from "../logger";
 import { ModelConfig } from "../model-config";
+import { logError } from "../utils/errorLogger";
+import { OpenAIChatModel } from "./openAIChatModel";
 
-const logger = new Logger("ChatGPT Copilot");
+const logger = Logger.getInstance("ChatGPT Copilot");
 
-// initGptModel initializes the GPT model.
+// initGptModel initializes and returns the appropriate IChatModel instance.
 export async function initGptModel(viewProvider: ChatGptViewProvider, config: ModelConfig) {
-    // AzureOpenAI
-    if (config.apiBaseUrl?.includes("azure")) {
-        const instanceName = config.apiBaseUrl.split(".")[0].split("//")[1];
-        const deployName = config.apiBaseUrl.split("/")[config.apiBaseUrl.split("/").length - 1];
+    try {
+        // AzureOpenAI
+        if (config.apiBaseUrl?.includes("azure")) {
+            logger.log(LogLevel.Info, "Initializing Azure model...");
+            const instanceName = config.apiBaseUrl.split(".")[0].split("//")[1];
+            const deployName = config.apiBaseUrl.split("/")[config.apiBaseUrl.split("/").length - 1];
 
-        viewProvider.modelManager.model = deployName;
-        const azure = createAzure({
-            resourceName: instanceName,
-            apiKey: config.apiKey,
-        });
-        viewProvider.apiChat = azure.chat(deployName);
-    } else {
-        // OpenAI
-        const openai = createOpenAI({
-            baseURL: config.apiBaseUrl,
-            apiKey: config.apiKey,
-            organization: config.organization,
-        });
-        viewProvider.apiChat = openai.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "gpt-4o");
+            viewProvider.modelManager.model = deployName;
+            const azure = createAzure({
+                resourceName: instanceName,
+                apiKey: config.apiKey,
+            });
+
+            viewProvider.apiChat = azure.chat(deployName);
+            logger.log(LogLevel.Info, `Azure model initialized: ${deployName}`);
+            return new OpenAIChatModel(viewProvider);
+        } else {
+            // OpenAI
+            logger.log(LogLevel.Info, "Initializing OpenAI model...");
+            const openai = createOpenAI({
+                baseURL: config.apiBaseUrl,
+                apiKey: config.apiKey,
+                organization: config.organization,
+            });
+            viewProvider.apiChat = openai.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "gpt-4o");
+            logger.log(LogLevel.Info, `OpenAI model initialized: ${viewProvider.modelManager.model || "gpt-4o"}`);
+            return new OpenAIChatModel(viewProvider);
+        }
+    } catch (error) {
+        logError(logger, error, 'Failed to initialize model');
+        throw error; // Re-throw the error after logging
     }
 }
 

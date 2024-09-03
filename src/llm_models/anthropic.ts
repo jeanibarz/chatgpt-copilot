@@ -25,3 +25,12 @@ export async function initClaudeModel(viewProvider: ChatGptViewProvider, config:
     });
     viewProvider.apiChat = claude.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "claude-3-5-sonnet-20240620");
 }
+
+export async function chatCompletion(
+    provider: ChatGptViewProvider,
+    question: string,
+    updateResponse: (message: string) => void,
+    additionalContext: string = "",
+) {
+    throw Error('Not implemented yet');
+}

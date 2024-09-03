@@ -29,6 +29,7 @@ import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
 import { LogLevel, Logger } from "./logger";
 import { ModelManager } from "./modelManager";
+import { logError } from "./utils/errorLogger";
 import { WebviewManager } from "./webviewManager";
 import { WebviewMessageHandler } from "./webviewMessageHandler";
 
@@ -61,7 +62,7 @@ export interface ChatGptViewProviderOptions {
 
 export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  private logger: Logger;
+  public logger: Logger;
   private context: vscode.ExtensionContext;
   public webviewManager: WebviewManager; // Responsible for handling webview initialization and interactions.
   public modelManager: ModelManager;
@@ -90,7 +91,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private leftOverMessage?: any;
 
   constructor(options: ChatGptViewProviderOptions) {
-    const { context, logger, webviewManager, commandHandler, modelManager, configurationManager, chatHistoryManager } = options;
+    const { context, logger, webviewManager, commandHandler, modelManager, configurationManager } = options;
     this.context = context;
     this.logger = logger;
     this.webviewManager = webviewManager;
@@ -258,14 +259,19 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async prepareConversation(modelChanged = false): Promise<boolean> {
     this.logger.log(LogLevel.Info, "prepareConversation called", { modelChanged });
 
-    this.conversationId = this.conversationId || this.getRandomId();
+    try {
+      this.conversationId = this.conversationId || this.getRandomId();
 
-    if (await this.modelManager.prepareModelForConversation(modelChanged, this.logger, this)) {
-      this.sendMessage({ type: "loginSuccessful" });
-      this.logger.log(LogLevel.Info, "prepareConversation completed successfully");
-      return true;
-    } else {
-      return false;
+      if (await this.modelManager.prepareModelForConversation(modelChanged, this.logger, this)) {
+        this.sendMessage({ type: "loginSuccessful" });
+        this.logger.log(LogLevel.Info, "prepareConversation completed successfully");
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      logError(this.logger, error, "Failed to prepare conversation");
+      return false; // Return false to indicate failure
     }
   }
 
@@ -298,14 +304,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
       return formattedContext;
     } catch (error) {
-      if (error instanceof Error) {
-        // Properly log the error message
-        this.logger.log(LogLevel.Error, `Error retrieving context: ${error.message}`);
-      } else {
-        // Handle cases where the error is not an instance of Error
-        this.logger.log(LogLevel.Error, `Unknown error: ${String(error)}`);
-      }
-
+      logError(this.logger, error, "retrieveContextForPrompt");
       throw error; // Rethrow the error if necessary
     }
   }
@@ -388,25 +387,55 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       "chatgpt.hasPreviousAnswer": String(!!options.previousAnswer),
     });
 
-    if (!(await this.prepareConversation())) {
+    try {
+      if (!(await this.prepareConversation())) {
+        return;
+      }
+    } catch (error) {
+      logError(this.logger, error, "Failed to prepare conversation", true);
       return;
     }
 
     this.response = "";
 
-    // Retrieve the additional context
-    const additionalContext = await this.retrieveContextForPrompt();
+    let additionalContext = "";
+    try {
+      additionalContext = await this.retrieveContextForPrompt();
+    } catch (error) {
+      logError(this.logger, error, "Failed to retrieve context for prompt", true);
+      return;
+    }
+
     const formattedQuestion = await this.processQuestion(prompt, options.code, options.language);
 
     // If the ChatGPT view is not in focus/visible; focus on it to render Q&A
-    if (this.webView == null) {
-      vscode.commands.executeCommand("chatgpt-copilot.view.focus");
-    } else {
-      this.webView?.show?.(true);
+    try {
+      if (this.webView == null) {
+        vscode.commands.executeCommand("chatgpt-copilot.view.focus");
+      } else {
+        this.webView?.show?.(true);
+      }
+    } catch (error) {
+      logError(this.logger, error, "Failed to focus or show the ChatGPT view", true);
     }
 
-    // Use the factory to create the appropriate chat model
-    const chatModel: IChatModel = ChatModelFactory.createChatModel(this);
+    this.logger.log(LogLevel.Info, "Preparing to create chat model...");
+
+    const modelType = this.modelManager.model;
+    const modelConfig = this.modelManager.modelConfig;
+
+    this.logger.log(LogLevel.Info, `Model Type: ${modelType}`);
+    this.logger.log(LogLevel.Info, `Model Config: ${JSON.stringify(modelConfig)}`);
+
+    let chatModel: IChatModel;
+    try {
+      chatModel = await ChatModelFactory.createChatModel(this, modelConfig);
+    } catch (error) {
+      logError(this.logger, error, "Failed to create chat model", true);
+      return;
+    }
+
+    this.logger.log(LogLevel.Info, 'Chat model created successfully');
 
     this.inProgress = true;
     this.abortController = new AbortController();
@@ -425,8 +454,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         code: options.code,
         autoScroll: this.configurationManager.autoScroll,
       });
+      this.logger.log(LogLevel.Info, 'handle chat response...');
       await this.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); // Centralized response handling
     } catch (error: any) {
+      logError(this.logger, error, "Error in handleChatResponse", true);
       this.handleApiError(error, formattedQuestion, options);
     } finally {
       this.inProgress = false;
@@ -507,7 +538,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param options - Options related to the API request that failed.
    */
   private handleApiError(error: any, prompt: string, options: any) {
+    const errorId = this.getRandomId(); // Generate a unique error ID
+    this.logger.log(LogLevel.Error, `Error ID: ${errorId} - API request failed`, { error, prompt, options });
     this.errorHandler.handleApiError(error, prompt, options, this.sendMessage.bind(this), this.configurationManager);
+    vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
   }
 
   /**
@@ -546,13 +580,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       };
 
       const files = walk(rootPath);
-
-      // Log all found files before filtering
-      // this.logger.log(LogLevel.Debug, "All found files", { files });
-      // Convert all found files to relative paths and log them
-      // const relativeFiles = files.map(file => path.relative(rootPath, file));
-      // this.logger.log(LogLevel.Debug, "All found files (relative paths)", { relativeFiles });
-
       const inclusionRegex = new RegExp(inclusionPattern);
       const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
 
@@ -567,17 +594,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
       return matchedFiles;
     } catch (error) {
-      // Check if error is an instance of Error
-      let errorMessage: string;
-
       if (error instanceof Error) {
-        errorMessage = `Error in findMatchingFiles: ${error.message}\n${error.stack}`;
+        logError(this.logger, error, "Error while finding matching files", true);
       } else {
-        // Fallback for unknown error types
-        errorMessage = `Unknown error in findMatchingFiles: ${String(error)}`;
+        logError(this.logger, new Error(String(error)), "Unknown error while finding matching files", true);
       }
-
-      this.logger.log(LogLevel.Error, errorMessage);
       throw error; // Rethrow the error so it can be handled by the caller
     }
   }

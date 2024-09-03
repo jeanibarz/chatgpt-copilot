@@ -1,19 +1,18 @@
-// errorHandler.ts
+// src/errorHandler.ts
 import * as vscode from "vscode";
-import { Logger, LogLevel } from "./logger";
+import { BaseErrorHandler } from "./base/baseErrorHandler";
+import { Logger } from "./logger";
 import { delay } from "./utils/delay";
+import { logError } from "./utils/errorLogger";
 
-type ErrorHandlerFunction = (error: any, options: any, sendMessage: (message: any) => void) => string;
-
-export class ErrorHandler {
-    private logger: Logger;
-    private handlers: Map<number, ErrorHandlerFunction> = new Map();
+export class ErrorHandler extends BaseErrorHandler {
+    private handlers: Map<number, (error: any, options: any, sendMessage: (message: any) => void) => string> = new Map();
 
     constructor(logger: Logger) {
-        this.logger = logger;
+        super(logger);
     }
 
-    public registerHandler(statusCode: number, handler: ErrorHandlerFunction) {
+    public registerHandler(statusCode: number, handler: (error: any, options: any, sendMessage: (message: any) => void) => string) {
         this.handlers.set(statusCode, handler);
     }
 
@@ -29,7 +28,7 @@ export class ErrorHandler {
             error?.message ||
             error?.name;
 
-        this.logger.log(LogLevel.Error, "api-request-failed");
+        logError(this.logger, "api-request-failed", "API Request");
 
         if (error?.response) {
             const { status, statusText } = error.response;
@@ -66,6 +65,10 @@ export class ErrorHandler {
             value: message,
             autoScroll: configurationManager.autoScroll,
         });
+    }
+
+    public handleError(error: any, context: string): void {
+        logError(this.logger, error, context, true);
     }
 
     private getDefaultErrorMessage(error: any, options: any): string {

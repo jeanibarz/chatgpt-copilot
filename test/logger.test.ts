@@ -26,7 +26,7 @@ describe('Logger Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockOutputChannel = vscode.window.createOutputChannel("TestLogger");
-        logger = new Logger("TestLogger", "test.log");
+        logger = Logger.getInstance("TestLogger", "test.log");
     });
 
     it('should log info messages correctly to output channel', () => {
@@ -68,7 +68,7 @@ describe('Logger Tests', () => {
     });
 
     it('should log without throwing error if log file path is undefined', () => {
-        const mockLoggerWithoutPath = new Logger("MockLoggerWithoutPath");
+        const mockLoggerWithoutPath = Logger.getInstance("MockLoggerWithoutPath");
         expect(() => mockLoggerWithoutPath.logToFile("Test message")).not.toThrow();
     });
 
