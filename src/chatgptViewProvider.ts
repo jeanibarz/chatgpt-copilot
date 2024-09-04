@@ -209,7 +209,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleOpenSettings() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
-      "@ext:feiskyer.chatgpt-copilot chatgpt.",
+      "@ext:jeanibarz.chatgpt-copilot chatgpt.",
     );
     this.logger.log(LogLevel.Info, "settings-opened");
   }
@@ -217,7 +217,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleOpenSettingsPrompt() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
-      "@ext:feiskyer.chatgpt-copilot promptPrefix",
+      "@ext:jeanibarz.chatgpt-copilot promptPrefix",
     );
     this.logger.log(LogLevel.Info, "settings-prompt-opened");
   }

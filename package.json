@@ -1,13 +1,13 @@
 {
   "name": "chatgpt-copilot",
-  "publisher": "feiskyer",
+  "publisher": "jeanibarz",
   "displayName": "ChatGPT Copilot",
   "icon": "images/ai-logo.png",
-  "description": "An VS Code ChatGPT Copilot Extension",
-  "version": "4.6.0",
+  "description": "A forked version of the original ChatGPT Copilot Extension by jeanibarz (https://github.com/jeanibarz/chatgpt-copilot), providing additional features for VS Code integration.",
+  "version": "5.0.0",
   "aiKey": "",
   "repository": {
-    "url": "https://github.com/feiskyer/chatgpt-copilot"
+    "url": "https://github.com/jeanibarz/chatgpt-copilot"
   },
   "engines": {
     "vscode": "^1.91.0"

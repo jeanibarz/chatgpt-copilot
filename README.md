@@ -1,14 +1,14 @@
-<h3 align="center"><img src="https://raw.githubusercontent.com/feiskyer/chatgpt-copilot/main/images/ai-logo.png" height="64"><br>An VS Code ChatGPT Copilot Extension</h3>
+<h3 align="center"><img src="https://raw.githubusercontent.com/jeanibarz/chatgpt-copilot/main/images/ai-logo.png" height="64"><br>An VS Code ChatGPT Copilot Extension</h3>
 
 <p align="center">
-    <a href="https://marketplace.visualstudio.com/items?itemName=feiskyer.chatgpt-copilot" alt="Marketplace version">
-        <img src="https://img.shields.io/visual-studio-marketplace/v/feiskyer.chatgpt-copilot?color=orange&label=VS%20Code" />
+    <a href="https://marketplace.visualstudio.com/items?itemName=jeanibarz.chatgpt-copilot" alt="Marketplace version">
+        <img src="https://img.shields.io/visual-studio-marketplace/v/jeanibarz.chatgpt-copilot?color=orange&label=VS%20Code" />
     </a>
-    <a href="https://marketplace.visualstudio.com/items?itemName=feiskyer.chatgpt-copilot" alt="Marketplace download count">
-        <img src="https://img.shields.io/visual-studio-marketplace/d/feiskyer.chatgpt-copilot?color=blueviolet&label=Downloads" />
+    <a href="https://marketplace.visualstudio.com/items?itemName=jeanibarz.chatgpt-copilot" alt="Marketplace download count">
+        <img src="https://img.shields.io/visual-studio-marketplace/d/jeanibarz.chatgpt-copilot?color=blueviolet&label=Downloads" />
     </a>
-    <a href="https://github.com/feiskyer/chatgpt-copilot" alt="Github star count">
-        <img src="https://img.shields.io/github/stars/feiskyer/chatgpt-copilot?color=blue&label=Github%20Stars" />
+    <a href="https://github.com/jeanibarz/chatgpt-copilot" alt="Github star count">
+        <img src="https://img.shields.io/github/stars/jeanibarz/chatgpt-copilot?color=blue&label=Github%20Stars" />
     </a>
 </p>
 
@@ -93,7 +93,7 @@ Example configuration for a custom model name with [groq](https://console.groq.c
 ```sh
 npm run build
 npm run package
-code --uninstall-extension feiskyer.chatgpt-copilot
+code --uninstall-extension jeanibarz.chatgpt-copilot
 code --install-extension chatgpt-copilot-*.vsix
 ```
 
