@@ -53,6 +53,11 @@ export function getRequiredConfig<T>(key: string): T {
     return value;
 }
 
+/**
+ * Registers a callback to be invoked when the configuration changes.
+ * 
+ * @param callback - The function to call when the configuration changes.
+ */
 export function onConfigurationChanged(callback: () => void) {
     vscode.workspace.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration("chatgpt")) {

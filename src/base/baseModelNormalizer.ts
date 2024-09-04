@@ -11,6 +11,12 @@ export abstract class BaseModelNormalizer {
 
     public abstract normalize(modelType: string): string | null;
 
+    /**
+     * Logs the normalization process of a model type.
+     * 
+     * @param modelType - The original model type before normalization.
+     * @param normalizedType - The normalized model type or null if no normalization was found.
+     */
     protected logNormalization(modelType: string, normalizedType: string | null): void {
         if (normalizedType) {
             this.logger.log(LogLevel.Info, `Normalized model type: ${modelType} to ${normalizedType}`);
