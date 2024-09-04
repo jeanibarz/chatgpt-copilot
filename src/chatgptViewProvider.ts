@@ -545,22 +545,22 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Finds files in the workspace that match the inclusion pattern and do not match the exclusion pattern.
-   * @param inclusionPattern - Regex pattern to include files.
-   * @param exclusionPattern - Optional regex pattern to exclude files.
-   * @returns A Promise that resolves to an array of matching file paths.
-   */
+ * Finds files in the explicitly added files/folders that match the inclusion pattern and do not match the exclusion pattern.
+ * @param inclusionPattern - Regex pattern to include files.
+ * @param exclusionPattern - Optional regex pattern to exclude files.
+ * @returns A Promise that resolves to an array of matching file paths.
+ */
   private async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
     try {
-      // Retrieve the project root path from the global state
-      const rootPath = this.context.globalState.get<string>('chatgpt.projectRoot') || '';
-      this.logger.log(LogLevel.Info, `Project root: ${rootPath}`);
+      // Retrieve the explicitly added files/folders from global state
+      const explicitFiles = this.context.globalState.get<string[]>('chatgpt.explicitFiles', []);
+      this.logger.log(LogLevel.Info, `Explicit files and folders: ${explicitFiles}`);
 
-      if (!rootPath) {
+      if (explicitFiles.length === 0) {
         vscode.window.showErrorMessage(
-          'Workspace root path is not defined. To set the project root folder, right-click on a folder in the Explorer and select "Set this folder as root for ChatGPT context retrieval".'
+          'No files or folders are explicitly added to the ChatGPT context. Add files or folders to the context first.'
         );
-        throw new Error('Workspace root path is not defined. Please set the project root folder from the Explorer.');
+        throw new Error('No files or folders are explicitly added to the ChatGPT context.');
       }
 
       // Log patterns
@@ -569,6 +569,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         this.logger.log(LogLevel.Info, "Exclusion Pattern", { exclusionPattern });
       }
 
+      const inclusionRegex = new RegExp(inclusionPattern);
+      const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
+
+      // Helper function to recursively collect all files from a folder
       const walk = (dir: string, fileList: string[] = []): string[] => {
         const files = fs.readdirSync(dir);
         files.forEach(file => {
@@ -582,14 +586,24 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         return fileList;
       };
 
-      const files = walk(rootPath);
-      const inclusionRegex = new RegExp(inclusionPattern);
-      const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
+      let allFiles: string[] = [];
 
-      const matchedFiles = files.filter(file => {
-        const relativePath = path.relative(rootPath, file);
-        const isFileIncluded = inclusionRegex.test(relativePath);
-        const isFileExcluded = exclusionRegex ? exclusionRegex.test(relativePath) : false;
+      // Go through each explicitly added file/folder
+      for (const filePath of explicitFiles) {
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          // If it's a directory, add all the files within the folder
+          allFiles = allFiles.concat(walk(filePath));
+        } else {
+          // If it's a file, just add it to the list
+          allFiles.push(filePath);
+        }
+      }
+
+      // Filter files based on the inclusion and exclusion patterns
+      const matchedFiles = allFiles.filter(file => {
+        const isFileIncluded = inclusionRegex.test(file);
+        const isFileExcluded = exclusionRegex ? exclusionRegex.test(file) : false;
         return isFileIncluded && !isFileExcluded;
       });
 

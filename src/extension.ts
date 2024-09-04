@@ -42,24 +42,24 @@ const menuCommands = [
 const logFilePath = path.join(__dirname, 'error.log');
 
 export class ContextDecorationProvider implements vscode.FileDecorationProvider {
-  private _decoratedFiles: Map<string, boolean> = new Map<string, boolean>();
+  private _explicitFiles: Map<string, boolean> = new Map<string, boolean>();
   private _onDidChange = new vscode.EventEmitter<vscode.Uri | vscode.Uri[]>();
   readonly onDidChangeFileDecorations: vscode.Event<vscode.Uri | vscode.Uri[]> = this._onDidChange.event;
 
   constructor(private context: vscode.ExtensionContext) {
-    // Register the provider
+    // Load saved files and folders from global state
+    this._loadExplicitFilesFromState();
     this.context.subscriptions.push(vscode.window.registerFileDecorationProvider(this));
   }
 
   provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {
-    const projectRoot = this.context.globalState.get('chatgpt.projectRoot') as string;
+    // Check if the file or folder is explicitly added to the context
+    const isExplicitlyAdded = this._explicitFiles.get(uri.fsPath);
 
-    // Check if the file/folder is part of the project root or context and ensure it's decorated only once
-    if (this._decoratedFiles.get(uri.fsPath) && projectRoot && uri.fsPath.startsWith(projectRoot)) {
-      // Return the badge only once
+    if (isExplicitlyAdded) {
       return {
         badge: '★',
-        tooltip: 'This folder is in the ChatGPT context',
+        tooltip: 'This file/folder is in the ChatGPT context',
         color: new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
       };
     }
@@ -68,20 +68,31 @@ export class ContextDecorationProvider implements vscode.FileDecorationProvider 
   }
 
   updateTreeFileDecoration(resourceUri: vscode.Uri, isAdding: boolean = true): void {
+    const stat = statSync(resourceUri.fsPath);
+
     if (isAdding) {
-      // Add the folder and its contents recursively
-      this._addFolderAndContents(resourceUri.fsPath);
+      if (stat.isDirectory()) {
+        // Add folder and its contents recursively
+        this._addFolderAndContents(resourceUri.fsPath);
+      } else if (stat.isFile()) {
+        // Add individual file
+        this._addFile(resourceUri.fsPath);
+      }
     } else {
-      // Clear decorations that no longer match the new project root
-      this._decoratedFiles.clear();
+      // Remove the file/folder from the context
+      this._removeFileOrFolder(resourceUri.fsPath);
     }
-    this._onDidChange.fire(undefined); // Fire event for all URIs
+
+    // Trigger an event to refresh decorations
+    this._onDidChange.fire(undefined);
+
+    // Save the updated files/folders to global state
+    this._saveExplicitFilesToState();
   }
 
   private _addFolderAndContents(folderPath: string) {
-    // Add the folder itself to the decorated files, but only if it's not already added
-    if (!this._decoratedFiles.has(folderPath)) {
-      this._decoratedFiles.set(folderPath, true);
+    if (!this._explicitFiles.has(folderPath)) {
+      this._explicitFiles.set(folderPath, true); // Add the folder itself
     }
 
     const entries = readdirSync(folderPath);
@@ -90,18 +101,62 @@ export class ContextDecorationProvider implements vscode.FileDecorationProvider 
       const entryStat = statSync(entryPath);
 
       if (entryStat.isDirectory()) {
-        // Recursively add the folder and its contents, but only if it's not already added
-        if (!this._decoratedFiles.has(entryPath)) {
-          this._decoratedFiles.set(entryPath, true);
-          this._addFolderAndContents(entryPath);
-        }
+        this._addFolderAndContents(entryPath); // Recursively add subfolders
       } else if (entryStat.isFile()) {
-        // Add the file to the decorated list, but only if it's not already added
-        if (!this._decoratedFiles.has(entryPath)) {
-          this._decoratedFiles.set(entryPath, true);
-        }
+        this._addFile(entryPath); // Add individual files
       }
     });
+  }
+
+  private _addFile(filePath: string) {
+    if (!this._explicitFiles.has(filePath)) {
+      this._explicitFiles.set(filePath, true);
+    }
+  }
+
+  private _removeFileOrFolder(filePath: string) {
+    if (this._explicitFiles.has(filePath)) {
+      this._explicitFiles.delete(filePath);
+    }
+
+    const stat = statSync(filePath);
+    if (stat.isDirectory()) {
+      // Recursively remove contents of the folder
+      const entries = readdirSync(filePath);
+      entries.forEach((entry) => {
+        const entryPath = join(filePath, entry);
+        const entryStat = statSync(entryPath);
+
+        if (entryStat.isDirectory()) {
+          this._removeFileOrFolder(entryPath);
+        } else if (entryStat.isFile()) {
+          this._explicitFiles.delete(entryPath);
+        }
+      });
+    }
+
+    vscode.window.showInformationMessage(`Removed from ChatGPT context: ${filePath}`);
+  }
+
+  clearAllFiles() {
+    this._explicitFiles.clear();
+    this._onDidChange.fire(undefined); // Trigger event to refresh decorations
+    this._saveExplicitFilesToState();  // Clear saved state
+    vscode.window.showInformationMessage('Cleared all files and folders from ChatGPT context.');
+  }
+
+  // Load the saved files/folders from the global state
+  private _loadExplicitFilesFromState() {
+    const savedFiles = this.context.globalState.get<string[]>('chatgpt.explicitFiles', []);
+    savedFiles.forEach((filePath) => {
+      this._explicitFiles.set(filePath, true);
+    });
+  }
+
+  // Save the current files/folders to the global state
+  private _saveExplicitFilesToState() {
+    const filePaths = Array.from(this._explicitFiles.keys());
+    this.context.globalState.update('chatgpt.explicitFiles', filePaths);
   }
 
   dispose() {
@@ -118,33 +173,36 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const logger = Logger.getInstance("ChatGPT Copilot");
 
-  const setRootFolderCommand = vscode.commands.registerCommand('chatgpt.setRootFolder', async (uri: vscode.Uri) => {
+  // Command to add a specific file or folder to the context
+  const addFileOrFolderToContext = vscode.commands.registerCommand('chatgpt-copilot.addFileOrFolderToContext', async (uri: vscode.Uri) => {
     if (uri && uri.fsPath) {
-      // Set the project root folder path in the global state
-      context.globalState.update('chatgpt.projectRoot', uri.fsPath);
-      vscode.window.showInformationMessage(`Set project root to: ${uri.fsPath}`);
-
-      // Trigger decoration updates for the new projectRoot folder and its contents
-      contextProvider.updateTreeFileDecoration(vscode.Uri.file(uri.fsPath));
+      contextProvider.updateTreeFileDecoration(uri);
+      vscode.window.showInformationMessage(`Added file/folder to ChatGPT context: ${uri.fsPath}`);
     } else {
-      vscode.window.showErrorMessage("No folder selected.");
+      vscode.window.showErrorMessage("No file or folder selected.");
     }
   });
 
-  const setParentFolderAsRootCommand = vscode.commands.registerCommand('chatgpt.setParentFolderAsRoot', async (uri: vscode.Uri) => {
+  // Command to remove a specific file or folder from the context
+  const removeFileOrFolderFromContext = vscode.commands.registerCommand('chatgpt-copilot.removeFileOrFolderFromContext', async (uri: vscode.Uri) => {
     if (uri && uri.fsPath) {
-      const parentFolder = path.dirname(uri.fsPath);
-      context.globalState.update('chatgpt.projectRoot', parentFolder);
-      vscode.window.showInformationMessage(`Set parent folder as project root: ${parentFolder}`);
-
-      // Trigger decoration updates for the parent folder and its contents
-      contextProvider.updateTreeFileDecoration(vscode.Uri.file(parentFolder));
+      contextProvider.updateTreeFileDecoration(uri, false);
+      vscode.window.showInformationMessage(`Removed file/folder from ChatGPT context: ${uri.fsPath}`);
     } else {
-      vscode.window.showErrorMessage("No file selected.");
+      vscode.window.showErrorMessage("No file or folder selected.");
     }
   });
 
-  context.subscriptions.push(setRootFolderCommand, setParentFolderAsRootCommand);
+  // Command to clear all explicitly added files and folders
+  const clearAllFilesFromContext = vscode.commands.registerCommand('chatgpt-copilot.clearAllFilesFromContext', async () => {
+    contextProvider.clearAllFiles();
+  });
+
+  context.subscriptions.push(
+    addFileOrFolderToContext,
+    removeFileOrFolderFromContext,
+    clearAllFilesFromContext,
+  );
 
   const provider = createChatGptViewProvider(context, logger);
 

@@ -101,17 +101,37 @@
           "command": "chatgpt-copilot.showTypeHint",
           "when": "editorTextFocus",
           "group": "navigation"
+        },
+        {
+          "command": "chatgpt-copilot.addFileOrFolderToContext",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        },
+        {
+          "command": "chatgpt-copilot.removeFileOrFolderFromContext",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        },
+        {
+          "command": "chatgpt-copilot.clearAllFilesFromContext",
+          "when": "editorTextFocus",
+          "group": "navigation"
         }
       ],
       "explorer/context": [
         {
-          "command": "chatgpt.setRootFolder",
-          "when": "explorerResourceIsFolder",
+          "command": "chatgpt-copilot.addFileOrFolderToContext",
+          "when": "explorerResourceIsFolder || !explorerResourceIsFolder",
           "group": "navigation"
         },
         {
-          "command": "chatgpt.setParentFolderAsRoot",
-          "when": "!explorerResourceIsFolder",
+          "command": "chatgpt-copilot.removeFileOrFolderFromContext",
+          "when": "explorerResourceIsFolder || !explorerResourceIsFolder",
+          "group": "navigation"
+        },
+        {
+          "command": "chatgpt-copilot.clearAllFilesFromContext",
+          "when": "explorerViewletVisible",
           "group": "navigation"
         }
       ]
@@ -180,14 +200,16 @@
     ],
     "commands": [
       {
-        "command": "chatgpt.setRootFolder",
-        "title": "Set this folder as root for ChatGPT context retrieval",
-        "category": "ChatGPT"
+        "command": "chatgpt-copilot.addFileOrFolderToContext",
+        "title": "Add to ChatGPT context"
       },
       {
-        "command": "chatgpt.setParentFolderAsRoot",
-        "title": "Set parent folder as root for ChatGPT context retrieval",
-        "category": "ChatGPT"
+        "command": "chatgpt-copilot.removeFileOrFolderFromContext",
+        "title": "Remove from ChatGPT context"
+      },
+      {
+        "command": "chatgpt-copilot.clearAllFilesFromContext",
+        "title": "Clear all files and folders from ChatGPT context"
       },
       {
         "command": "chatgpt-copilot.freeText",
