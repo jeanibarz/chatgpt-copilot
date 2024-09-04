@@ -37,11 +37,34 @@ const menuCommands = [
 
 const logFilePath = path.join(__dirname, 'error.log');
 
+
 export async function activate(context: vscode.ExtensionContext) {
   let adhocCommandPrefix: string =
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
   const logger = Logger.getInstance("ChatGPT Copilot");
+
+  const setRootFolderCommand = vscode.commands.registerCommand('chatgpt.setRootFolder', async (uri: vscode.Uri) => {
+    if (uri && uri.fsPath) {
+      // Set the project root folder path in the global state
+      context.globalState.update('chatgpt.projectRoot', uri.fsPath);
+      vscode.window.showInformationMessage(`Set project root to: ${uri.fsPath}`);
+    } else {
+      vscode.window.showErrorMessage("No folder selected.");
+    }
+  });
+
+  const setParentFolderAsRootCommand = vscode.commands.registerCommand('chatgpt.setParentFolderAsRoot', async (uri: vscode.Uri) => {
+    if (uri && uri.fsPath) {
+      const parentFolder = path.dirname(uri.fsPath);
+      context.globalState.update('chatgpt.projectRoot', parentFolder);
+      vscode.window.showInformationMessage(`Set parent folder as project root: ${parentFolder}`);
+    } else {
+      vscode.window.showErrorMessage("No file selected.");
+    }
+  });
+
+  context.subscriptions.push(setRootFolderCommand, setParentFolderAsRootCommand);
 
   const provider = createChatGptViewProvider(context, logger);
 

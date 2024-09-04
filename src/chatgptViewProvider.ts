@@ -552,12 +552,15 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   private async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
     try {
-      // TODO: replace hardcoded value later, as I encounted some issues testing
-      // the extension currently.
-      // const rootPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-      const rootPath = "/home/jean/git/chatgpt-copilot";
+      // Retrieve the project root path from the global state
+      const rootPath = this.context.globalState.get<string>('chatgpt.projectRoot') || '';
+      this.logger.log(LogLevel.Info, `Project root: ${rootPath}`);
+
       if (!rootPath) {
-        throw new Error('Workspace root path is not defined.');
+        vscode.window.showErrorMessage(
+          'Workspace root path is not defined. To set the project root folder, right-click on a folder in the Explorer and select "Set this folder as root for ChatGPT context retrieval".'
+        );
+        throw new Error('Workspace root path is not defined. Please set the project root folder from the Explorer.');
       }
 
       // Log patterns

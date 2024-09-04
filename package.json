@@ -102,6 +102,18 @@
           "when": "editorTextFocus",
           "group": "navigation"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "chatgpt.setRootFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation"
+        },
+        {
+          "command": "chatgpt.setParentFolderAsRoot",
+          "when": "!explorerResourceIsFolder",
+          "group": "navigation"
+        }
       ]
     },
     "keybindings": [
@@ -167,6 +179,16 @@
       }
     ],
     "commands": [
+      {
+        "command": "chatgpt.setRootFolder",
+        "title": "Set this folder as root for ChatGPT context retrieval",
+        "category": "ChatGPT"
+      },
+      {
+        "command": "chatgpt.setParentFolderAsRoot",
+        "title": "Set parent folder as root for ChatGPT context retrieval",
+        "category": "ChatGPT"
+      },
       {
         "command": "chatgpt-copilot.freeText",
         "title": "ChatGPT: Ask anything"
