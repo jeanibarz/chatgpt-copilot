@@ -209,7 +209,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleOpenSettings() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
-      "@ext:feiskyer.chatgpt-copilot chatgpt.",
+      "@ext:jeanibarz.chatgpt-copilot chatgpt.",
     );
     this.logger.log(LogLevel.Info, "settings-opened");
   }
@@ -217,7 +217,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleOpenSettingsPrompt() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
-      "@ext:feiskyer.chatgpt-copilot promptPrefix",
+      "@ext:jeanibarz.chatgpt-copilot promptPrefix",
     );
     this.logger.log(LogLevel.Info, "settings-prompt-opened");
   }
@@ -545,19 +545,22 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Finds files in the workspace that match the inclusion pattern and do not match the exclusion pattern.
-   * @param inclusionPattern - Regex pattern to include files.
-   * @param exclusionPattern - Optional regex pattern to exclude files.
-   * @returns A Promise that resolves to an array of matching file paths.
-   */
+ * Finds files in the explicitly added files/folders that match the inclusion pattern and do not match the exclusion pattern.
+ * @param inclusionPattern - Regex pattern to include files.
+ * @param exclusionPattern - Optional regex pattern to exclude files.
+ * @returns A Promise that resolves to an array of matching file paths.
+ */
   private async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
     try {
-      // TODO: replace hardcoded value later, as I encounted some issues testing
-      // the extension currently.
-      // const rootPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-      const rootPath = "/home/jean/git/chatgpt-copilot";
-      if (!rootPath) {
-        throw new Error('Workspace root path is not defined.');
+      // Retrieve the explicitly added files/folders from global state
+      const explicitFiles = this.context.globalState.get<string[]>('chatgpt.explicitFiles', []);
+      this.logger.log(LogLevel.Info, `Explicit files and folders: ${explicitFiles}`);
+
+      if (explicitFiles.length === 0) {
+        vscode.window.showErrorMessage(
+          'No files or folders are explicitly added to the ChatGPT context. Add files or folders to the context first.'
+        );
+        throw new Error('No files or folders are explicitly added to the ChatGPT context.');
       }
 
       // Log patterns
@@ -566,6 +569,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         this.logger.log(LogLevel.Info, "Exclusion Pattern", { exclusionPattern });
       }
 
+      const inclusionRegex = new RegExp(inclusionPattern);
+      const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
+
+      // Helper function to recursively collect all files from a folder
       const walk = (dir: string, fileList: string[] = []): string[] => {
         const files = fs.readdirSync(dir);
         files.forEach(file => {
@@ -579,14 +586,24 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         return fileList;
       };
 
-      const files = walk(rootPath);
-      const inclusionRegex = new RegExp(inclusionPattern);
-      const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
+      let allFiles: string[] = [];
 
-      const matchedFiles = files.filter(file => {
-        const relativePath = path.relative(rootPath, file);
-        const isFileIncluded = inclusionRegex.test(relativePath);
-        const isFileExcluded = exclusionRegex ? exclusionRegex.test(relativePath) : false;
+      // Go through each explicitly added file/folder
+      for (const filePath of explicitFiles) {
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          // If it's a directory, add all the files within the folder
+          allFiles = allFiles.concat(walk(filePath));
+        } else {
+          // If it's a file, just add it to the list
+          allFiles.push(filePath);
+        }
+      }
+
+      // Filter files based on the inclusion and exclusion patterns
+      const matchedFiles = allFiles.filter(file => {
+        const isFileIncluded = inclusionRegex.test(file);
+        const isFileExcluded = exclusionRegex ? exclusionRegex.test(file) : false;
         return isFileIncluded && !isFileExcluded;
       });
 
