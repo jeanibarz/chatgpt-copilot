@@ -24,12 +24,12 @@ export class WebviewMessageHandler {
             value: any;
             language?: string;
         }) => {
-            this.logger.log(LogLevel.Info, `Message received of type: ${data.type}`);
+            this.logger.info(`Message received of type: ${data.type}`);
 
             try {
                 await this.commandHandler.executeCommand(data.type, data);
             } catch (error) {
-                chatGptViewProvider.handleCommandError(error, data.type);
+                this.logger.logError(error, `Error handling command ${data.type}`);
             }
         });
     }

@@ -29,7 +29,7 @@ export async function initGptModel(viewProvider: ChatGptViewProvider, config: Mo
     try {
         // AzureOpenAI
         if (config.apiBaseUrl?.includes("azure")) {
-            logger.log(LogLevel.Info, "Initializing Azure model...");
+            logger.info("Initializing Azure model...");
             const instanceName = config.apiBaseUrl.split(".")[0].split("//")[1];
             const deployName = config.apiBaseUrl.split("/")[config.apiBaseUrl.split("/").length - 1];
 
@@ -40,22 +40,22 @@ export async function initGptModel(viewProvider: ChatGptViewProvider, config: Mo
             });
 
             viewProvider.apiChat = azure.chat(deployName);
-            logger.log(LogLevel.Info, `Azure model initialized: ${deployName}`);
+            logger.info(`Azure model initialized: ${deployName}`);
             return new OpenAIChatModel(viewProvider);
         } else {
             // OpenAI
-            logger.log(LogLevel.Info, "Initializing OpenAI model...");
+            logger.info("Initializing OpenAI model...");
             const openai = createOpenAI({
                 baseURL: config.apiBaseUrl,
                 apiKey: config.apiKey,
                 organization: config.organization,
             });
             viewProvider.apiChat = openai.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "gpt-4o");
-            logger.log(LogLevel.Info, `OpenAI model initialized: ${viewProvider.modelManager.model || "gpt-4o"}`);
+            logger.info(`OpenAI model initialized: ${viewProvider.modelManager.model || "gpt-4o"}`);
             return new OpenAIChatModel(viewProvider);
         }
     } catch (error) {
-        logError(logger, error, 'Failed to initialize model');
+        logger.logError(error, 'Failed to initialize model');
         throw error; // Re-throw the error after logging
     }
 }
@@ -72,7 +72,7 @@ export async function chatGpt(
     }
 
     try {
-        logger.log(LogLevel.Info, `chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
+        logger.info(`chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
         // Add the user's question to the provider's chat history (without additionalContext)
         provider.chatHistoryManager.addMessage('user', question);
@@ -105,9 +105,9 @@ export async function chatGpt(
         // Add the assistant's response to the provider's chat history (without additionalContext)
         provider.chatHistoryManager.addMessage('assistant', chunks.join(""));
 
-        logger.log(LogLevel.Info, `chatgpt.response: ${provider.response}`);
+        logger.info(`chatgpt.response: ${provider.response}`);
     } catch (error) {
-        logger.log(LogLevel.Error, `chatgpt.model: ${provider.modelManager.model} response: ${error}`);
+        logger.info(`chatgpt.model: ${provider.modelManager.model} response: ${error}`);
         throw error;
     }
 }

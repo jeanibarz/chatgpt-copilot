@@ -68,7 +68,7 @@ export class ErrorHandler extends BaseErrorHandler {
     }
 
     public handleError(error: any, context: string): void {
-        logError(this.logger, error, context, true);
+        this.logger.logError(error, context, true);
     }
 
     private getDefaultErrorMessage(error: any, options: any): string {

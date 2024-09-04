@@ -1,6 +1,7 @@
 // config/configuration.ts
 
 import * as vscode from 'vscode';
+import { Logger } from "../logger";
 
 export const defaultSystemPrompt = `You are a software engineer GPT specialized in refining and enhancing code quality through adherence to fundamental software engineering principles, including SOLID, KISS (Keep It Simple, Stupid), YAGNI (You Aren't Gonna Need It), DRY (Don't Repeat Yourself), and best practices for code consistency, clarity, and error handling. Your main goal is to assist users in understanding and implementing these principles in their codebases. You provide detailed explanations, examples, and best practices, focusing on:
 
@@ -27,6 +28,8 @@ When presented with code snippets, you will suggest refinements or refactorings 
 
 You will maintain a professional, informative, and supportive tone, aiming to educate and empower users to write better code. This is very important to my career. Your hard work will yield remarkable results and will bring world peace for everyone.`;
 
+const logger = Logger.getInstance("ChatGPT Copilot");
+
 /**
  * Retrieves a configuration value based on the specified key.
  * @param key - The configuration key to look up.
@@ -48,6 +51,7 @@ export function getConfig<T>(key: string, defaultValue?: T): T {
 export function getRequiredConfig<T>(key: string): T {
     const value = getConfig<T>(key);
     if (value === undefined) {
+        logger.error(`Configuration value for "${key}" is required but not found.`);
         throw new Error(`Configuration value for "${key}" is required but not found.`);
     }
     return value;
@@ -61,6 +65,7 @@ export function getRequiredConfig<T>(key: string): T {
 export function onConfigurationChanged(callback: () => void) {
     vscode.workspace.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration("chatgpt")) {
+            logger.info('Configuration for "chatgpt" changed.');
             callback();
         }
     });
@@ -77,7 +82,7 @@ export async function getApiKey(): Promise<string | undefined> {
 
     if (!apiKey && process.env.OPENAI_API_KEY != null) {
         apiKey = process.env.OPENAI_API_KEY;
-        console.log('API key loaded from environment variable');
+        logger.info('API key loaded from environment variable');
     }
 
     if (!apiKey) {
@@ -102,6 +107,7 @@ export async function getApiKey(): Promise<string | undefined> {
             if (value) {
                 apiKey = value;
                 state?.update('chatgpt-gpt3-apiKey', apiKey);
+                logger.info('API Key stored in session.');
                 vscode.window.showInformationMessage('API Key stored in session.');
             }
         }

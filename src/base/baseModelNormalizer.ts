@@ -1,6 +1,5 @@
 // src/base/baseModelNormalizer.ts
 import { ILogger } from "../interfaces/ILogger";
-import { LogLevel } from "../logger";
 
 export abstract class BaseModelNormalizer {
     protected logger: ILogger;
@@ -19,9 +18,9 @@ export abstract class BaseModelNormalizer {
      */
     protected logNormalization(modelType: string, normalizedType: string | null): void {
         if (normalizedType) {
-            this.logger.log(LogLevel.Info, `Normalized model type: ${modelType} to ${normalizedType}`);
+            this.logger.info(`Normalized model type: ${modelType} to ${normalizedType}`);
         } else {
-            this.logger.log(LogLevel.Warning, `No normalization found for model type: ${modelType}`);
+            this.logger.warning(`No normalization found for model type: ${modelType}`);
         }
     }
 }

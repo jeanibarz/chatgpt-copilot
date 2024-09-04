@@ -30,34 +30,34 @@ describe('Logger Tests', () => {
     });
 
     it('should log info messages correctly to output channel', () => {
-        logger.log(LogLevel.Info, "This is an info message");
+        logger.info("This is an info message");
 
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("INFO This is an info message"));
     });
 
     it('should log debug messages correctly to output channel', () => {
-        logger.log(LogLevel.Debug, "This is a debug message");
+        logger.debug("This is a debug message");
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("DEBUG This is a debug message"));
     });
 
     it('should log error messages correctly to output channel', () => {
-        logger.log(LogLevel.Error, "This is an error message");
+        logger.error("This is an error message");
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("ERROR This is an error message"));
     });
 
     it('should attempt to log to file if log file path is defined', () => {
-        logger.log(LogLevel.Info, "Logging to file");
+        logger.info("Logging to file");
         expect(fs.appendFileSync).toHaveBeenCalled();
     });
 
     it('should format messages with additional properties correctly', () => {
-        logger.log(LogLevel.Info, "Test info message", { key: "value" });
+        logger.info("Test info message", { key: "value" });
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining('{"key":"value"}'));
     });
 
     it('should log messages with timestamps', () => {
         const message = "This message should contain a timestamp";
-        logger.log(LogLevel.Info, message);
+        logger.info(message);
 
         // Get the current time formatted to match the expected format with milliseconds
         const currentTime = new Date().toISOString(); // Includes milliseconds
@@ -73,8 +73,8 @@ describe('Logger Tests', () => {
     });
 
     it('should log different log levels correctly when using the same logger instance', () => {
-        logger.log(LogLevel.Info, "First info message");
-        logger.log(LogLevel.Error, "First error message");
+        logger.info("First info message");
+        logger.error("First error message");
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("INFO"));
         expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("ERROR"));
     });

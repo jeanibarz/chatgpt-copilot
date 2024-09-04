@@ -1,5 +1,5 @@
 import { getConfig, getRequiredConfig } from "./config/configuration";
-import { Logger, LogLevel } from "./logger";
+import { Logger } from "./logger";
 import { ModelManager } from "./modelManager";
 
 interface IConfigurationManager {
@@ -38,7 +38,7 @@ export class ConfigurationManager implements IConfigurationManager {
             this.modelManager.model = this.modelManager.model?.replace(".", "");
         }
 
-        this.logger.log(LogLevel.Info, "Configuration loaded");
+        this.logger.info("Configuration loaded");
     }
 
     public getWorkspaceConfiguration() {

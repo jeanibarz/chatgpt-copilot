@@ -1,7 +1,6 @@
 // src/base/baseHandler.ts
 import { IHandler } from "../interfaces/IHandler";
 import { ILogger } from "../interfaces/ILogger";
-import { logError } from "../utils/errorLogger";
 
 export abstract class BaseHandler<T> implements IHandler<T> {
     protected logger: ILogger;
@@ -18,6 +17,6 @@ export abstract class BaseHandler<T> implements IHandler<T> {
      * @param error - The error object to log.
      */
     protected handleError(error: any): void {
-        logError(this.logger, error, "BaseHandler");
+        this.logger.logError(error, "BaseHandler");
     }
 }
