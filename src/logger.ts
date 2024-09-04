@@ -42,4 +42,29 @@ export class Logger {
         this.logToOutputChannel(formattedMessage);
         this.logToFile(formattedMessage);
     }
+
+    public info(message: string, properties?: any) {
+        this.log(LogLevel.Info, message, properties);
+    }
+
+    public warning(message: string, properties?: any) {
+        this.log(LogLevel.Warning, message, properties);
+    }
+
+    public debug(message: string, properties?: any) {
+        this.log(LogLevel.Debug, message, properties);
+    }
+
+    public error(message: string, properties?: any) {
+        this.log(LogLevel.Error, message, properties);
+    }
+
+    public logError(error: any, context: string, showUserMessage: boolean = false): void {
+        const message = error instanceof Error ? error.message : String(error);
+        this.error(`Error in ${context}: ${message}`);
+
+        if (showUserMessage) {
+            vscode.window.showErrorMessage(`Error in ${context}: ${message}`);
+        }
+    }
 }

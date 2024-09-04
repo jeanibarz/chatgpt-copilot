@@ -2,7 +2,6 @@
 import { BaseHandler } from "../base/baseHandler";
 import { BaseModelNormalizer } from "../base/baseModelNormalizer";
 import { ILogger } from "../interfaces/ILogger";
-import { LogLevel } from "../logger";
 
 export class ModelNormalizerRegistry extends BaseHandler<string> {
     private normalizers: Map<string, BaseModelNormalizer> = new Map();
@@ -12,7 +11,7 @@ export class ModelNormalizerRegistry extends BaseHandler<string> {
     }
 
     public register(normalizer: BaseModelNormalizer) {
-        this.logger.log(LogLevel.Info, "registering new model normalizer...");
+        this.logger.info("registering new model normalizer...");
         this.normalizers.set(normalizer.constructor.name, normalizer);
     }
 

@@ -57,7 +57,7 @@ export async function chatCompletion(
     }
 
     try {
-        logger.log(LogLevel.Info, `chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
+        logger.info(`chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
         // Add the user's question to the provider's chat history (without additionalContext)
         provider.chatHistoryManager.addMessage('user', question);
@@ -94,9 +94,9 @@ export async function chatCompletion(
         // Add the assistant's response to the provider's chat history (without additionalContext)
         provider.chatHistoryManager.addMessage('assistant', provider.response);
 
-        logger.log(LogLevel.Info, `chatgpt.response: ${provider.response}`);
+        logger.info(`chatgpt.response: ${provider.response}`);
     } catch (error) {
-        logger.log(LogLevel.Error, `chatgpt.model: ${provider.modelManager.model} response: ${error}`);
+        logger.info(`chatgpt.model: ${provider.modelManager.model} response: ${error}`);
         throw error;
     }
 }

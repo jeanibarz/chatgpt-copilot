@@ -27,7 +27,7 @@ import { ConfigurationManager } from "./configurationManager";
 import { ErrorHandler } from "./errorHandler";
 import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
-import { LogLevel, Logger } from "./logger";
+import { Logger } from "./logger";
 import { ModelManager } from "./modelManager";
 import { logError } from "./utils/errorLogger";
 import { WebviewManager } from "./webviewManager";
@@ -107,7 +107,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       this.configurationManager.loadConfiguration();
     });
 
-    this.logger.log(LogLevel.Info, "ChatGptViewProvider initialized");
+    this.logger.info("ChatGptViewProvider initialized");
   }
 
   public getWorkspaceConfiguration() {
@@ -125,7 +125,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ) {
-    this.logger.log(LogLevel.Info, "resolveWebviewView called");
+    this.logger.info("resolveWebviewView called");
 
     this.webView = webviewView;
     this.webviewManager.initializeWebView(webviewView, this.context.extensionUri, this.getRandomId());
@@ -138,7 +138,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   public async handleShowConversation() {
     // Logic to show the conversation goes here.
-    this.logger.log(LogLevel.Info, "Showing conversation...");
+    this.logger.info("Showing conversation...");
     // You can add additional implementation details here if necessary.
   }
 
@@ -164,7 +164,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleEditCode(code: string) {
     const escapedString = code.replace(/\$/g, "\\$");
     vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
-    this.logger.log(LogLevel.Info, "code-inserted");
+    this.logger.info("Code inserted");
   }
 
   /**
@@ -175,7 +175,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleOpenNew(content: string, language: string) {
     const document = await vscode.workspace.openTextDocument({ content, language });
     vscode.window.showTextDocument(document);
-    this.logger.log(LogLevel.Info, language === "markdown" ? "code-exported" : "code-opened");
+    this.logger.info(language === "markdown" ? "Markdown document opened" : "Code document opened");
   }
 
   /**
@@ -184,25 +184,25 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public async handleClearConversation() {
     this.conversationId = undefined;
     this.chatHistoryManager.clearHistory();
-    this.logger.log(LogLevel.Info, "conversation-cleared");
+    this.logger.info("Conversation cleared");
   }
 
   public async handleClearBrowser() {
     // TODO: implement this later ?
-    this.logger.log(LogLevel.Info, "browser-cleared");
+    this.logger.info("Browser cleared");
   }
 
   public async handleClearGpt3() {
     this.apiCompletion = undefined;
     this.apiChat = undefined;
-    this.logger.log(LogLevel.Info, "gpt3-cleared");
+    this.logger.info("GPT-3 cleared");
   }
 
   public async handleLogin() {
     const success = await this.prepareConversation();
     if (success) {
       this.sendMessage({ type: "loginSuccessful", showConversations: false });
-      this.logger.log(LogLevel.Info, "logged-in");
+      this.logger.info("Logged in successfully");
     }
   }
 
@@ -211,7 +211,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       "workbench.action.openSettings",
       "@ext:jeanibarz.chatgpt-copilot chatgpt.",
     );
-    this.logger.log(LogLevel.Info, "settings-opened");
+    this.logger.info("Settings opened");
   }
 
   public async handleOpenSettingsPrompt() {
@@ -219,12 +219,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       "workbench.action.openSettings",
       "@ext:jeanibarz.chatgpt-copilot promptPrefix",
     );
-    this.logger.log(LogLevel.Info, "settings-prompt-opened");
+    this.logger.info("Prompt settings opened");
   }
 
   public async handleListConversations() {
     // TODO: implement this later ?
-    this.logger.log(LogLevel.Info, "conversations-list-attempted");
+    this.logger.info("List conversations attempted");
   }
 
   public async handleStopGenerating(): Promise<void> {
@@ -240,7 +240,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       autoScroll: this.configurationManager.autoScroll,
       responseInMarkdown,
     });
-    this.logger.log(LogLevel.Info, "stopped-generating");
+    this.logger.info("Stopped generating");
   }
 
   public clearSession(): void {
@@ -248,7 +248,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.apiChat = undefined;
     this.apiCompletion = undefined;
     this.conversationId = undefined;
-    this.logger.log(LogLevel.Info, "cleared-session");
+    this.logger.info("Session cleared");
   }
 
   /**
@@ -257,20 +257,20 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns A Promise which resolves to a boolean indicating success or failure.
    */
   public async prepareConversation(modelChanged = false): Promise<boolean> {
-    this.logger.log(LogLevel.Info, "prepareConversation called", { modelChanged });
+    this.logger.info("Preparing conversation", { modelChanged });
 
     try {
       this.conversationId = this.conversationId || this.getRandomId();
 
       if (await this.modelManager.prepareModelForConversation(modelChanged, this.logger, this)) {
         this.sendMessage({ type: "loginSuccessful" });
-        this.logger.log(LogLevel.Info, "prepareConversation completed successfully");
+        this.logger.info("Conversation prepared successfully");
         return true;
       } else {
         return false;
       }
     } catch (error) {
-      logError(this.logger, error, "Failed to prepare conversation");
+      this.logger.error("Failed to prepare conversation", { error });
       return false; // Return false to indicate failure
     }
   }
@@ -286,17 +286,16 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       const exclusionRegex = getConfig<string>("fileExclusionRegex");
 
       if (!inclusionRegex) {
-        vscode.window.showErrorMessage("Inclusion regex is not set in the configuration.");
-        this.logger.log(LogLevel.Info, "Inclusion regex is not set in the configuration.");
+        this.logger.info("Inclusion regex is not set in the configuration.");
         return "";  // Return an empty string if the regex is not set
       }
 
       // Find matching files
-      this.logger.log(LogLevel.Info, "Finding matching files");
+      this.logger.info("Finding matching files");
       const files = await this.findMatchingFiles(inclusionRegex, exclusionRegex);
 
       // Get the content of the matched files
-      this.logger.log(LogLevel.Info, "Retrieving file content");
+      this.logger.info("Retrieving file content");
       const contextContent = await this.getFilesContent(files);
 
       // Generate context for prompt
@@ -340,14 +339,14 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns A Promise that resolves to the processed question string.
    */
   private async processQuestion(question: string, code?: string, language?: string) {
-    this.logger.log(LogLevel.Info, "processQuestion called");
+    this.logger.info("processQuestion called");
 
     // Format the question to send, keeping the context separate
     const formattedQuestion = code != null
       ? `${question}${language ? ` (The following code is in ${language} programming language)` : ""}: ${code}`
       : question;
 
-    this.logger.log(LogLevel.Info, "returning question processed...");
+    this.logger.info("returning question processed...");
     return formattedQuestion;
 
 
@@ -381,7 +380,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.questionCounter++;
-    this.logger.log(LogLevel.Info, "api-request-sent", {
+    this.logger.info("api-request-sent", {
       "chatgpt.command": options.command,
       "chatgpt.hasCode": String(!!options.code),
       "chatgpt.hasPreviousAnswer": String(!!options.previousAnswer),
@@ -419,13 +418,13 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       logError(this.logger, error, "Failed to focus or show the ChatGPT view", true);
     }
 
-    this.logger.log(LogLevel.Info, "Preparing to create chat model...");
+    this.logger.info("Preparing to create chat model...");
 
     const modelType = this.modelManager.model;
     const modelConfig = this.modelManager.modelConfig;
 
-    this.logger.log(LogLevel.Info, `Model Type: ${modelType}`);
-    this.logger.log(LogLevel.Info, `Model Config: ${JSON.stringify(modelConfig)}`);
+    this.logger.info(`Model Type: ${modelType}`);
+    this.logger.info(`Model Config: ${JSON.stringify(modelConfig)}`);
 
     let chatModel: IChatModel;
     try {
@@ -435,7 +434,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    this.logger.log(LogLevel.Info, 'Chat model created successfully');
+    this.logger.info('Chat model created successfully');
 
     this.inProgress = true;
     this.abortController = new AbortController();
@@ -454,7 +453,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         code: options.code,
         autoScroll: this.configurationManager.autoScroll,
       });
-      this.logger.log(LogLevel.Info, 'handle chat response...');
+      this.logger.info('handle chat response...');
       await this.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); // Centralized response handling
     } catch (error: any) {
       logError(this.logger, error, "Error in handleChatResponse", true);
@@ -539,7 +538,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   private handleApiError(error: any, prompt: string, options: any) {
     const errorId = this.getRandomId(); // Generate a unique error ID
-    this.logger.log(LogLevel.Error, `Error ID: ${errorId} - API request failed`, { error, prompt, options });
+    this.logger.error(`Error ID: ${errorId} - API request failed`, { error, prompt, options });
     this.errorHandler.handleApiError(error, prompt, options, this.sendMessage.bind(this), this.configurationManager);
     vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
   }
@@ -554,20 +553,14 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     try {
       // Retrieve the explicitly added files/folders from global state
       const explicitFiles = this.context.globalState.get<string[]>('chatgpt.explicitFiles', []);
-      this.logger.log(LogLevel.Info, `Explicit files and folders: ${explicitFiles}`);
+      this.logger.info("Explicit files and folders", { explicitFiles });
 
       if (explicitFiles.length === 0) {
-        vscode.window.showErrorMessage(
-          'No files or folders are explicitly added to the ChatGPT context. Add files or folders to the context first.'
-        );
+        vscode.window.showErrorMessage('No files or folders are explicitly added to the ChatGPT context. Add files or folders to the context first.');
         throw new Error('No files or folders are explicitly added to the ChatGPT context.');
       }
 
-      // Log patterns
-      this.logger.log(LogLevel.Info, "Inclusion Pattern", { inclusionPattern });
-      if (exclusionPattern) {
-        this.logger.log(LogLevel.Info, "Exclusion Pattern", { exclusionPattern });
-      }
+      this.logger.info("Finding matching files with inclusion pattern", { inclusionPattern, exclusionPattern });
 
       const inclusionRegex = new RegExp(inclusionPattern);
       const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
@@ -607,16 +600,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         return isFileIncluded && !isFileExcluded;
       });
 
-      this.logger.log(LogLevel.Info, "Matched files", { matchedFiles });
-
+      this.logger.info("Matched files", { matchedFiles });
       return matchedFiles;
     } catch (error) {
-      if (error instanceof Error) {
-        logError(this.logger, error, "Error while finding matching files", true);
-      } else {
-        logError(this.logger, new Error(String(error)), "Unknown error while finding matching files", true);
-      }
-      throw error; // Rethrow the error so it can be handled by the caller
+      this.logger.error("Error while finding matching files", { error });
+      throw error;
     }
   }
 
@@ -660,12 +648,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       return [];
     }
 
-    this.logger.log(LogLevel.Info, "Inclusion Regex: ", inclusionRegex);
-    this.logger.log(LogLevel.Info, "Exclusion Regex: ", exclusionRegex);
+    this.logger.info("Inclusion Regex", { inclusionRegex });
+    this.logger.info("Exclusion Regex", { exclusionRegex });
 
     try {
       const files = await this.findMatchingFiles(inclusionRegex, exclusionRegex);
-      this.logger.log(LogLevel.Info, "Matched Files: ", files);
+      this.logger.info("Matched Files", { files });
 
       const filesWithLineCount = files.map(file => ({
         path: file,
@@ -685,7 +673,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       }
 
       vscode.window.showErrorMessage(errorMessage);
-      this.logger.log(LogLevel.Error, errorMessage);
+      this.logger.logError(error, errorMessage);
       return [];
     }
   }
@@ -716,14 +704,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
     return fileContents.join('\n\n'); // Join all file contents with double line breaks
   };
-
-  public handleCommandError(error: any, commandType: CommandType) {
-    if (error instanceof Error) {
-      this.logger.log(LogLevel.Error, `Error handling command ${commandType}: ${error.message}`);
-    } else {
-      this.logger.log(LogLevel.Error, `Unexpected error handling command ${commandType}: ${String(error)}`);
-    }
-  }
 }
 
 /**

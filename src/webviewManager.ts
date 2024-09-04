@@ -16,7 +16,7 @@ export class WebviewManager {
    */
   public initializeWebView(webviewView: vscode.WebviewView, extensionUri: vscode.Uri, nonce: string) {
     this.webviewView = webviewView;
-    this.logger.log(LogLevel.Info, "Webview set");
+    this.logger.info("Webview set");
     this.webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [extensionUri],
@@ -24,13 +24,13 @@ export class WebviewManager {
 
     try {
       this.webviewView.webview.html = this.generateWebviewHtml(extensionUri, nonce);
-      this.logger.log(LogLevel.Info, "Webview HTML set");
+      this.logger.info("Webview HTML set");
     } catch (error) {
       // Type guard to check if error is an instance of Error
       if (error instanceof Error) {
-        this.logger.log(LogLevel.Error, `Failed to generate webview HTML: ${error.message}`);
+        this.logger.error(`Failed to generate webview HTML: ${error.message}`);
       } else {
-        this.logger.log(LogLevel.Error, `Failed to generate webview HTML: ${String(error)}`);
+        this.logger.error(`Failed to generate webview HTML: ${String(error)}`);
       }
       throw error;
     }
@@ -44,7 +44,7 @@ export class WebviewManager {
     if (this.webviewView) {
       this.webviewView.webview.postMessage(message);
     } else {
-      this.logger.log(LogLevel.Error, "Failed to send message: Webview is not set");
+      this.logger.error("Failed to send message: Webview is not set");
     }
   }
 

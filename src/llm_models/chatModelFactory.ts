@@ -1,7 +1,7 @@
 // src/models/ChatModelFactory.ts
 import { BaseModelNormalizer } from "../base/baseModelNormalizer";
 import { ChatGptViewProvider } from '../chatgptViewProvider';
-import { Logger, LogLevel } from "../logger";
+import { Logger } from "../logger";
 import { ModelConfig } from "../model-config";
 import { AnthropicChatModel } from './anthropicChatModel';
 import { GeminiChatModel } from './geminiChatModel';
@@ -26,12 +26,12 @@ export class ChatModelFactory {
             this.normalizerRegistry.register(new AnthropicNormalizer(logger));
         }
 
-        logger.log(LogLevel.Info, "ChatModelFactory initialized with normalizers.");
+        logger.info("ChatModelFactory initialized with normalizers.");
     }
 
     static async createChatModel(chatGptViewProvider: ChatGptViewProvider, modelConfig: ModelConfig): Promise<IChatModel> {
         const logger = Logger.getInstance();
-        logger.log(LogLevel.Info, `Entering createChatModel`);
+        logger.info("Entering createChatModel");
 
         try {
             const model = chatGptViewProvider.modelManager.model as string; // Get the model type from the provider's model manager
@@ -44,26 +44,26 @@ export class ChatModelFactory {
                 throw new Error("ModelNormalizerRegistry is not initialized. Call ChatModelFactory.initialize() first.");
             }
 
-            logger.log(LogLevel.Info, `Entering createChatModel with modelType: ${modelType}`);
+            logger.info(`Entering createChatModel with modelType: ${modelType}`);
 
             switch (modelType) {
                 case 'openai':
-                    logger.log(LogLevel.Info, "Initializing OpenAI model...");
+                    logger.info("Initializing OpenAI model...");
                     const openAIModel = await initGptModel(chatGptViewProvider, modelConfig);
-                    logger.log(LogLevel.Info, "OpenAI model initialized successfully");
+                    logger.info("OpenAI model initialized successfully");
                     return openAIModel;
                 case 'gemini':
-                    logger.log(LogLevel.Info, "Initializing Gemini model...");
+                    logger.info("Initializing Gemini model...");
                     return new GeminiChatModel(chatGptViewProvider);
                 case 'anthropic':
-                    logger.log(LogLevel.Info, "Initializing Anthropic model...");
+                    logger.info("Initializing Anthropic model...");
                     return new AnthropicChatModel(chatGptViewProvider);
                 default:
-                    logger.log(LogLevel.Error, `Unsupported model type: ${modelType}`);
+                    logger.error(`Unsupported model type: ${modelType}`);
                     throw new Error(`Unsupported model type: ${modelType}`);
             }
         } catch (error: any) {
-            logger.log(LogLevel.Error, "Failed to create chat model", { error: error.message, stack: error.stack });
+            logger.error("Failed to create chat model", { error: error.message, stack: error.stack });
             throw error;
         }
     }
