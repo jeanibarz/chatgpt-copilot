@@ -17,8 +17,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import AbortController from "abort-controller";
+import { readdirSync, statSync } from 'fs';
+import { join } from 'path';
 import { createChatGptViewProvider } from "./factory";
 import { Logger } from "./logger";
+
+const logger = Logger.getInstance("ChatGPT Copilot");
 
 global.AbortController = AbortController;
 
@@ -37,8 +41,78 @@ const menuCommands = [
 
 const logFilePath = path.join(__dirname, 'error.log');
 
+export class ContextDecorationProvider implements vscode.FileDecorationProvider {
+  private _decoratedFiles: Map<string, boolean> = new Map<string, boolean>();
+  private _onDidChange = new vscode.EventEmitter<vscode.Uri | vscode.Uri[]>();
+  readonly onDidChangeFileDecorations: vscode.Event<vscode.Uri | vscode.Uri[]> = this._onDidChange.event;
+
+  constructor(private context: vscode.ExtensionContext) {
+    // Register the provider
+    this.context.subscriptions.push(vscode.window.registerFileDecorationProvider(this));
+  }
+
+  provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {
+    const projectRoot = this.context.globalState.get('chatgpt.projectRoot') as string;
+
+    // Check if the file/folder is part of the project root or context and ensure it's decorated only once
+    if (this._decoratedFiles.get(uri.fsPath) && projectRoot && uri.fsPath.startsWith(projectRoot)) {
+      // Return the badge only once
+      return {
+        badge: '★',
+        tooltip: 'This folder is in the ChatGPT context',
+        color: new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
+      };
+    }
+
+    return undefined; // No decoration if not in context
+  }
+
+  updateTreeFileDecoration(resourceUri: vscode.Uri, isAdding: boolean = true): void {
+    if (isAdding) {
+      // Add the folder and its contents recursively
+      this._addFolderAndContents(resourceUri.fsPath);
+    } else {
+      // Clear decorations that no longer match the new project root
+      this._decoratedFiles.clear();
+    }
+    this._onDidChange.fire(undefined); // Fire event for all URIs
+  }
+
+  private _addFolderAndContents(folderPath: string) {
+    // Add the folder itself to the decorated files, but only if it's not already added
+    if (!this._decoratedFiles.has(folderPath)) {
+      this._decoratedFiles.set(folderPath, true);
+    }
+
+    const entries = readdirSync(folderPath);
+    entries.forEach((entry) => {
+      const entryPath = join(folderPath, entry);
+      const entryStat = statSync(entryPath);
+
+      if (entryStat.isDirectory()) {
+        // Recursively add the folder and its contents, but only if it's not already added
+        if (!this._decoratedFiles.has(entryPath)) {
+          this._decoratedFiles.set(entryPath, true);
+          this._addFolderAndContents(entryPath);
+        }
+      } else if (entryStat.isFile()) {
+        // Add the file to the decorated list, but only if it's not already added
+        if (!this._decoratedFiles.has(entryPath)) {
+          this._decoratedFiles.set(entryPath, true);
+        }
+      }
+    });
+  }
+
+  dispose() {
+    this._onDidChange.dispose();
+  }
+}
+
 
 export async function activate(context: vscode.ExtensionContext) {
+  const contextProvider = new ContextDecorationProvider(context);
+
   let adhocCommandPrefix: string =
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
@@ -49,6 +123,9 @@ export async function activate(context: vscode.ExtensionContext) {
       // Set the project root folder path in the global state
       context.globalState.update('chatgpt.projectRoot', uri.fsPath);
       vscode.window.showInformationMessage(`Set project root to: ${uri.fsPath}`);
+
+      // Trigger decoration updates for the new projectRoot folder and its contents
+      contextProvider.updateTreeFileDecoration(vscode.Uri.file(uri.fsPath));
     } else {
       vscode.window.showErrorMessage("No folder selected.");
     }
@@ -59,6 +136,9 @@ export async function activate(context: vscode.ExtensionContext) {
       const parentFolder = path.dirname(uri.fsPath);
       context.globalState.update('chatgpt.projectRoot', parentFolder);
       vscode.window.showInformationMessage(`Set parent folder as project root: ${parentFolder}`);
+
+      // Trigger decoration updates for the parent folder and its contents
+      contextProvider.updateTreeFileDecoration(vscode.Uri.file(parentFolder));
     } else {
       vscode.window.showErrorMessage("No file selected.");
     }
