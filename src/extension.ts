@@ -19,10 +19,8 @@ import * as vscode from 'vscode';
 import AbortController from "abort-controller";
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { CoreLogger } from "./coreLogger";
 import { createChatGptViewProvider } from "./factory";
-import { Logger } from "./logger";
-
-const logger = Logger.getInstance("ChatGPT Copilot");
 
 global.AbortController = AbortController;
 
@@ -171,7 +169,7 @@ export async function activate(context: vscode.ExtensionContext) {
   let adhocCommandPrefix: string =
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
-  const logger = Logger.getInstance("ChatGPT Copilot");
+  const logger = CoreLogger.getInstance();
 
   // Command to add a specific file or folder to the context
   const addFileOrFolderToContext = vscode.commands.registerCommand('chatgpt-copilot.addFileOrFolderToContext', async (uri: vscode.Uri) => {
@@ -262,6 +260,10 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const configChanged = vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("chatgpt.gpt3.modelSource")) {
+      logger.info('modelSource value has changed');
+    }
+
     if (e.affectsConfiguration("chatgpt.response.showNotification")) {
       provider.configurationManager.subscribeToResponse =
         vscode.workspace

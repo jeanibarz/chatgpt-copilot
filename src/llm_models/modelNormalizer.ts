@@ -6,7 +6,7 @@ export interface IModelNormalizer {
 
 export class OpenAINormalizer extends BaseModelNormalizer {
     normalize(modelType: string): string | null {
-        if (modelType.startsWith('gpt-') || modelType.includes('mini')) {
+        if (modelType.startsWith('gpt-')) {
             this.logNormalization(modelType, 'openai');
             return 'openai';
         }

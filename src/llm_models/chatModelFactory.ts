@@ -1,20 +1,30 @@
 // src/models/ChatModelFactory.ts
+
 import { BaseModelNormalizer } from "../base/baseModelNormalizer";
 import { ChatGptViewProvider } from '../chatgptViewProvider';
-import { Logger } from "../logger";
+import { CoreLogger } from "../coreLogger";
 import { ModelConfig } from "../model-config";
 import { AnthropicChatModel } from './anthropicChatModel';
-import { GeminiChatModel } from './geminiChatModel';
+import { initGeminiModel } from "./gemini";
 import { IChatModel } from './IChatModel';
 import { AnthropicNormalizer, GeminiNormalizer, OpenAINormalizer } from "./modelNormalizer";
 import { ModelNormalizerRegistry } from "./modelNormalizerRegistry";
 import { initGptModel } from "./openai";
 
+/**
+ * The `ChatModelFactory` class is responsible for creating instances of chat models
+ * and managing model normalizers. It provides methods to initialize normalizers,
+ * create chat models based on configuration, and register custom normalizers.
+ */
 export class ChatModelFactory {
     private static normalizerRegistry: ModelNormalizerRegistry;
 
+    /**
+     * Initializes the normalizer registry and registers default normalizers.
+     * Logs the initialization status.
+     */
     static initialize() {
-        const logger = Logger.getInstance();
+        const logger = CoreLogger.getInstance();
 
         // Initialize the normalizer registry if it's not already done
         if (!this.normalizerRegistry) {
@@ -29,8 +39,16 @@ export class ChatModelFactory {
         logger.info("ChatModelFactory initialized with normalizers.");
     }
 
+    /**
+     * Creates a chat model based on the provided view provider and configuration.
+     * 
+     * @param chatGptViewProvider - The provider for managing chat models.
+     * @param modelConfig - Configuration settings for the chat model.
+     * @returns A promise that resolves to an instance of IChatModel.
+     * @throws Error if the model type is unsupported or if initialization fails.
+     */
     static async createChatModel(chatGptViewProvider: ChatGptViewProvider, modelConfig: ModelConfig): Promise<IChatModel> {
-        const logger = Logger.getInstance();
+        const logger = CoreLogger.getInstance();
         logger.info("Entering createChatModel");
 
         try {
@@ -48,15 +66,17 @@ export class ChatModelFactory {
 
             switch (modelType) {
                 case 'openai':
-                    logger.info("Initializing OpenAI model...");
+                    logger.info("Creating OpenAI model...");
                     const openAIModel = await initGptModel(chatGptViewProvider, modelConfig);
-                    logger.info("OpenAI model initialized successfully");
+                    logger.info("OpenAI model created successfully");
                     return openAIModel;
                 case 'gemini':
-                    logger.info("Initializing Gemini model...");
-                    return new GeminiChatModel(chatGptViewProvider);
+                    logger.info("Creating Gemini model...");
+                    const geminiModel = await initGeminiModel(chatGptViewProvider, modelConfig);
+                    logger.info("Gemini model created successfully");
+                    return geminiModel;
                 case 'anthropic':
-                    logger.info("Initializing Anthropic model...");
+                    logger.info("Creating Anthropic model...");
                     return new AnthropicChatModel(chatGptViewProvider);
                 default:
                     logger.error(`Unsupported model type: ${modelType}`);
@@ -68,7 +88,12 @@ export class ChatModelFactory {
         }
     }
 
-    // Method to register custom normalizers
+    /**
+     * Registers a custom normalizer to the normalizer registry.
+     * 
+     * @param normalizer - The normalizer to register.
+     * @throws Error if the normalizer registry is not initialized.
+     */
     static registerNormalizer(normalizer: BaseModelNormalizer) {
         if (!this.normalizerRegistry) {
             throw new Error("ModelNormalizerRegistry is not initialized. Call ChatModelFactory.initialize() first.");
@@ -77,4 +102,5 @@ export class ChatModelFactory {
     }
 }
 
+// Initialize the factory
 ChatModelFactory.initialize();

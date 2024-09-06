@@ -15,14 +15,14 @@
 */
 import { createAzure } from '@ai-sdk/azure';
 import { createOpenAI } from '@ai-sdk/openai';
+import { OpenAIChatLanguageModel } from "@ai-sdk/openai/internal/dist";
 import { streamText } from 'ai';
 import { ChatGptViewProvider } from "../chatgptViewProvider";
-import { Logger, LogLevel } from "../logger";
+import { CoreLogger } from "../coreLogger";
 import { ModelConfig } from "../model-config";
-import { logError } from "../utils/errorLogger";
 import { OpenAIChatModel } from "./openAIChatModel";
 
-const logger = Logger.getInstance("ChatGPT Copilot");
+const logger = CoreLogger.getInstance();
 
 // initGptModel initializes and returns the appropriate IChatModel instance.
 export async function initGptModel(viewProvider: ChatGptViewProvider, config: ModelConfig) {
@@ -50,7 +50,8 @@ export async function initGptModel(viewProvider: ChatGptViewProvider, config: Mo
                 apiKey: config.apiKey,
                 organization: config.organization,
             });
-            viewProvider.apiChat = openai.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "gpt-4o");
+            let openAIChatLanguageModel: OpenAIChatLanguageModel = openai.chat(viewProvider.modelManager.model ? viewProvider.modelManager.model : "gpt-4o");
+            viewProvider.apiChat = openAIChatLanguageModel;
             logger.info(`OpenAI model initialized: ${viewProvider.modelManager.model || "gpt-4o"}`);
             return new OpenAIChatModel(viewProvider);
         }

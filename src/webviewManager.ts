@@ -1,19 +1,51 @@
+// File: src/webviewManager.ts
+
+/**
+ * This module provides a management system for webviews within a VS Code extension.
+ * It handles the initialization and configuration of webviews, including setting up 
+ * HTML content and managing communication between the webview and the extension.
+ * 
+ * The `WebviewManager` class is responsible for creating and managing webviews, 
+ * providing methods to initialize them with specific content, send messages to 
+ * the webview, and generate the necessary HTML and resources for display.
+ * 
+ * Key Features:
+ * - Initializes webviews with customizable HTML content.
+ * - Supports message sending to the webview.
+ * - Generates resource URIs for scripts and stylesheets.
+ * - Handles error logging related to webview operations.
+ */
+
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { LogLevel, Logger } from "./logger";
+import { CoreLogger } from "./coreLogger";
 
+/**
+ * The `WebviewManager` class manages the setup and communication of webviews 
+ * within the extension. It provides methods for initializing webviews and 
+ * sending messages to them.
+ */
 export class WebviewManager {
-  private webviewView?: vscode.WebviewView;
-  private logger: Logger;
+  private webviewView?: vscode.WebviewView; // The webview view instance
+  private logger: CoreLogger; // Logger instance for logging events
 
-  constructor(logger: Logger) {
+  /**
+   * Constructor for the `WebviewManager` class.
+   * Initializes the WebviewManager with a logger instance.
+   * 
+   * @param logger - An instance of `CoreLogger` for logging events.
+   */
+  constructor(logger: CoreLogger) {
     this.logger = logger;
   }
 
   /**
-   * Sets up the webview with HTML content and webview options.
-   * @param webviewView - The webview view to be set up.
-   */
+     * Sets up the webview with HTML content and webview options.
+     * 
+     * @param webviewView - The webview view to be set up.
+     * @param extensionUri - The URI of the extension for resource paths.
+     * @param nonce - A nonce value for security purposes.
+     */
   public initializeWebView(webviewView: vscode.WebviewView, extensionUri: vscode.Uri, nonce: string) {
     this.webviewView = webviewView;
     this.logger.info("Webview set");
@@ -36,8 +68,9 @@ export class WebviewManager {
     }
   }
 
-  /**
+  /** 
    * Sends a message to the webview and handles cases where the webview is not focused.
+   * 
    * @param message - The message to be sent to the webview.
    */
   public sendMessage(message: any) {
@@ -49,9 +82,10 @@ export class WebviewManager {
   }
 
   /**
-   * Retrieves the HTML content for the webview based on the specified configuration.
-   * @param webview - The webview for which the HTML content is generated.
-   * @returns A string that contains the HTML content for the webview.
+   * Generates URIs for various resources used in the webview.
+   * 
+   * @param extensionUri - The URI of the extension for resource paths.
+   * @returns An object containing URIs for scripts and stylesheets.
    */
   private generateWebviewHtml(extensionUri: vscode.Uri, nonce: string): string {
     if (!this.webviewView) {
@@ -142,6 +176,14 @@ export class WebviewManager {
     };
   }
 
+  /**
+   * Replaces placeholders in the HTML with actual resource URIs and nonce values.
+   * 
+   * @param html - The HTML content with placeholders.
+   * @param resourceUris - An object containing resource URIs.
+   * @param nonce - A nonce value for security purposes.
+   * @returns The HTML content with placeholders replaced.
+   */
   private replacePlaceholders(html: string, resourceUris: any, nonce: string): string {
     return html
       .replace("${stylesMainUri}", resourceUris.stylesMainUri.toString())

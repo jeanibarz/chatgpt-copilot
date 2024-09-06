@@ -1,27 +1,59 @@
-// src/modelManager.ts
+// File: src/modelManager.ts
+
+/**
+ * This module manages the configuration and initialization of AI models 
+ * for use within a VS Code extension. It is responsible for loading model 
+ * settings from the configuration, preparing the models for conversation, 
+ * and initializing the appropriate model based on user-defined settings.
+ * 
+ * The `ModelManager` class ensures that the correct model is initialized 
+ * and ready for use, depending on the user's configuration and the selected 
+ * model type. It interacts with various model initialization functions 
+ * for different AI models, such as GPT, Claude, and Gemini.
+ * 
+ * Key Features:
+ * - Loads model configuration from the VS Code workspace settings.
+ * - Supports multiple AI models, including GPT, Claude, and Gemini.
+ * - Handles API key retrieval and model settings initialization.
+ * - Provides methods to check the type of model currently in use.
+ */
 
 import { ChatGptViewProvider } from './chatgptViewProvider';
-import { defaultSystemPrompt, getApiKey } from "./config/configuration";
+import { defaultSystemPrompt, getApiKey, getRequiredConfig } from "./config/configuration";
+import { CoreLogger } from "./coreLogger";
 import { initClaudeModel } from './llm_models/anthropic';
 import { initGeminiModel } from './llm_models/gemini';
 import { initGptModel } from './llm_models/openai';
 import { initGptLegacyModel } from './llm_models/openai-legacy';
-import { LogLevel, Logger } from "./logger";
-import { ModelConfig, ModelSource } from "./model-config";
+import { ModelConfig } from "./model-config";
 
 /**
  * The ModelManager class is responsible for managing the AI model configuration 
  * and initializing the appropriate model for conversation based on user settings.
  */
 export class ModelManager {
-    public model?: string;
-    public modelConfig!: ModelConfig;
+    public model?: string; // The currently selected model
+    public modelConfig!: ModelConfig; // Configuration settings for the model
 
+    /**
+     * Constructor for the `ModelManager` class.
+     * Initializes a new instance of the ModelManager.
+     */
     constructor() { }
 
+    /**
+     * Prepares the selected AI model for conversation.
+     * Loads configuration settings, retrieves the API key, and initializes the model 
+     * based on the user's settings.
+     * 
+     * @param modelChanged - A flag indicating if the model has changed.
+     * @param logger - An instance of `CoreLogger` for logging events.
+     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing workspace settings.
+     * @returns A promise that resolves to true if the model is successfully prepared; otherwise, false.
+     */
     public async prepareModelForConversation(
         modelChanged = false,
-        logger: Logger,
+        logger: CoreLogger,
         viewProvider: ChatGptViewProvider,
     ): Promise<boolean> {
         logger.info("loading configuration from vscode workspace");
@@ -29,7 +61,7 @@ export class ModelManager {
         const configuration = viewProvider.getWorkspaceConfiguration();
 
         // Determine which model to use based on configuration
-        const modelSource = configuration.get("chatgpt.gpt3.modelSource") as ModelSource;
+        const modelSource = getRequiredConfig<string>("gpt3.modelSource");
 
         if (this.model === "custom") {
             logger.info("custom model, retrieving model name");
@@ -98,6 +130,11 @@ export class ModelManager {
         return true;
     }
 
+    /**
+     * Initializes the appropriate model based on the current configuration.
+     * 
+     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
+     */
     private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
         if (this.isGpt35Model) {
             await initGptModel(viewProvider, this.modelConfig);
@@ -110,6 +147,11 @@ export class ModelManager {
         }
     }
 
+    /**
+     * Checks if the currently selected model is a Codex model.
+     * 
+     * @returns True if the model is a Codex model; otherwise, false.
+     */
     public get isCodexModel(): boolean {
         if (this.model == null) {
             return false;
@@ -117,14 +159,29 @@ export class ModelManager {
         return this.model.includes("instruct") || this.model.includes("code-");
     }
 
+    /**
+     * Checks if the currently selected model is a GPT-3.5 model.
+     * 
+     * @returns True if the model is a GPT-3.5 model; otherwise, false.
+     */
     public get isGpt35Model(): boolean {
         return !this.isCodexModel && !this.isClaude && !this.isGemini;
     }
 
+    /**
+     * Checks if the currently selected model is a Claude model.
+     * 
+     * @returns True if the model is a Claude model; otherwise, false.
+     */
     public get isClaude(): boolean {
         return !!this.model?.startsWith("claude-");
     }
 
+    /**
+     * Checks if the currently selected model is a Gemini model.
+     * 
+     * @returns True if the model is a Gemini model; otherwise, false.
+     */
     public get isGemini(): boolean {
         return !!this.model?.startsWith("gemini-");
     }
