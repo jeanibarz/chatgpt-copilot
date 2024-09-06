@@ -6,3 +6,4 @@ package-lock.json
 *.vsix
 .DS_Store
 !node_modules/chatgpt/build/index.js
+.secrets/
