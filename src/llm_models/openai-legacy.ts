@@ -17,10 +17,10 @@ import { createAzure } from '@ai-sdk/azure';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { ChatGptViewProvider } from "../chatgptViewProvider";
-import { Logger, LogLevel } from "../logger";
+import { CoreLogger } from "../coreLogger";
 import { ModelConfig } from "../model-config";
 
-const logger = Logger.getInstance("ChatGPT Copilot");
+const logger = CoreLogger.getInstance();
 
 // initGptLegacyModel initializes the GPT legacy model.
 export function initGptLegacyModel(viewProvider: ChatGptViewProvider, config: ModelConfig) {

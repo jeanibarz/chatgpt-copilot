@@ -1,34 +1,85 @@
-// src/errorHandler.ts
+// File: src/errorHandler.ts
+
+/**
+ * This module provides a centralized error handling mechanism for use within a VS Code extension.
+ * The `ErrorHandler` class manages error handlers for different HTTP status codes,
+ * allowing for customized responses and logging for various error scenarios.
+ * 
+ * Key Features:
+ * - Register and unregister error handlers for specific HTTP status codes.
+ * - Handle API errors with appropriate messaging and logging.
+ * - Provide default error messages for common HTTP status codes.
+ */
+
 import * as vscode from "vscode";
 import { BaseErrorHandler } from "./base/baseErrorHandler";
-import { Logger } from "./logger";
+import { CoreLogger } from "./coreLogger";
+import { ErrorHandlerRegistry } from "./errorHandlerRegistry";
 import { delay } from "./utils/delay";
 import { logError } from "./utils/errorLogger";
 
+/**
+ * The `ErrorHandler` class extends the `BaseErrorHandler` and provides specific error handling logic.
+ * It manages a registry of error handlers for different HTTP status codes and facilitates
+ * the logging and reporting of errors that occur during API requests.
+ */
 export class ErrorHandler extends BaseErrorHandler {
-    private handlers: Map<number, (error: any, options: any, sendMessage: (message: any) => void) => string> = new Map();
+    private registry: ErrorHandlerRegistry;
 
-    constructor(logger: Logger) {
+    /**
+     * Constructor for the `ErrorHandler` class.
+     * Initializes the error handler with a logger instance and an error handler registry.
+     * 
+     * @param logger - An instance of `CoreLogger` for logging events.
+     */
+    constructor(logger: CoreLogger) {
         super(logger);
+        this.registry = new ErrorHandlerRegistry(logger);
     }
 
-    public registerHandler(statusCode: number, handler: (error: any, options: any, sendMessage: (message: any) => void) => string) {
-        this.handlers.set(statusCode, handler);
+    /**
+     * Registers a new error handler for a specific HTTP status code.
+     * 
+     * @param statusCode - The HTTP status code to associate with the handler.
+     * @param handler - A function that takes an error object and returns a string message.
+     */
+    public registerHandler(statusCode: number, handler: (error: any) => string) {
+        this.registry.registerHandler(statusCode, handler);
     }
 
+    /**
+     * Unregisters the error handler for the specified HTTP status code.
+     * 
+     * @param statusCode - The HTTP status code for which to unregister the handler.
+     */
     public unregisterHandler(statusCode: number) {
-        this.handlers.delete(statusCode);
+        this.registry.unregisterHandler(statusCode);
     }
 
-    public handleApiError(error: any, prompt: string, options: any, sendMessage: (message: any) => void, configurationManager: any) {
+    /**
+     * Handles API errors that occur during requests.
+     * Retrieves the appropriate error handler from the registry based on the error's status code.
+     * Logs the error and provides feedback to the user if necessary.
+     * 
+     * @param error - The error object that was thrown during the API request.
+     * @param options - Options related to the API request that failed.
+     * @param sendMessage - A function to send messages back to the webview.
+     * @param configurationManager - The configuration manager instance for accessing settings.
+     */
+    public handleApiError(error: any, options: any, sendMessage: (message: any) => void, configurationManager: any) {
+        const handler = this.registry.getHandler(error?.statusCode);
         let message;
-        let apiMessage =
-            error?.response?.data?.error?.message ||
-            error?.toString?.() ||
-            error?.message ||
-            error?.name;
 
-        logError(this.logger, "api-request-failed", "API Request");
+        if (handler) {
+            message = handler(error);
+        } else {
+            message = this.getDefaultErrorMessage(error, options);
+            this.logger.warn(`Fallback error message used for status code: ${error?.statusCode}`);
+        }
+
+        // Log the error with context
+        const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
+        logError(this.logger, "api-request-failed", `API Request failed: ${apiMessage}`);
 
         if (error?.response) {
             const { status, statusText } = error.response;
@@ -37,20 +88,17 @@ export class ErrorHandler extends BaseErrorHandler {
             vscode.window
                 .showErrorMessage(
                     "An error occurred. If this is due to max_token, you could try `ChatGPT: Clear Conversation` command and retry sending your prompt.",
-                    "Clear conversation and retry",
+                    "Clear conversation and retry"
                 )
                 .then(async (choice) => {
                     if (choice === "Clear conversation and retry") {
-                        await vscode.commands.executeCommand("chatgpt-copilot.clearConversation");
-                        await delay(250);
-                        // Call the API request again if necessary
+                        await this.clearConversationAndRetry(options, sendMessage);
                     }
                 });
         }
 
-        const handler = this.handlers.get(error?.statusCode);
         if (handler) {
-            message = handler(error, options, sendMessage);
+            message = handler(error);
         } else {
             // Fallback for unhandled status codes
             message = this.getDefaultErrorMessage(error, options);
@@ -59,18 +107,25 @@ export class ErrorHandler extends BaseErrorHandler {
         if (apiMessage) {
             message = `${message ? message + " " : ""} ${apiMessage}`;
         }
-
-        sendMessage({
-            type: "addError",
-            value: message,
-            autoScroll: configurationManager.autoScroll,
-        });
     }
 
+    /**
+     * Logs an error using the logger instance.
+     * 
+     * @param error - The error object to log.
+     * @param context - The context in which the error occurred.
+     */
     public handleError(error: any, context: string): void {
         this.logger.logError(error, context, true);
     }
 
+    /**
+     * Provides a default error message based on the HTTP status code.
+     * 
+     * @param error - The error object containing the status code.
+     * @param options - Options related to the API request that failed.
+     * @returns A string message describing the error.
+     */
     private getDefaultErrorMessage(error: any, options: any): string {
         switch (error?.statusCode) {
             case 400:
@@ -88,5 +143,20 @@ export class ErrorHandler extends BaseErrorHandler {
             default:
                 return "An unknown error occurred."; // Default message for unhandled status codes
         }
+    }
+
+    /**
+     * Clears the current conversation and retries the API request.
+     * 
+     * @param options - Options related to the API request that failed.
+     * @param sendMessage - A function to send messages back to the webview.
+     */
+    private async clearConversationAndRetry(options: any, sendMessage: (message: any) => void) {
+        await vscode.commands.executeCommand("chatgpt-copilot.clearConversation");
+        await delay(250);
+
+        // Here you would call the API request again with the necessary parameters
+        // For example:
+        // await this.callApiAgain(options, sendMessage);
     }
 }

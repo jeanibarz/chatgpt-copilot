@@ -1,4 +1,4 @@
-// model-config.ts
+// File: src/model-config.ts
 
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -14,11 +14,6 @@
  * copies or substantial portions of the Software.
 */
 
-export enum ModelSource {
-    GoogleAI = "GoogleAI",
-    VertexAI = "VertexAI",
-}
-
 export class ModelConfig {
     apiKey: string;
     apiBaseUrl: string;
@@ -27,7 +22,8 @@ export class ModelConfig {
     topP: number;
     organization: string;
     systemPrompt: string;
-    modelSource: ModelSource;
+    modelSource: string;
+    jsonCredentialsPath?: string;
 
     constructor({
         apiKey,
@@ -38,6 +34,7 @@ export class ModelConfig {
         organization,
         systemPrompt,
         modelSource,
+        jsonCredentialsPath,
     }: {
         apiKey: string;
         apiBaseUrl: string;
@@ -46,7 +43,8 @@ export class ModelConfig {
         topP: number;
         organization: string;
         systemPrompt: string;
-        modelSource: ModelSource;
+        modelSource: string;
+        jsonCredentialsPath?: string;
     }) {
         this.apiKey = apiKey;
         this.apiBaseUrl = apiBaseUrl;
@@ -56,5 +54,6 @@ export class ModelConfig {
         this.organization = organization;
         this.systemPrompt = systemPrompt;
         this.modelSource = modelSource;
+        this.jsonCredentialsPath = jsonCredentialsPath;
     }
 }

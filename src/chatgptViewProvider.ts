@@ -1,4 +1,4 @@
-// chatgpt-view-provider.ts
+// File: src/chatgpt-view-provider.ts
 
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -15,8 +15,20 @@
  * copies or substantial portions of the Software.
  */
 
+/**
+ * This module provides a view provider for the ChatGPT VS Code extension.
+ * It manages the webview that interacts with the user, handling messages
+ * and commands related to the chat functionality.
+ * 
+ * Key Features:
+ * - Initializes and configures the webview for user interaction.
+ * - Handles incoming messages from the webview and dispatches commands.
+ * - Manages chat history and conversation state.
+ */
+
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
+import { GenerativeModel } from "@google-cloud/vertexai";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
@@ -24,17 +36,18 @@ import { ChatHistoryManager } from "./chatHistoryManager";
 import { CommandHandler } from "./commandHandler";
 import { getConfig, onConfigurationChanged } from "./config/configuration";
 import { ConfigurationManager } from "./configurationManager";
+import { CoreLogger } from "./coreLogger";
 import { ErrorHandler } from "./errorHandler";
 import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
-import { Logger } from "./logger";
 import { ModelManager } from "./modelManager";
 import { logError } from "./utils/errorLogger";
 import { WebviewManager } from "./webviewManager";
 import { WebviewMessageHandler } from "./webviewMessageHandler";
 
-const logFilePath = path.join(__dirname, 'error.log');
-
+/**
+ * Enum representing the different command types for the ChatGPT extension.
+ */
 export enum CommandType {
   AddFreeTextQuestion = "addFreeTextQuestion",
   EditCode = "editCode",
@@ -50,9 +63,12 @@ export enum CommandType {
   StopGenerating = "stopGenerating"
 }
 
+/**
+ * Interface defining the options required to create a ChatGptViewProvider.
+ */
 export interface ChatGptViewProviderOptions {
   context: vscode.ExtensionContext;
-  logger: Logger;
+  logger: CoreLogger;
   webviewManager: WebviewManager;
   commandHandler: CommandHandler;
   modelManager: ModelManager;
@@ -60,9 +76,14 @@ export interface ChatGptViewProviderOptions {
   chatHistoryManager: ChatHistoryManager;
 }
 
+/**
+ * The `ChatGptViewProvider` class implements the `vscode.WebviewViewProvider` interface.
+ * It manages the webview view for the ChatGPT extension, handling user interactions,
+ * messages, and commands related to chat functionality.
+ */
 export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  public logger: Logger;
+  public logger: CoreLogger;
   private context: vscode.ExtensionContext;
   public webviewManager: WebviewManager; // Responsible for handling webview initialization and interactions.
   public modelManager: ModelManager;
@@ -71,12 +92,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public messageHandler: WebviewMessageHandler;
   public errorHandler: ErrorHandler;
   public commandHandler: CommandHandler; // CommandHandler: Responsible for managing command execution.
-  // ChatHistoryManager: Manages chat history and conversation state.
-  // APIManager: Handles API interactions with different models.
-  // MessageHandler: Responsible for handling incoming messages from the webview, dispatching, and handling responses.
-
+  
   public apiCompletion?: OpenAICompletionLanguageModel | LanguageModelV1;
   public apiChat?: OpenAIChatLanguageModel | LanguageModelV1;
+  public apiGenerativeModel?: GenerativeModel;
+  public apiGoogleGenerativeAILanguageModel?: GoogleGenerativeAILanguageModel;
   public conversationId?: string;
   public questionCounter: number = 0;
   public inProgress: boolean = false;
@@ -90,6 +110,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   private leftOverMessage?: any;
 
+  /**
+   * Constructor for the `ChatGptViewProvider` class.
+   * Initializes the view provider with the necessary options and sets up event handling.
+   * 
+   * @param options - The options required to initialize the view provider.
+   */
   constructor(options: ChatGptViewProviderOptions) {
     const { context, logger, webviewManager, commandHandler, modelManager, configurationManager } = options;
     this.context = context;
@@ -110,12 +136,18 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info("ChatGptViewProvider initialized");
   }
 
+  /**
+   * Retrieves the workspace configuration for the extension.
+   * 
+   * @returns The workspace configuration object for the "chatgpt" extension.
+   */
   public getWorkspaceConfiguration() {
     return vscode.workspace.getConfiguration("chatgpt");
   }
 
-  /**
+/**
    * Resolves the webview view with the provided context and sets up necessary event handling.
+   * 
    * @param webviewView - The webview view that is being resolved.
    * @param _context - Context information related to the webview view.
    * @param _token - A cancellation token to signal if the operation is cancelled.
@@ -132,10 +164,18 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.messageHandler.handleMessages(webviewView, this);
   }
 
+  /**
+   * Sends a message to the webview via the webview manager.
+   * 
+   * @param message - The message to be sent to the webview.
+   */
   public sendMessage(message: any) {
     this.webviewManager.sendMessage(message);
   }
 
+  /**
+   * Handles the command to show the conversation.
+   */
   public async handleShowConversation() {
     // Logic to show the conversation goes here.
     this.logger.info("Showing conversation...");
@@ -145,6 +185,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Handles the command to add a free text question to the chat.
+   * 
    * @param question - The question to be added.
    */
   public async handleAddFreeTextQuestion(question: string) {
@@ -159,6 +200,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Handles the command to edit code by inserting the provided code snippet 
    * into the active text editor.
+   * 
    * @param code - The code to be inserted in the current text editor.
    */
   public async handleEditCode(code: string) {
@@ -169,6 +211,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Handles the command to open a new text document with the specified content and language.
+   * 
    * @param content - The content to be placed in the new document.
    * @param language - The programming language of the new document.
    */
@@ -187,17 +230,26 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info("Conversation cleared");
   }
 
+  /**
+   * Handles the command to clear the browser state.
+   */
   public async handleClearBrowser() {
     // TODO: implement this later ?
     this.logger.info("Browser cleared");
   }
 
+  /**
+   * Handles the command to clear GPT-3 related states.
+   */
   public async handleClearGpt3() {
     this.apiCompletion = undefined;
     this.apiChat = undefined;
     this.logger.info("GPT-3 cleared");
   }
 
+  /**
+   * Handles the command to log in.
+   */
   public async handleLogin() {
     const success = await this.prepareConversation();
     if (success) {
@@ -206,6 +258,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * Handles the command to open settings.
+   */
   public async handleOpenSettings() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
@@ -214,6 +269,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info("Settings opened");
   }
 
+  /**
+   * Handles the command to open settings prompt.
+   */
   public async handleOpenSettingsPrompt() {
     await vscode.commands.executeCommand(
       "workbench.action.openSettings",
@@ -222,11 +280,17 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info("Prompt settings opened");
   }
 
+  /**
+   * Handles the command to list conversations.
+   */
   public async handleListConversations() {
     // TODO: implement this later ?
     this.logger.info("List conversations attempted");
   }
 
+  /**
+   * Handles the command to stop generating a response.
+   */
   public async handleStopGenerating(): Promise<void> {
     this.abortController?.abort?.();
     this.inProgress = false;
@@ -243,6 +307,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info("Stopped generating");
   }
 
+  /**
+   * Clears the current session by resetting relevant states.
+   */
   public clearSession(): void {
     this.handleStopGenerating();
     this.apiChat = undefined;
@@ -253,6 +320,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Prepares the conversation context and initializes the appropriate AI model based on current configurations.
+   * 
    * @param modelChanged - A flag indicating whether the model has changed.
    * @returns A Promise which resolves to a boolean indicating success or failure.
    */
@@ -278,6 +346,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Retrieves additional context from the codebase to be included in the prompt.
    * This function finds files that match the inclusion pattern and retrieves their content.
+   * 
    * @returns A Promise that resolves to a string containing the formatted content.
    */
   public async retrieveContextForPrompt(): Promise<string> {
@@ -309,13 +378,13 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-  * Generates a formatted context string from the content of files.
-  * The context is structured with a title and section headers for each file's content.
-  * 
-  * @param fileContents - A string containing the content of files, 
-  *                      where each file's content is separated by double new lines.
-  * @returns A string that represents the formatted context, ready for use in a prompt.
-  */
+   * Generates a formatted context string from the content of files.
+   * The context is structured with a title and section headers for each file's content.
+   * 
+   * @param fileContents - A string containing the content of files, 
+   *                      where each file's content is separated by double new lines.
+   * @returns A string that represents the formatted context, ready for use in a prompt.
+   */
   private generateFormattedContext(fileContents: string): string {
     // Split by double new lines to handle separate file contents
     const contentSections = fileContents.split('\n\n');
@@ -333,6 +402,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Processes the provided question, appending contextual information from the current project files.
+   * 
    * @param question - The original question to process.
    * @param code - Optional code block associated with the question.
    * @param language - The programming language of the code, if present.
@@ -362,6 +432,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Sends an API request to generate a response to the provided prompt.
+   * 
    * @param prompt - The prompt to be sent to the API.
    * @param options - Additional options related to the API call, including command, code, etc.
    */
@@ -464,6 +535,14 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * Handles the chat response by sending the message to the model and updating the response.
+   * 
+   * @param model - The chat model to send the message to.
+   * @param prompt - The prompt to send.
+   * @param additionalContext - Additional context for the prompt.
+   * @param options - Options related to the API call.
+   */
   private async handleChatResponse(
     model: IChatModel,
     prompt: string,
@@ -484,6 +563,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * Finalizes the response after processing and updates the chat history.
+   * 
+   * @param options - Options related to the API call.
+   */
   private async finalizeResponse(options: { command: string; previousAnswer?: string; }) {
     if (options.previousAnswer != null) {
       this.response = options.previousAnswer + this.response; // Combine with previous answer
@@ -498,6 +582,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.sendResponseUpdate(true); // Send final response indicating completion
   }
 
+  /**
+   * Sends a response update to the webview.
+   * 
+   * @param done - Indicates if the response is complete.
+   */
   private sendResponseUpdate(done: boolean = false) {
     this.sendMessage({
       type: "addResponse",
@@ -509,10 +598,20 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  /**
+   * Checks if the response is incomplete based on markdown formatting.
+   * 
+   * @returns True if the response is incomplete; otherwise, false.
+   */
   private isResponseIncomplete(): boolean {
     return this.response.split("```").length % 2 === 0;
   }
 
+  /**
+   * Prompts the user to continue if the response is incomplete.
+   * 
+   * @param options - Options related to the API call.
+   */
   private async promptToContinue(options: { command: string; }) {
     const choice = await vscode.window.showInformationMessage(
       "It looks like the response was incomplete. Would you like to continue?",
@@ -532,6 +631,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Handles errors that occur during API requests, logging the error and
    * interacting with the user to provide feedback on the issue.
+   * 
    * @param error - The error object that was thrown during the API request.
    * @param prompt - The original prompt that was being processed.
    * @param options - Options related to the API request that failed.
@@ -544,11 +644,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Finds files in the explicitly added files/folders that match the inclusion pattern and do not match the exclusion pattern.
- * @param inclusionPattern - Regex pattern to include files.
- * @param exclusionPattern - Optional regex pattern to exclude files.
- * @returns A Promise that resolves to an array of matching file paths.
- */
+   * Finds files in the explicitly added files/folders that match the inclusion pattern and do not match the exclusion pattern.
+   * 
+   * @param inclusionPattern - Regex pattern to include files.
+   * @param exclusionPattern - Optional regex pattern to exclude files.
+   * @returns A Promise that resolves to an array of matching file paths.
+   */
   private async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
     try {
       // Retrieve the explicitly added files/folders from global state
@@ -556,8 +657,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       this.logger.info("Explicit files and folders", { explicitFiles });
 
       if (explicitFiles.length === 0) {
-        vscode.window.showErrorMessage('No files or folders are explicitly added to the ChatGPT context. Add files or folders to the context first.');
-        throw new Error('No files or folders are explicitly added to the ChatGPT context.');
+        this.logger.info('No files or folders are explicitly added to the ChatGPT context.');
+        return [];
       }
 
       this.logger.info("Finding matching files with inclusion pattern", { inclusionPattern, exclusionPattern });
@@ -609,9 +710,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-  * Gets a random ID for use in message identifiers or other unique purposes.
-  * @returns A randomly generated string ID.
-  */
+   * Gets a random ID for use in message identifiers or other unique purposes.
+   * 
+   * @returns A randomly generated string ID.
+   */
   private getRandomId(): string {
     let text = "";
     const possible =
@@ -625,6 +727,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Updates the list of files in the webview with information about 
    * the available files in the current project.
+   * 
    * @param files - An array of file objects containing path and line numbers.
    */
   public updateFilesList(files: { path: string; lines: number; }[]) {
@@ -638,6 +741,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Displays a list of files that match the inclusion and exclusion patterns 
    * specified in the configuration.
+   * 
+   * @returns A Promise that resolves to an array of matched files.
    */
   public async showFiles() {
     const inclusionRegex = getConfig<string>("fileInclusionRegex");
@@ -681,6 +786,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Retrieves the context of the current extension, which contains useful state information.
    * This function finds files that match the inclusion pattern and retrieves their content.
+   * 
    * @returns The extension context associated with the provider.
    */
   public getContext() {
@@ -690,6 +796,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Retrieves the content of specified files and formats them for inclusion in a prompt to the AI model.
    * Each file's content is prefixed with its relative path.
+   * 
    * @param files - An array of file paths to retrieve content from.
    * @returns A Promise that resolves to a string containing the formatted content of the files.
    */
@@ -708,6 +815,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
 /**
  * Counts the number of lines in a specified file.
+ * 
  * @param filePath - The path of the file to count lines in.
  * @returns The number of lines in the file.
  */

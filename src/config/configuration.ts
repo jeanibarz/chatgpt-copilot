@@ -1,37 +1,53 @@
-// config/configuration.ts
+// File: config/configuration.ts
+
+/**
+ * The `configuration.ts` module manages application configuration settings 
+ * for the ChatGPT VS Code extension. It provides functionalities to load 
+ * default prompts, retrieve configuration values, and handle user input 
+ * for sensitive information such as API keys and credentials paths.
+ * 
+ * Key Features:
+ * - Loads a default system prompt from a Markdown file.
+ * - Retrieves configuration values with optional defaults and required checks.
+ * - Listens for configuration changes and triggers callbacks.
+ * - Manages the retrieval of the OpenAI API Key from various sources, 
+ *   including workspace settings, global state, and environment variables.
+ * - Prompts the user for necessary credentials paths, ensuring that the 
+ *   application can authenticate with Google Cloud services.
+ * 
+ * This module utilizes the `CoreLogger` for logging errors and information,
+ * ensuring that issues can be tracked and resolved effectively during 
+ * the application's execution.
+ */
 
 import * as vscode from 'vscode';
-import { Logger } from "../logger";
+import { CoreLogger } from "../coreLogger";
+import { readFileSync } from 'fs';
+import * as path from 'path';
 
-export const defaultSystemPrompt = `You are a software engineer GPT specialized in refining and enhancing code quality through adherence to fundamental software engineering principles, including SOLID, KISS (Keep It Simple, Stupid), YAGNI (You Aren't Gonna Need It), DRY (Don't Repeat Yourself), and best practices for code consistency, clarity, and error handling. Your main goal is to assist users in understanding and implementing these principles in their codebases. You provide detailed explanations, examples, and best practices, focusing on:
+const logger = CoreLogger.getInstance();
 
-1. **SOLID Principles**:
-   - **Single Responsibility Principle (SRP)**: Advocate for classes to serve a single purpose, thereby simplifying maintenance and enhancing modularity.
-   - **Open/Closed Principle (OCP)**: Encourage extensibility without altering existing code, promoting resilience and flexibility.
-   - **Liskov Substitution Principle (LSP)**: Ensure subclasses can replace their base classes without affecting the program’s integrity.
-   - **Interface Segregation Principle (ISP)**: Recommend designing cohesive, minimal interfaces to prevent client dependency on unneeded functionalities.
-   - **Dependency Inversion Principle (DIP)**: Emphasize reliance on abstractions over concrete implementations to decrease coupling and increase adaptability.
-
-2. **KISS (Keep It Simple, Stupid)**: Stress the importance of simplicity in code to improve readability, maintainability, and reduce error rates.
-
-3. **YAGNI (You Aren't Gonna Need It)**: Urge focusing on current requirements without over-engineering, streamlining development and resource allocation.
-
-4. **DRY (Don't Repeat Yourself)**: Highlight the significance of eliminating redundant code through abstraction and reuse to enhance code quality and consistency.
-
-5. **Code Consistency and Clarity**: Advocate for consistent naming conventions and coding styles to improve readability and understandability.
-
-6. **Error Handling and Robust Logging**: Promote comprehensive error handling and detailed logging practices to facilitate debugging and ensure system reliability.
-
-7. **Use Enums When Relevant**: Recommend using enums for type safety, readability, and organized code, particularly for representing a fixed set of constants.
-
-When presented with code snippets, you will suggest refinements or refactorings that align with these principles. Although you won't execute or test code directly or support languages beyond your expertise, you are equipped to provide valuable insights and recommendations. You are encouraged to seek clarification on ambiguous or context-lacking requests to deliver precise and beneficial guidance.
-
-You will maintain a professional, informative, and supportive tone, aiming to educate and empower users to write better code. This is very important to my career. Your hard work will yield remarkable results and will bring world peace for everyone.`;
-
-const logger = Logger.getInstance("ChatGPT Copilot");
+/**
+ * Loads the default system prompt from a Markdown file.
+ * If loading fails, an empty string is returned and an error is logged.
+ * 
+ * @returns The content of the system prompt or an empty string if loading fails.
+ */
+export const defaultSystemPrompt = (() => {
+    try {
+        const promptPath = path.join(__dirname, '..', 'prompts', 'systemPrompt.md');
+        const prompt = readFileSync(promptPath, 'utf-8');
+        return prompt;
+    } catch (error) {
+        logger.error('Failed to load system prompt: ', error);
+        return '';
+    }
+})();
 
 /**
  * Retrieves a configuration value based on the specified key.
+ * If the value is not found, the optional default value is returned.
+ * 
  * @param key - The configuration key to look up.
  * @param defaultValue - Optional default value to return if the configuration value is not found.
  * @returns The configuration value of type T or the defaultValue if it is not found.
@@ -43,7 +59,8 @@ export function getConfig<T>(key: string, defaultValue?: T): T {
 
 /**
  * Retrieves a required configuration value based on the specified key.
- * Throws an error if the value is not found.
+ * Throws an error if the value is not found and logs the error.
+ * 
  * @param key - The configuration key to look up.
  * @returns The configuration value of type T.
  * @throws An error if the configuration value is not found.
@@ -59,6 +76,7 @@ export function getRequiredConfig<T>(key: string): T {
 
 /**
  * Registers a callback to be invoked when the configuration changes.
+ * The callback will be triggered if the "chatgpt" configuration is modified.
  * 
  * @param callback - The function to call when the configuration changes.
  */
@@ -73,6 +91,9 @@ export function onConfigurationChanged(callback: () => void) {
 
 /**
  * Retrieves the OpenAI API Key for the current workspace configuration.
+ * The function checks the workspace settings, global state, and environment variables.
+ * Prompts the user if the API Key is not found, offering options to store it in session or open settings.
+ * 
  * @returns A Promise that resolves to the API Key or undefined if not found.
  */
 export async function getApiKey(): Promise<string | undefined> {
@@ -114,4 +135,41 @@ export async function getApiKey(): Promise<string | undefined> {
     }
 
     return apiKey;
+}
+
+/**
+ * Retrieves the JSON credentials path for Google Cloud authentication.
+ * If the path is not set, prompts the user to enter it.
+ * Logs the path if it is set and throws an error if the user does not provide a valid path.
+ * 
+ * @returns A Promise that resolves to the JSON credentials path.
+ * @throws An error if the JSON credentials path is required but not provided.
+ */
+export async function getJsonCredentialsPath(): Promise<string> {
+    const logger = CoreLogger.getInstance();
+    const configuration = vscode.workspace.getConfiguration("chatgpt");
+
+    // Try to get the credentials path from configuration
+    let jsonCredentialsPath = configuration.get<string>("gpt3.jsonCredentialsPath");
+
+    if (!jsonCredentialsPath) {
+        // Prompt user for the JSON credentials path
+        const input = await vscode.window.showInputBox({
+            title: 'Enter Google Cloud JSON Credentials Path',
+            prompt: 'Please enter the path to your Google Cloud JSON credentials file.',
+            ignoreFocusOut: true,
+            placeHolder: 'Path to JSON credentials',
+        });
+
+        if (input) {
+            jsonCredentialsPath = input;
+            // Optionally, you could save it back to configuration
+            await configuration.update("gpt3.jsonCredentialsPath", jsonCredentialsPath, vscode.ConfigurationTarget.Global);
+            logger.info(`JSON credentials path set to: ${jsonCredentialsPath}`);
+        } else {
+            throw new Error("JSON credentials path is required for Vertex AI authentication.");
+        }
+    }
+
+    return jsonCredentialsPath;
 }

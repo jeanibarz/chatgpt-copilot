@@ -19,6 +19,15 @@
     "@ai-sdk/provider" "0.0.12"
     "@ai-sdk/provider-utils" "1.0.2"
 
+"@ai-sdk/google-vertex@^0.0.36":
+  version "0.0.36"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/google-vertex/-/google-vertex-0.0.36.tgz#2e33dd59cfe336f1e04fa86368bb1d603fd0016a"
+  integrity sha512-LtjbkurNt5K5IWWVL2ROmsxyMW9XNJV5XxIeL5+xrWNwt+smxFDGnnLDQDT/U3tbapRNvLmXmtVc8emSjbDFSg==
+  dependencies:
+    "@ai-sdk/provider" "0.0.23"
+    "@ai-sdk/provider-utils" "1.0.18"
+    json-schema "0.4.0"
+
 "@ai-sdk/google@^0.0.27":
   version "0.0.27"
   resolved "https://registry.npmjs.org/@ai-sdk/google/-/google-0.0.27.tgz"
@@ -45,6 +54,16 @@
     nanoid "3.3.6"
     secure-json-parse "2.7.0"
 
+"@ai-sdk/provider-utils@1.0.18":
+  version "1.0.18"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-1.0.18.tgz#bd30948d6b4ad73a3fbc94f3beeb92f4fa198ded"
+  integrity sha512-9u/XE/dB1gsIGcxiC5JfGOLzUz+EKRXt66T8KYWwDg4x8d02P+fI/EPOgkf+T4oLBrcQgvs4GPXPKoXGPJxBbg==
+  dependencies:
+    "@ai-sdk/provider" "0.0.23"
+    eventsource-parser "1.1.2"
+    nanoid "3.3.6"
+    secure-json-parse "2.7.0"
+
 "@ai-sdk/provider-utils@1.0.2":
   version "1.0.2"
   resolved "https://registry.npmjs.org/@ai-sdk/provider-utils/-/provider-utils-1.0.2.tgz"
@@ -66,6 +85,13 @@
   version "0.0.12"
   resolved "https://registry.npmjs.org/@ai-sdk/provider/-/provider-0.0.12.tgz"
   integrity sha512-oOwPQD8i2Ynpn22cur4sk26FW3mSy6t6/X/K1Ay2yGBKYiSpRyLfObhOrZEGsXDx+3euKy4nEZ193R36NM+tpQ==
+  dependencies:
+    json-schema "0.4.0"
+
+"@ai-sdk/provider@0.0.23":
+  version "0.0.23"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider/-/provider-0.0.23.tgz#a69a9103854bbfb500dddf0b44a399edf3db4735"
+  integrity sha512-oAc49O5+xypVrKM7EUU5P/Y4DUL4JZUWVxhejoAVOTOl3WZUEWsMbP3QZR+TrimQIsS0WR/n9UuF6U0jPdp0tQ==
   dependencies:
     json-schema "0.4.0"
 
