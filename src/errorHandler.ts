@@ -16,7 +16,6 @@ import { BaseErrorHandler } from "./base/baseErrorHandler";
 import { CoreLogger } from "./coreLogger";
 import { ErrorHandlerRegistry } from "./errorHandlerRegistry";
 import { delay } from "./utils/delay";
-import { logError } from "./utils/errorLogger";
 
 /**
  * The `ErrorHandler` class extends the `BaseErrorHandler` and provides specific error handling logic.
@@ -79,7 +78,7 @@ export class ErrorHandler extends BaseErrorHandler {
 
         // Log the error with context
         const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
-        logError(this.logger, "api-request-failed", `API Request failed: ${apiMessage}`);
+        this.logger.logError("api-request-failed", `API Request failed: ${apiMessage}`);
 
         if (error?.response) {
             const { status, statusText } = error.response;

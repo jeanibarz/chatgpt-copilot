@@ -41,7 +41,6 @@ import { ErrorHandler } from "./errorHandler";
 import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
 import { ModelManager } from "./modelManager";
-import { logError } from "./utils/errorLogger";
 import { WebviewManager } from "./webviewManager";
 import { WebviewMessageHandler } from "./webviewMessageHandler";
 
@@ -92,7 +91,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public messageHandler: WebviewMessageHandler;
   public errorHandler: ErrorHandler;
   public commandHandler: CommandHandler; // CommandHandler: Responsible for managing command execution.
-  
+
   public apiCompletion?: OpenAICompletionLanguageModel | LanguageModelV1;
   public apiChat?: OpenAIChatLanguageModel | LanguageModelV1;
   public apiGenerativeModel?: GenerativeModel;
@@ -145,13 +144,13 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     return vscode.workspace.getConfiguration("chatgpt");
   }
 
-/**
-   * Resolves the webview view with the provided context and sets up necessary event handling.
-   * 
-   * @param webviewView - The webview view that is being resolved.
-   * @param _context - Context information related to the webview view.
-   * @param _token - A cancellation token to signal if the operation is cancelled.
-   */
+  /**
+     * Resolves the webview view with the provided context and sets up necessary event handling.
+     * 
+     * @param webviewView - The webview view that is being resolved.
+     * @param _context - Context information related to the webview view.
+     * @param _token - A cancellation token to signal if the operation is cancelled.
+     */
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
@@ -372,7 +371,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
       return formattedContext;
     } catch (error) {
-      logError(this.logger, error, "retrieveContextForPrompt");
+      this.logger.logError(error, "retrieveContextForPrompt");
       throw error; // Rethrow the error if necessary
     }
   }
@@ -462,7 +461,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         return;
       }
     } catch (error) {
-      logError(this.logger, error, "Failed to prepare conversation", true);
+      this.logger.logError(error, "Failed to prepare conversation", true);
       return;
     }
 
@@ -472,7 +471,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     try {
       additionalContext = await this.retrieveContextForPrompt();
     } catch (error) {
-      logError(this.logger, error, "Failed to retrieve context for prompt", true);
+      this.logger.logError(error, "Failed to retrieve context for prompt", true);
       return;
     }
 
@@ -486,7 +485,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
         this.webView?.show?.(true);
       }
     } catch (error) {
-      logError(this.logger, error, "Failed to focus or show the ChatGPT view", true);
+      this.logger.logError(error, "Failed to focus or show the ChatGPT view", true);
     }
 
     this.logger.info("Preparing to create chat model...");
@@ -501,7 +500,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     try {
       chatModel = await ChatModelFactory.createChatModel(this, modelConfig);
     } catch (error) {
-      logError(this.logger, error, "Failed to create chat model", true);
+      this.logger.logError(error, "Failed to create chat model", true);
       return;
     }
 
@@ -527,7 +526,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       this.logger.info('handle chat response...');
       await this.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); // Centralized response handling
     } catch (error: any) {
-      logError(this.logger, error, "Error in handleChatResponse", true);
+      this.logger.logError(error, "Error in handleChatResponse", true);
       this.handleApiError(error, formattedQuestion, options);
     } finally {
       this.inProgress = false;
