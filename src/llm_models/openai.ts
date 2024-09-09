@@ -84,6 +84,7 @@ export async function chatGpt(
         tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion }; // Replace last message with full question
 
         const chunks = [];
+
         const result = await streamText({
             system: provider.modelManager.modelConfig.systemPrompt,
             model: provider.apiChat,
@@ -91,6 +92,7 @@ export async function chatGpt(
             maxTokens: provider.modelManager.modelConfig.maxTokens,
             topP: provider.modelManager.modelConfig.topP,
             temperature: provider.modelManager.modelConfig.temperature,
+            abortSignal: provider.abortController ? provider.abortController.signal : undefined,
         });
 
         // Process the streamed response

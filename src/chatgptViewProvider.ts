@@ -28,7 +28,6 @@
 
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
-import { GenerativeModel } from "@google-cloud/vertexai";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
@@ -94,8 +93,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   public apiCompletion?: OpenAICompletionLanguageModel | LanguageModelV1;
   public apiChat?: OpenAIChatLanguageModel | LanguageModelV1;
-  public apiGenerativeModel?: GenerativeModel;
-  public apiGoogleGenerativeAILanguageModel?: GoogleGenerativeAILanguageModel;
   public conversationId?: string;
   public questionCounter: number = 0;
   public inProgress: boolean = false;
@@ -291,7 +288,9 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * Handles the command to stop generating a response.
    */
   public async handleStopGenerating(): Promise<void> {
-    this.abortController?.abort?.();
+    if (this.abortController) {
+      this.abortController.abort(); // Abort the ongoing request
+    }
     this.inProgress = false;
     this.sendMessage({ type: "showInProgress", inProgress: this.inProgress });
     const responseInMarkdown = !this.modelManager.isCodexModel;
@@ -445,9 +444,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     },
   ) {
     if (this.inProgress) {
-      // The AI is still thinking... Do not accept more questions.
-      return;
+      return; // Prevent new requests if one is already in progress
     }
+
+    this.inProgress = true;
+    this.abortController = new AbortController();
 
     this.questionCounter++;
     this.logger.info("api-request-sent", {
@@ -505,9 +506,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.logger.info('Chat model created successfully');
-
-    this.inProgress = true;
-    this.abortController = new AbortController();
 
     this.sendMessage({
       type: "showInProgress",
@@ -638,8 +636,16 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private handleApiError(error: any, prompt: string, options: any) {
     const errorId = this.getRandomId(); // Generate a unique error ID
     this.logger.error(`Error ID: ${errorId} - API request failed`, { error, prompt, options });
-    this.errorHandler.handleApiError(error, prompt, options, this.sendMessage.bind(this), this.configurationManager);
-    vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
+
+
+    // Check if the error is an AbortError
+    if (error.name === 'AbortError') {
+        vscode.window.showInformationMessage("Completion has been cancelled by the user.");
+    } else {
+        // Handle other types of errors
+        const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
+        vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
+    }
   }
 
   /**

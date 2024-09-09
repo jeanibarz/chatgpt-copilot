@@ -82,6 +82,7 @@ export async function chatCompletion(
             maxTokens: provider.modelManager.modelConfig.maxTokens,
             topP: provider.modelManager.modelConfig.topP,
             temperature: provider.modelManager.modelConfig.temperature,
+            abortSignal: provider.abortController ? provider.abortController.signal : undefined,
         });
 
         const chunks = [];

@@ -94,12 +94,6 @@ export async function chatCompletion(
         const fullQuestion = additionalContext ? `${additionalContext}\n\n${question}` : question;
         tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion }; // Replace the last message with the full question
 
-        // // Construct the messages array for the chat API
-        // let prompt = "";
-        // for (const message of tempChatHistory) {
-        //     prompt += `${message.role === "user" ? "Human:" : "AI:"} ${message.content}\n`;
-        // }
-        // prompt += `AI: `;
         // Construct the messages array for the chat API
         const messages = tempChatHistory.map(message => ({
             role: message.role,
@@ -121,6 +115,7 @@ export async function chatCompletion(
             maxTokens: maxTokens,
             topP: modelConfig.topP,
             temperature: modelConfig.temperature,
+            abortSignal: provider.abortController ? provider.abortController.signal : undefined,
         });
         const chunks: string[] = [];
         for await (const textPart of result.textStream) {
