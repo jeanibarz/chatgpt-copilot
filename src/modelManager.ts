@@ -30,6 +30,12 @@ import { ModelConfig } from "./model-config";
 /**
  * The ModelManager class is responsible for managing the AI model configuration 
  * and initializing the appropriate model for conversation based on user settings.
+ * 
+ * Key Features:
+ * - Loads model configuration from the VS Code workspace settings.
+ * - Supports multiple AI models, including GPT, Claude, and Gemini.
+ * - Handles API key retrieval and model settings initialization.
+ * - Provides methods to check the type of model currently in use.
  */
 export class ModelManager {
     public model?: string; // The currently selected model
@@ -131,10 +137,14 @@ export class ModelManager {
     }
 
     /**
-     * Initializes the appropriate model based on the current configuration.
-     * 
-     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
-     */
+    * Initializes the appropriate model based on the current configuration.
+    * 
+    * This method checks the current model settings and initializes the corresponding
+    * model (e.g., GPT, Claude, Gemini) based on the configuration provided by the user.
+    * It ensures that the model is ready for use in chat interactions.
+    * 
+    * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
+    */
     private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
         if (this.isGpt35Model) {
             await initGptModel(viewProvider, this.modelConfig);

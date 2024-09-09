@@ -10,6 +10,13 @@
  * - Register and unregister error handlers for specific status codes.
  * - Retrieve error handlers by status code for consistent error processing.
  * - Log registration and unregistration events for observability.
+ * 
+ * Usage:
+ * - The `registerHandler` method allows you to associate a handler function
+ *   with a specific HTTP status code.
+ * - The `unregisterHandler` method removes a previously registered handler.
+ * - The `getHandler` method retrieves the handler associated with a given
+ *   status code for use in error processing.
  */
 
 import { ILogger } from "./interfaces/ILogger";

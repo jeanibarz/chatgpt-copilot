@@ -1,5 +1,3 @@
-// src/config/configuration.test.ts
-
 import * as vscode from 'vscode';
 import { getConfig, getJsonCredentialsPath, getRequiredConfig } from './configuration';
 

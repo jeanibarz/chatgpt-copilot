@@ -1,4 +1,3 @@
-// src/base/baseErrorHandler.ts
 import { ILogger } from "../interfaces/ILogger";
 
 /**

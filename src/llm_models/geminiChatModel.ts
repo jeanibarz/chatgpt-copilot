@@ -1,4 +1,3 @@
-// src/models/GeminiChatModel.ts
 import { ChatGptViewProvider } from '../chatgptViewProvider';
 import { chatCompletion } from './gemini';
 import { IChatModel } from './IChatModel';

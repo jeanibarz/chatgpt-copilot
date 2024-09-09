@@ -1,5 +1,3 @@
-// File: config/configuration.ts
-
 /**
  * The `configuration.ts` module manages application configuration settings 
  * for the ChatGPT VS Code extension. It provides functionalities to load 

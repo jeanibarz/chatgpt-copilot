@@ -1,5 +1,3 @@
-// llm_models/anthropic.ts
-
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
 /**

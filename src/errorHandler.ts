@@ -9,6 +9,12 @@
  * - Register and unregister error handlers for specific HTTP status codes.
  * - Handle API errors with appropriate messaging and logging.
  * - Provide default error messages for common HTTP status codes.
+ * 
+ * Usage:
+ * - The `handleApiError` method processes API errors, retrieves the appropriate handler,
+ *   and logs the error with context.
+ * - The `registerHandler` and `unregisterHandler` methods allow for dynamic management
+ *   of error handlers for specific status codes.
  */
 
 import * as vscode from "vscode";

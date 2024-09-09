@@ -20,11 +20,24 @@
  * It manages the webview that interacts with the user, handling messages
  * and commands related to the chat functionality.
  * 
+ * The `ChatGptViewProvider` class implements the `vscode.WebviewViewProvider` interface,
+ * facilitating the initialization and configuration of the webview for user interaction.
+ * It handles incoming messages from the webview, dispatches commands, and manages
+ * chat history and conversation state.
+ * 
  * Key Features:
  * - Initializes and configures the webview for user interaction.
  * - Handles incoming messages from the webview and dispatches commands.
  * - Manages chat history and conversation state.
+ * - Provides methods for processing user input, including adding questions and editing code.
+ * - Supports interaction with the OpenAI API for chat functionality.
+ * 
+ * Usage:
+ * - The `resolveWebviewView` method sets up the webview and initializes event handling.
+ * - Various command handlers are implemented to manage user interactions and update the UI.
+ * - The `sendApiRequest` method sends prompts to the AI model and processes the responses.
  */
+
 
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";

@@ -3,12 +3,24 @@
 /**
  * This module handles command execution for the ChatGPT VS Code extension.
  * It defines various command classes that encapsulate specific actions 
- * that can be performed by the extension.
+ * that can be performed by the extension, such as adding questions, 
+ * editing code, and managing conversations.
+ * 
+ * The `CommandHandler` class is responsible for managing and executing commands,
+ * maintaining a mapping of command types to command instances. Each command 
+ * class implements the `ICommand` interface, providing a consistent structure 
+ * for command execution.
  * 
  * Key Features:
  * - Supports command registration and execution.
- * - Integrates with the ChatGptViewProvider to perform actions.
+ * - Integrates with the `ChatGptViewProvider` to perform actions.
  * - Provides error handling for command execution.
+ * 
+ * Usage:
+ * - The `CommandHandler` class initializes with a logger and a provider,
+ *   registering all available commands upon construction.
+ * - Commands can be executed by calling the `executeCommand` method with 
+ *   the command type and associated data.
  */
 
 import { BaseHandler } from "./base/baseHandler";

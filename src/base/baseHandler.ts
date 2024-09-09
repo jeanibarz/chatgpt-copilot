@@ -1,4 +1,3 @@
-// src/base/baseHandler.ts
 import { IHandler } from "../interfaces/IHandler";
 import { ILogger } from "../interfaces/ILogger";
 
