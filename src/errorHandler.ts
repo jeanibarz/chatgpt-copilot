@@ -9,13 +9,19 @@
  * - Register and unregister error handlers for specific HTTP status codes.
  * - Handle API errors with appropriate messaging and logging.
  * - Provide default error messages for common HTTP status codes.
+ * 
+ * Usage:
+ * - The `handleApiError` method processes API errors, retrieves the appropriate handler,
+ *   and logs the error with context.
+ * - The `registerHandler` and `unregisterHandler` methods allow for dynamic management
+ *   of error handlers for specific status codes.
  */
 
 import * as vscode from "vscode";
 import { BaseErrorHandler } from "./base/baseErrorHandler";
 import { CoreLogger } from "./coreLogger";
 import { ErrorHandlerRegistry } from "./errorHandlerRegistry";
-import { delay } from "./utils/delay";
+import { Utility } from "./utility";
 
 /**
  * The `ErrorHandler` class extends the `BaseErrorHandler` and provides specific error handling logic.
@@ -152,7 +158,7 @@ export class ErrorHandler extends BaseErrorHandler {
      */
     private async clearConversationAndRetry(options: any, sendMessage: (message: any) => void) {
         await vscode.commands.executeCommand("chatgpt-copilot.clearConversation");
-        await delay(250);
+        await Utility.delay(250);
 
         // Here you would call the API request again with the necessary parameters
         // For example:

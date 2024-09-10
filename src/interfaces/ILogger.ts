@@ -1,5 +1,3 @@
-// src/interfaces/ILogger.ts
-
 import { LogLevel } from "../coreLogger";
 
 export interface ILogger {

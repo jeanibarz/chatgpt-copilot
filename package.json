@@ -250,6 +250,10 @@
         "enablement": "editorHasSelection"
       },
       {
+        "command": "chatgpt-copilot.generateDocstrings",
+        "title": "Generate/Update Docstrings"
+      },
+      {
         "command": "chatgpt-copilot.completeCode",
         "title": "ChatGPT: Complete code",
         "enablement": "editorHasSelection"

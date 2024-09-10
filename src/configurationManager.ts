@@ -15,6 +15,12 @@
  * - Integrates with the `ModelManager` to manage model-related settings.
  * - Provides methods to access workspace configuration and specific settings.
  * - Logs configuration loading events for better observability.
+ * 
+ * Usage:
+ * - The `loadConfiguration` method initializes various configuration flags and settings 
+ *   based on the loaded values.
+ * - The `getWorkspaceConfiguration` method retrieves the workspace configuration 
+ *   object for the "chatgpt" extension.
  */
 
 import { getConfig, getRequiredConfig } from "./config/configuration";

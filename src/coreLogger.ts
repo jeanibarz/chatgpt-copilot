@@ -1,4 +1,4 @@
-// File: src/logger.ts
+// File: src/coreLogger.ts
 
 /**
  * This module provides a flexible logging mechanism for use within a VS Code extension.
@@ -14,6 +14,11 @@
  * - Output channel-based logging with `OutputChannelLogger`.
  * - Centralized registry for logger management to avoid duplicates.
  * - Optional default logger creation with the name "ChatGPT Copilot".
+ * 
+ * Usage:
+ * - The `getInstance` method retrieves or creates a logger instance.
+ * - The logger can log messages at different levels using methods like `info`, `warn`, `debug`, and `error`.
+ * - The `logError` method provides a convenient way to log errors and notify users through the UI.
  */
 
 import * as vscode from "vscode";

@@ -1,4 +1,3 @@
-// src/llm_models/mockChatGptViewProvider.ts
 import * as vscode from 'vscode';
 import { ChatGptViewProvider, ChatGptViewProviderOptions } from '../chatgptViewProvider';
 import { ChatHistoryManager } from '../chatHistoryManager';

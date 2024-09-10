@@ -1,4 +1,3 @@
-// src/models/AnthropicChatModel.ts
 import { ChatGptViewProvider } from '../chatgptViewProvider';
 import { chatCompletion } from './anthropic';
 import { IChatModel } from './IChatModel';

@@ -1,5 +1,3 @@
-// src/models/ChatModelFactory.ts
-
 import { BaseModelNormalizer } from "../base/baseModelNormalizer";
 import { ChatGptViewProvider } from '../chatgptViewProvider';
 import { CoreLogger } from "../coreLogger";
@@ -15,6 +13,11 @@ import { initGptModel } from "./openai";
  * The `ChatModelFactory` class is responsible for creating instances of chat models
  * and managing model normalizers. It provides methods to initialize normalizers,
  * create chat models based on configuration, and register custom normalizers.
+ * 
+ * Key Features:
+ * - Creates and initializes chat models based on user configuration.
+ * - Manages the lifecycle of model normalizers for different AI models.
+ * - Ensures that only valid models are created based on the provided configuration.
  */
 export class ChatModelFactory {
     private static normalizerRegistry: ModelNormalizerRegistry;
@@ -22,6 +25,9 @@ export class ChatModelFactory {
     /**
      * Initializes the normalizer registry and registers default normalizers.
      * Logs the initialization status.
+     * 
+     * This method should be called before any chat models are created to ensure
+     * that the normalizers are available for use.
      */
     static initialize() {
         const logger = CoreLogger.getInstance();

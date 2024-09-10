@@ -1,5 +1,3 @@
-// File: config/configuration.ts
-
 /**
  * The `configuration.ts` module manages application configuration settings 
  * for the ChatGPT VS Code extension. It provides functionalities to load 
@@ -20,10 +18,10 @@
  * the application's execution.
  */
 
-import * as vscode from 'vscode';
-import { CoreLogger } from "../coreLogger";
 import { readFileSync } from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
+import { CoreLogger } from "../coreLogger";
 
 const logger = CoreLogger.getInstance();
 
@@ -35,12 +33,30 @@ const logger = CoreLogger.getInstance();
  */
 export const defaultSystemPrompt = (() => {
     try {
-        const promptPath = path.join(__dirname, '..', 'prompts', 'systemPrompt.md');
+        const promptPath = path.join(__dirname, '..', 'src', 'config', 'prompts', 'freeQuestionDefaultSystemPrompt.md');
         const prompt = readFileSync(promptPath, 'utf-8');
         return prompt;
     } catch (error) {
         logger.error('Failed to load system prompt: ', error);
         return '';
+    }
+})();
+
+/**
+ * Loads the docstring prompt from a Markdown file.
+ * If loading fails, throws an error instead of returning an empty string.
+ * 
+ * @returns {string} The content of the docstring prompt.
+ * @throws {Error} If the prompt file cannot be found or read.
+ */
+export const loadGenerateDocstringPrompt = (() => {
+    const promptPath = path.join(__dirname, '..', 'src', 'config', 'prompts', 'generateUpdateDocstringsPrompt.md');
+    try {
+        const prompt = readFileSync(promptPath, 'utf-8');
+        return prompt;
+    } catch (error) {
+        logger.error('Failed to load docstring prompt: ', error);
+        throw new Error(`Docstring prompt file not found at path: ${promptPath}`);
     }
 })();
 
