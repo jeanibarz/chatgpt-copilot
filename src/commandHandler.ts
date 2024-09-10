@@ -245,6 +245,24 @@ class StopGeneratingCommand implements ICommand {
 }
 
 /**
+ * Command class for generating docstrings for the code in the active editor.
+ */
+class GenerateDocstringsCommand implements ICommand {
+    type: CommandType = CommandType.GenerateDocstrings; // Set the command type
+    value: any; // You can set this to any relevant value if needed
+
+    /**
+     * Executes the command to generate docstrings.
+     * 
+     * @param data - The data containing any necessary information for the command.
+     * @param provider - The ChatGptViewProvider instance to interact with the chat.
+     */
+    async execute(data: any, provider: ChatGptViewProvider) {
+        await provider.handleGenerateDocstrings(); // Call the method to handle generating docstrings
+    }
+}
+
+/**
  * The CommandHandler class is responsible for managing and executing commands.
  * It maintains a mapping of command types to command instances and handles
  * command execution logic.
@@ -283,6 +301,7 @@ export class CommandHandler extends BaseHandler<ICommand> {
         this.registerCommand(CommandType.ListConversations, new ListConversationsCommand());
         this.registerCommand(CommandType.ShowConversation, new ShowConversationCommand());
         this.registerCommand(CommandType.StopGenerating, new StopGeneratingCommand());
+        this.registerCommand(CommandType.GenerateDocstrings, new GenerateDocstringsCommand());
     }
 
     /**

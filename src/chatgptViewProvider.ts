@@ -42,11 +42,12 @@
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import * as fs from "fs";
+import * as os from 'os';
 import * as path from "path";
 import * as vscode from "vscode";
 import { ChatHistoryManager } from "./chatHistoryManager";
 import { CommandHandler } from "./commandHandler";
-import { getConfig, onConfigurationChanged } from "./config/configuration";
+import { getConfig, loadGenerateDocstringPrompt, onConfigurationChanged } from "./config/configuration";
 import { ConfigurationManager } from "./configurationManager";
 import { CoreLogger } from "./coreLogger";
 import { ErrorHandler } from "./errorHandler";
@@ -71,7 +72,8 @@ export enum CommandType {
   OpenSettingsPrompt = "openSettingsPrompt",
   ListConversations = "listConversations",
   ShowConversation = "showConversation",
-  StopGenerating = "stopGenerating"
+  StopGenerating = "stopGenerating",
+  GenerateDocstrings = "generateDocstrings"
 }
 
 /**
@@ -112,6 +114,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public abortController?: AbortController;
   public currentMessageId: string = "";
   public response: string = "";
+  public generatedDocstring: string = "";
 
   /**
    * Message to be rendered lazily if they haven't been rendered
@@ -205,6 +208,58 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.chatHistoryManager.addMessage('user', question); // Add user message
     this.sendApiRequest(question, { command: "freeText" });
   }
+
+  private async getActiveEditorText(): Promise<string | null> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("No active editor found.");
+      return null;
+    }
+    return editor.document.getText();
+  }
+
+  /**
+   * Handles the command to generate docstrings for the code in the active editor.
+   * 
+   * This method retrieves the current text from the active editor, prepares a prompt
+   * for generating docstrings using the specified prompt, and sends the request
+   * to the ChatGPT API. It manages the display of progress and handles any errors
+   * that occur during the process.
+   */
+  public async handleGenerateDocstrings() {
+    this.logger.info("handleGenerateDocstrings called");
+
+    // Check for active editor text
+    const text = await this.getActiveEditorText();
+    if (!text) {
+      vscode.window.showErrorMessage("No text found in the active editor.");
+      return; // Exit if no text is found
+    }
+
+    // Proceed with the docstring generation logic
+    this.sendMessage({ type: "showInProgress", inProgress: true, showStopButton: true });
+
+    // Log the action in chat history
+    this.chatHistoryManager.addMessage('user', "Generate docstrings for the selected code.");
+
+    // Load the docstring prompt
+    const docstringPrompt = loadGenerateDocstringPrompt;
+    const prompt = `${docstringPrompt}\n\n${text}\n\n`;
+
+    // Use AbortController for cancellation support
+    this.abortController = new AbortController();
+
+    try {
+      // Use sendApiRequest to generate docstrings
+      await this.sendDocstringApiRequest(prompt, { command: CommandType.GenerateDocstrings });
+    } catch (error) {
+      this.logger.error("Error generating docstrings", { error });
+      vscode.window.showErrorMessage("Failed to generate docstrings.");
+    } finally {
+      this.sendMessage({ type: "showInProgress", inProgress: false });
+    }
+  }
+
 
   /**
    * Handles the command to edit code by inserting the provided code snippet 
@@ -442,6 +497,48 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
+ * Sends an API request specifically for generating docstrings.
+ * 
+ * @param prompt - The prompt to be sent to the API for docstring generation.
+ * @param options - Additional options related to the API call.
+ */
+  private async sendDocstringApiRequest(
+    prompt: string,
+    options: {
+      command: CommandType.GenerateDocstrings;
+      code?: string;
+      previousAnswer?: string;
+    },
+  ) {
+    // Prevent multiple requests if one is already in progress
+    if (this.inProgress) {
+      return;
+    }
+    this.inProgress = true;
+    this.questionCounter++;
+    this.response = "";
+
+    try {
+      // Prepare the conversation context
+      await this.prepareConversation();
+
+      // Process the question without additional context
+      const formattedQuestion = await this.processQuestion(prompt, options.code);
+
+      // Create and send the chat model
+      const chatModel = await ChatModelFactory.createChatModel(this, this.modelManager.modelConfig);
+
+      // Handle chat response
+      await this.handleChatResponse(chatModel, formattedQuestion, "", options); // No additional context for docstring generation
+    } catch (error) {
+      this.handleApiError(error, prompt, options);
+    } finally {
+      this.inProgress = false;
+      this.sendMessage({ type: "showInProgress", inProgress: this.inProgress });
+    }
+  }
+
+  /**
    * Sends an API request to generate a response to the provided prompt.
    * 
    * @param prompt - The prompt to be sent to the API.
@@ -456,6 +553,17 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       language?: string;
     },
   ) {
+    // Focus the webview if not already focused
+    try {
+      if (this.webView == null) {
+        vscode.commands.executeCommand("chatgpt-copilot.view.focus");
+      } else {
+        this.webView?.show?.(true);
+      }
+    } catch (error) {
+      this.logger.logError(error, "Failed to focus or show the ChatGPT view", true);
+    }
+
     if (this.inProgress) {
       return; // Prevent new requests if one is already in progress
     }
@@ -589,7 +697,89 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       await this.promptToContinue(options);
     }
 
-    this.sendResponseUpdate(true); // Send final response indicating completion
+    // Determine if the command is for generating docstrings
+    const isDocStringGeneration = options.command === CommandType.GenerateDocstrings;
+
+    this.sendResponseUpdate(true, isDocStringGeneration); // Send final response indicating completion
+  }
+
+  /**
+   * Formats the generated docstring by removing surrounding block annotations,
+   * such as backticks (```), while keeping the actual content intact.
+   * 
+   * @param docstring - The generated docstring string.
+   * @returns The cleaned docstring without unnecessary block annotations.
+   */
+  private formatDocstring(docstring: string): string {
+    // Log the raw input docstring
+    this.logger.info("Raw docstring input:", docstring);
+  
+    // Trim any leading or trailing whitespace and newlines
+    let trimmedDocstring = docstring.trim();
+    this.logger.info("Trimmed docstring:", trimmedDocstring);
+  
+    // Split the string by lines to process each line individually
+    let lines = trimmedDocstring.split(/\r?\n/);
+    this.logger.info("Lines after splitting:", lines);
+  
+    // Check if the first line contains the opening backticks (```), and remove it if found
+    if (lines.length > 0 && lines[0].trim().startsWith('```')) {
+      this.logger.info("Removing opening backticks:", lines[0]);
+      lines.shift(); // Remove the first line
+    }
+  
+    // Check if the last line contains the closing backticks (```), and remove it if found
+    if (lines.length > 0 && lines[lines.length - 1].trim().startsWith('```')) {
+      this.logger.info("Removing closing backticks:", lines[lines.length - 1]);
+      lines.pop(); // Remove the last line
+    }
+  
+    // Join the remaining lines back into a single string and return
+    const cleanedDocstring = lines.join('\n').trim();
+    this.logger.info("Final cleaned docstring:", cleanedDocstring);
+  
+    return cleanedDocstring;
+  }
+
+
+  private async handleDocstringResponseUpdate(originalFilePath: string | undefined) {
+    try {
+      if (!originalFilePath) {
+        vscode.window.showErrorMessage("Could not retrieve the original file path.");
+        return;
+      }
+  
+      // Ensure the original file exists
+      if (!fs.existsSync(originalFilePath)) {
+        vscode.window.showErrorMessage(`Original file not found: ${originalFilePath}`);
+        return;
+      }
+  
+      const tempDir = os.tmpdir();
+      const originalFileName = path.basename(originalFilePath);
+      const tempFileName = `docstring_${originalFileName}`;
+      const generatedFilePath = path.join(tempDir, tempFileName);
+  
+      // Write the generated docstring to the temporary file
+      fs.writeFileSync(generatedFilePath, this.generatedDocstring, { encoding: 'utf-8' });
+  
+      // Ensure the generated file was created successfully
+      if (!fs.existsSync(generatedFilePath)) {
+        vscode.window.showErrorMessage(`Failed to create temporary file: ${generatedFilePath}`);
+        return;
+      }
+  
+      // Open the diff view in VS Code
+      await vscode.commands.executeCommand(
+        'vscode.diff',
+        vscode.Uri.file(originalFilePath),
+        vscode.Uri.file(generatedFilePath),
+        'Generated Docstring vs Original Code'
+      );
+  
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error while handling docstring comparison: ${error.message}`);
+    }
   }
 
   /**
@@ -597,7 +787,17 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * 
    * @param done - Indicates if the response is complete.
    */
-  private sendResponseUpdate(done: boolean = false) {
+  private sendResponseUpdate(done: boolean = false, isDocStringGeneration: boolean = false) {
+    if (isDocStringGeneration) {
+      this.generatedDocstring = this.formatDocstring(this.response); // Format and store the response for docstring generation
+
+      // Get the original file path
+      const originalFilePath = vscode.window.activeTextEditor?.document.uri.fsPath;
+
+      // Call the new method to handle the docstring response update
+      this.handleDocstringResponseUpdate(originalFilePath);
+    }
+
     this.sendMessage({
       type: "addResponse",
       value: this.response,
@@ -653,11 +853,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
     // Check if the error is an AbortError
     if (error.name === 'AbortError') {
-        vscode.window.showInformationMessage("Completion has been cancelled by the user.");
+      vscode.window.showInformationMessage("Completion has been cancelled by the user.");
     } else {
-        // Handle other types of errors
-        const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
-        vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
+      // Handle other types of errors
+      const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
+      vscode.window.showErrorMessage(`Something went wrong. Please try again. Error ID: ${errorId}`);
     }
   }
 

@@ -369,6 +369,12 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  const generateDocstringsCommand = vscode.commands.registerCommand('chatgpt-copilot.generateDocstrings', async () => {
+    // const provider = createChatGptViewProvider(context, logger);
+      await provider.handleGenerateDocstrings(); // Call the method to handle docstring generation
+});
+  context.subscriptions.push(generateDocstringsCommand);
+
   /**
    * Command to reset the conversation thread.
    * 
