@@ -1,8 +1,6 @@
-// File: src/commands/OpenNewCommand.ts
-
-import { ICommand } from './ICommand';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 import * as vscode from 'vscode';
+import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class OpenNewCommand implements ICommand {
   public type = CommandType.OpenNew;

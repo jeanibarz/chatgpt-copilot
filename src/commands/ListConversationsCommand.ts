@@ -1,7 +1,5 @@
-// File: src/commands/ListConversationsCommand.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class ListConversationsCommand implements ICommand {
   public type = CommandType.ListConversations;

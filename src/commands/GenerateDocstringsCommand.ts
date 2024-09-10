@@ -1,9 +1,7 @@
-// File: src/commands/GenerateDocstringsCommand.ts
-
-import { ICommand } from './ICommand';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 import * as vscode from 'vscode';
+import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 import { loadGenerateDocstringPrompt } from '../config/configuration';
+import { ICommand } from './ICommand';
 
 export class GenerateDocstringsCommand implements ICommand {
   public type = CommandType.GenerateDocstrings;

@@ -1,7 +1,7 @@
 // File: src/responseHandler.ts
 
-import { IChatModel } from './llm_models/IChatModel';
 import { ChatGptViewProvider } from './chatgptViewProvider';
+import { IChatModel } from './llm_models/IChatModel';
 
 /**
  * The `ResponseHandler` class manages the chat response, including processing, updating, 

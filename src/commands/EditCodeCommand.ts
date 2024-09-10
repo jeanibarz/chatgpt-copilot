@@ -1,8 +1,6 @@
-// File: src/commands/EditCodeCommand.ts
-
-import { ICommand } from './ICommand';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 import * as vscode from 'vscode';
+import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class EditCodeCommand implements ICommand {
   public type = CommandType.EditCode;

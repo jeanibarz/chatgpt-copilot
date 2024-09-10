@@ -1,10 +1,9 @@
 // File: src/requestManager.ts
 
-import { ChatGptViewProvider } from './chatgptViewProvider';
+import { ChatGptViewProvider, CommandType } from './chatgptViewProvider';
+import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
 import { Utility } from './utility';
-import { ChatModelFactory } from './llm_models/chatModelFactory';
-import { CommandType } from './chatgptViewProvider';
 
 /**
  * The `RequestManager` class handles the API request logic for sending prompts and processing responses.
@@ -113,7 +112,7 @@ export class RequestManager {
                 autoScroll: this.provider.configurationManager.autoScroll,
             });
             this.provider.logger.info('handle chat response...');
-            await this.provider.responseHandler.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); 
+            await this.provider.responseHandler.handleChatResponse(chatModel, formattedQuestion, additionalContext, options);
         } catch (error: any) {
             this.provider.logger.logError(error, "Error in handleChatResponse", true);
             this.provider.handleApiError(error, formattedQuestion, options);

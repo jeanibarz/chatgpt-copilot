@@ -24,58 +24,58 @@
  */
 
 import { ChatGptViewProvider, CommandType } from './chatgptViewProvider';
-import { ICommand } from './commands/ICommand';
 import { AddFreeTextQuestionCommand } from './commands/AddFreeTextQuestionCommand';
-import { EditCodeCommand } from './commands/EditCodeCommand';
-import { OpenNewCommand } from './commands/OpenNewCommand';
-import { ClearConversationCommand } from './commands/ClearConversationCommand';
 import { ClearBrowserCommand } from './commands/ClearBrowserCommand';
+import { ClearConversationCommand } from './commands/ClearConversationCommand';
 import { ClearGpt3Command } from './commands/ClearGpt3Command';
+import { EditCodeCommand } from './commands/EditCodeCommand';
+import { GenerateDocstringsCommand } from './commands/GenerateDocstringsCommand';
+import { ICommand } from './commands/ICommand';
+import { ListConversationsCommand } from './commands/ListConversationsCommand';
 import { LoginCommand } from './commands/LoginCommand';
+import { OpenNewCommand } from './commands/OpenNewCommand';
 import { OpenSettingsCommand } from './commands/OpenSettingsCommand';
 import { OpenSettingsPromptCommand } from './commands/OpenSettingsPromptCommand';
-import { ListConversationsCommand } from './commands/ListConversationsCommand';
 import { ShowConversationCommand } from './commands/ShowConversationCommand';
 import { StopGeneratingCommand } from './commands/StopGeneratingCommand';
-import { GenerateDocstringsCommand } from './commands/GenerateDocstringsCommand';
 import { CoreLogger } from "./coreLogger";
 
 const logger = CoreLogger.getInstance();
 
 export class CommandHandler {
-    private commandMap: Map<CommandType, ICommand>;
-  
-    constructor(private provider: ChatGptViewProvider) {
-      this.commandMap = new Map();
-      this.registerCommands();
-    }
-  
-    private registerCommands() {
-      this.registerCommand(new AddFreeTextQuestionCommand());
-      this.registerCommand(new EditCodeCommand());
-      this.registerCommand(new OpenNewCommand());
-      this.registerCommand(new ClearConversationCommand());
-      this.registerCommand(new ClearBrowserCommand());
-      this.registerCommand(new ClearGpt3Command());
-      this.registerCommand(new LoginCommand());
-      this.registerCommand(new OpenSettingsCommand());
-      this.registerCommand(new OpenSettingsPromptCommand());
-      this.registerCommand(new ListConversationsCommand());
-      this.registerCommand(new ShowConversationCommand());
-      this.registerCommand(new StopGeneratingCommand());
-      this.registerCommand(new GenerateDocstringsCommand());
-    }
-  
-    private registerCommand(command: ICommand) {
-      this.commandMap.set(command.type, command);
-    }
-  
-    public async executeCommand(commandType: CommandType, data: any) {
-      const command = this.commandMap.get(commandType);
-      if (command) {
-        await command.execute(data, this.provider);
-      } else {
-        logger.warn(`No handler found for command type: ${commandType}`);
-      }
+  private commandMap: Map<CommandType, ICommand>;
+
+  constructor(private provider: ChatGptViewProvider) {
+    this.commandMap = new Map();
+    this.registerCommands();
+  }
+
+  private registerCommands() {
+    this.registerCommand(new AddFreeTextQuestionCommand());
+    this.registerCommand(new EditCodeCommand());
+    this.registerCommand(new OpenNewCommand());
+    this.registerCommand(new ClearConversationCommand());
+    this.registerCommand(new ClearBrowserCommand());
+    this.registerCommand(new ClearGpt3Command());
+    this.registerCommand(new LoginCommand());
+    this.registerCommand(new OpenSettingsCommand());
+    this.registerCommand(new OpenSettingsPromptCommand());
+    this.registerCommand(new ListConversationsCommand());
+    this.registerCommand(new ShowConversationCommand());
+    this.registerCommand(new StopGeneratingCommand());
+    this.registerCommand(new GenerateDocstringsCommand());
+  }
+
+  private registerCommand(command: ICommand) {
+    this.commandMap.set(command.type, command);
+  }
+
+  public async executeCommand(commandType: CommandType, data: any) {
+    const command = this.commandMap.get(commandType);
+    if (command) {
+      await command.execute(data, this.provider);
+    } else {
+      logger.warn(`No handler found for command type: ${commandType}`);
     }
   }
+}

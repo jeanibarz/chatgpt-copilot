@@ -1,10 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { ChatGptViewProvider } from './chatgptViewProvider';
 import { CoreLogger } from './coreLogger';
 import { IChatModel } from './llm_models/IChatModel';
 import { ChatModelFactory } from './llm_models/chatModelFactory';
-import { ChatGptViewProvider } from './chatgptViewProvider';
 
 /**
  * DocstringGenerator is responsible for generating and formatting docstrings.
@@ -48,7 +48,7 @@ export class DocstringGenerator {
   private async createChatModel(): Promise<IChatModel> {
     // Call prepareModelForConversation to initialize model configuration
     const modelPrepared = await this.provider.modelManager.prepareModelForConversation(false, this.logger, this.provider);
-    
+
     if (!modelPrepared) {
       this.logger.error('Failed to prepare model for conversation.');
       throw new Error('Model preparation failed');

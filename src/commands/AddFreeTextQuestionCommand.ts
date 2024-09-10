@@ -1,7 +1,5 @@
-// File: src/commands/AddFreeTextQuestionCommand.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class AddFreeTextQuestionCommand implements ICommand {
   public type = CommandType.AddFreeTextQuestion;

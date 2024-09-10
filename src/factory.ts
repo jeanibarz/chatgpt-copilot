@@ -49,6 +49,6 @@ export function createChatGptViewProvider(context: vscode.ExtensionContext, logg
 
     // Set the newly created CommandHandler in the provider
     provider.commandHandler = commandHandler;
-    
+
     return provider;
 }

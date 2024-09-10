@@ -1,7 +1,5 @@
-// File: src/commands/ClearBrowserCommand.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class ClearBrowserCommand implements ICommand {
   public type = CommandType.ClearBrowser;

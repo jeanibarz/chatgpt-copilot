@@ -1,8 +1,6 @@
-// File: src/commands/OpenSettingsPromptCommand.ts
-
-import { ICommand } from './ICommand';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 import * as vscode from 'vscode';
+import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class OpenSettingsPromptCommand implements ICommand {
   public type = CommandType.OpenSettingsPrompt;

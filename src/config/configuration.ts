@@ -18,10 +18,10 @@
  * the application's execution.
  */
 
-import * as vscode from 'vscode';
-import { CoreLogger } from "../coreLogger";
 import { readFileSync } from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
+import { CoreLogger } from "../coreLogger";
 
 const logger = CoreLogger.getInstance();
 

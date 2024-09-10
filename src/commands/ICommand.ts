@@ -1,5 +1,3 @@
-// File: src/commands/ICommand.ts
-
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
 
 export interface ICommand {

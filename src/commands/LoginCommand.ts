@@ -1,7 +1,5 @@
-// File: src/commands/LoginCommand.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class LoginCommand implements ICommand {
   public type = CommandType.Login;

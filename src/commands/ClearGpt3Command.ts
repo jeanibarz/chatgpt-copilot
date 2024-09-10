@@ -1,7 +1,5 @@
-// File: src/commands/ClearGpt3Command.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class ClearGpt3Command implements ICommand {
   public type = CommandType.ClearGpt3;

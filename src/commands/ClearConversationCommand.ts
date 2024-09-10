@@ -1,7 +1,5 @@
-// File: src/commands/ClearConversationCommand.ts
-
-import { ICommand } from './ICommand';
 import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ICommand } from './ICommand';
 
 export class ClearConversationCommand implements ICommand {
   public type = CommandType.ClearConversation;
