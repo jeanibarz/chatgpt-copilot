@@ -21,7 +21,7 @@ import * as vscode from "vscode";
 import { BaseErrorHandler } from "./base/baseErrorHandler";
 import { CoreLogger } from "./coreLogger";
 import { ErrorHandlerRegistry } from "./errorHandlerRegistry";
-import { delay } from "./utils/delay";
+import { Utility } from "./utility";
 
 /**
  * The `ErrorHandler` class extends the `BaseErrorHandler` and provides specific error handling logic.
@@ -158,7 +158,7 @@ export class ErrorHandler extends BaseErrorHandler {
      */
     private async clearConversationAndRetry(options: any, sendMessage: (message: any) => void) {
         await vscode.commands.executeCommand("chatgpt-copilot.clearConversation");
-        await delay(250);
+        await Utility.delay(250);
 
         // Here you would call the API request again with the necessary parameters
         // For example:

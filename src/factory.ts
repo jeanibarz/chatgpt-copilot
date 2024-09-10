@@ -33,20 +33,22 @@ export function createChatGptViewProvider(context: vscode.ExtensionContext, logg
     const webviewManager = new WebviewManager(logger);
     const modelManager = new ModelManager();
     const configurationManager = new ConfigurationManager(logger, modelManager);
-    const commandHandler = new CommandHandler(logger, null); // Temporarily pass null for provider
 
     const provider = new ChatGptViewProvider({
         context,
         logger,
         webviewManager,
-        commandHandler,
+        commandHandler: null as any, // Temporarily set to null
         modelManager,
         configurationManager,
         chatHistoryManager: new ChatHistoryManager(),
     });
 
-    // Now we can set the provider in the command handler
-    commandHandler.setProvider(provider); // Method to set the provider in CommandHandler
+    // Now, create the CommandHandler with the provider
+    const commandHandler = new CommandHandler(provider);
 
+    // Set the newly created CommandHandler in the provider
+    provider.commandHandler = commandHandler;
+    
     return provider;
 }

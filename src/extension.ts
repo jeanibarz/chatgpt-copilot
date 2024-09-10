@@ -40,6 +40,7 @@ import * as vscode from 'vscode';
 import AbortController from "abort-controller";
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
+import { CommandType } from "./chatgptViewProvider";
 import { CoreLogger } from "./coreLogger";
 import { createChatGptViewProvider } from "./factory";
 
@@ -371,8 +372,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const generateDocstringsCommand = vscode.commands.registerCommand('chatgpt-copilot.generateDocstrings', async () => {
     // const provider = createChatGptViewProvider(context, logger);
-      await provider.handleGenerateDocstrings(); // Call the method to handle docstring generation
-});
+    await provider.commandHandler.executeCommand(CommandType.GenerateDocstrings, {});
+  });
   context.subscriptions.push(generateDocstringsCommand);
 
   /**
@@ -413,7 +414,7 @@ export async function activate(context: vscode.ExtensionContext) {
       context.globalState.update("chatgpt-clearance-token", null);
       context.globalState.update("chatgpt-user-agent", null);
       context.globalState.update("chatgpt-gpt3-apiKey", null);
-      provider?.clearSession();
+      provider?.sessionManager.clearSession();
       provider?.sendMessage({ type: "clearConversation" });
     },
   );
@@ -472,7 +473,7 @@ export async function activate(context: vscode.ExtensionContext) {
       e.affectsConfiguration("chatgpt.systemPrompt") ||
       e.affectsConfiguration("chatgpt.gpt3.top_p")
     ) {
-      provider.prepareConversation(true);
+      provider.conversationManager.prepareConversation(true);
     }
 
     if (
