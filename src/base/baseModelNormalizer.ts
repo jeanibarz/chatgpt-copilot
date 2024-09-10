@@ -1,14 +1,18 @@
 import { ILogger } from "../interfaces/ILogger";
 
 /**
- * The `BaseModelNormalizer` class serves as an abstract base class for model normalizers.
- * It provides a common interface and shared functionality for normalizing model types.
+ * This module provides an abstract base class for model normalizers within the application.
+ * The `BaseModelNormalizer` class serves as a foundation for creating specific model normalizers,
+ * offering shared functionality and a common interface for normalizing various model types.
  * 
- * Subclasses must implement the `normalize` method to define their own normalization logic.
- * This class also provides logging capabilities to track the normalization process.
+ * Key Features:
+ * - Defines a standard interface for normalization through the `normalize` method.
+ * - Provides logging capabilities to track the normalization process.
+ * - Ensures that subclasses implement their own normalization logic.
  */
+
 export abstract class BaseModelNormalizer {
-    protected logger: ILogger;
+    protected logger: ILogger; // Logger instance for logging normalization events
 
     /**
      * Constructor for the `BaseModelNormalizer` class.

@@ -7,12 +7,27 @@ import { IChatModel } from './llm_models/IChatModel';
 import { ChatModelFactory } from './llm_models/chatModelFactory';
 
 /**
- * DocstringGenerator is responsible for generating and formatting docstrings.
+ * This module provides functionality for generating and formatting docstrings 
+ * using an AI model within a VS Code extension. The `DocstringGenerator` class 
+ * interacts with the AI model to create docstrings based on input code prompts.
+ * 
+ * Key Features:
+ * - Generates docstrings by sending prompts to the AI model.
+ * - Formats generated docstrings to remove unnecessary annotations.
+ * - Saves the formatted docstrings to temporary files for easy access.
  */
-export class DocstringGenerator {
-  private logger: CoreLogger;
-  private provider: ChatGptViewProvider;
 
+export class DocstringGenerator {
+  private logger: CoreLogger; // Logger instance for logging events
+  private provider: ChatGptViewProvider; // View provider for ChatGPT interactions
+
+  /**
+   * Constructor for the `DocstringGenerator` class.
+   * Initializes a new instance with the provided logger and ChatGPT view provider.
+   * 
+   * @param logger - An instance of `CoreLogger` for logging events.
+   * @param provider - An instance of `ChatGptViewProvider` for managing interactions with the AI model.
+   */
   constructor(logger: CoreLogger, provider: ChatGptViewProvider) {
     this.logger = logger;
     this.provider = provider;
@@ -44,6 +59,9 @@ export class DocstringGenerator {
 
   /**
    * Creates and returns the chat model for AI interaction.
+   * 
+   * @returns A promise that resolves to an instance of `IChatModel`.
+   * @throws Will throw an error if the model preparation fails or the model configuration is incomplete.
    */
   private async createChatModel(): Promise<IChatModel> {
     // Call prepareModelForConversation to initialize model configuration

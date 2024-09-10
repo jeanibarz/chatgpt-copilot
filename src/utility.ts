@@ -1,8 +1,16 @@
-// File: src/utility.ts
-
 /**
- * The `Utility` class contains static utility methods used throughout the application.
+ * This module provides utility functions that are used throughout the application.
+ * It includes methods for generating random IDs and creating delays, which can be 
+ * useful in various scenarios such as message handling and asynchronous operations.
+ * 
+ * The `Utility` class contains static methods that can be called without needing 
+ * to instantiate the class, making it easy to access common functionalities.
+ * 
+ * Key Features:
+ * - Generates random IDs for unique identifiers.
+ * - Provides a delay function for asynchronous operations.
  */
+
 export class Utility {
     /**
      * Gets a random ID for use in message identifiers or other unique purposes.
@@ -28,4 +36,3 @@ export class Utility {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
-

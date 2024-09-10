@@ -1,5 +1,3 @@
-// File: src/chatHistoryManager.ts
-
 /**
  * This module manages the chat history for the ChatGPT VS Code extension.
  * It provides methods to add messages from users and assistants, clear the history,
@@ -21,7 +19,6 @@
  * - The `getLastMessage` method returns the most recent message in the history.
  */
 
-
 import { CoreMessage } from "ai";
 
 /**
@@ -38,14 +35,14 @@ export class ChatHistoryManager {
      * @param role - The role of the message sender ('user' or 'assistant').
      * @param content - The content of the message.
      */
-    public addMessage(role: 'user' | 'assistant', content: string) {
+    public addMessage(role: 'user' | 'assistant', content: string): void {
         this.chatHistory.push({ role, content });
     }
 
     /**
      * Clears the entire chat history.
      */
-    public clearHistory() {
+    public clearHistory(): void {
         this.chatHistory = [];
     }
 

@@ -1,5 +1,3 @@
-// File: src/configurationManager.ts
-
 /**
  * This module provides a configuration management system for use within a VS Code extension.
  * It handles loading and managing application settings and configurations, particularly 
@@ -69,7 +67,7 @@ export class ConfigurationManager implements IConfigurationManager {
      * Loads the configuration settings from the VS Code configuration files.
      * Initializes various configuration flags and settings based on the loaded values.
      */
-    public loadConfiguration() {
+    public loadConfiguration(): void {
         // Load the model configuration and response settings
         this.modelManager.model = getRequiredConfig<string>("gpt3.model");
         this.subscribeToResponse = getConfig<boolean>("response.showNotification", false);
@@ -96,7 +94,7 @@ export class ConfigurationManager implements IConfigurationManager {
      * 
      * @returns The workspace configuration object for the "chatgpt" extension.
      */
-    public getWorkspaceConfiguration() {
+    public getWorkspaceConfiguration(): any {
         return vscode.workspace.getConfiguration("chatgpt");
     }
 }
