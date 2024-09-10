@@ -1,5 +1,3 @@
-// File: src/factory.ts
-
 /**
  * This module contains a factory function for creating an instance of the `ChatGptViewProvider`.
  * It initializes all necessary dependencies, including the webview manager, model manager,
@@ -29,7 +27,7 @@ import { WebviewManager } from "./webviewManager";
  * @param logger - An instance of `CoreLogger` for logging events.
  * @returns An instance of `ChatGptViewProvider` configured with the provided context and logger.
  */
-export function createChatGptViewProvider(context: vscode.ExtensionContext, logger: CoreLogger) {
+export function createChatGptViewProvider(context: vscode.ExtensionContext, logger: CoreLogger): ChatGptViewProvider {
     const webviewManager = new WebviewManager(logger);
     const modelManager = new ModelManager();
     const configurationManager = new ConfigurationManager(logger, modelManager);

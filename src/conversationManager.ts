@@ -1,15 +1,27 @@
-// File: src/conversationManager.ts
-
 import { ChatGptViewProvider } from './chatgptViewProvider';
 import { Utility } from './utility';
 
 /**
- * The `ConversationManager` class handles the preparation and management
- * of conversations for the ChatGPT view provider.
+ * This module manages the conversation context for the ChatGPT view provider 
+ * within a VS Code extension. The `ConversationManager` class is responsible 
+ * for preparing and managing conversations, ensuring that the appropriate AI 
+ * model is initialized based on the current configurations.
+ * 
+ * Key Features:
+ * - Prepares the conversation context and initializes the AI model.
+ * - Handles conversation ID generation and management.
+ * - Provides logging for conversation preparation and errors.
  */
-export class ConversationManager {
-    private provider: ChatGptViewProvider;
 
+export class ConversationManager {
+    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing conversations
+
+    /**
+     * Constructor for the `ConversationManager` class.
+     * Initializes a new instance with the provided ChatGptViewProvider.
+     * 
+     * @param provider - An instance of `ChatGptViewProvider` for managing conversation interactions.
+     */
     constructor(provider: ChatGptViewProvider) {
         this.provider = provider;
     }
@@ -17,6 +29,9 @@ export class ConversationManager {
     /**
      * Prepares the conversation context and initializes the appropriate AI model
      * based on the current configurations.
+     * 
+     * This method generates a new conversation ID if one doesn't exist and 
+     * prepares the model for the conversation using the model manager.
      * 
      * @param modelChanged - A flag indicating whether the model has changed.
      * @returns A Promise which resolves to a boolean indicating success or failure.

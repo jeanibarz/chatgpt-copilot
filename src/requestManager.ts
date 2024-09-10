@@ -1,22 +1,43 @@
-// File: src/requestManager.ts
-
 import { ChatGptViewProvider, CommandType } from './chatgptViewProvider';
 import { ChatModelFactory } from './llm_models/chatModelFactory';
 import { IChatModel } from './llm_models/IChatModel';
 import { Utility } from './utility';
 
 /**
- * The `RequestManager` class handles the API request logic for sending prompts and processing responses.
+ * This module manages the API request logic for sending prompts and processing responses 
+ * within the ChatGPT view provider for a VS Code extension. It handles the lifecycle 
+ * of API requests, including preparing the conversation, sending prompts, and managing 
+ * responses.
+ * 
+ * The `RequestManager` class is responsible for coordinating the interactions with the 
+ * chat model, including the preparation of the conversation context and the handling 
+ * of API responses.
+ * 
+ * Key Features:
+ * - Sends API requests to generate responses based on user prompts.
+ * - Manages the state of the current request, preventing concurrent requests.
+ * - Prepares conversation context and processes the response from the chat model.
  */
-export class RequestManager {
-    private provider: ChatGptViewProvider;
 
+export class RequestManager {
+    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing requests
+
+    /**
+     * Constructor for the `RequestManager` class.
+     * Initializes a new instance of RequestManager with the provided view provider.
+     * 
+     * @param provider - An instance of `ChatGptViewProvider` for managing API requests.
+     */
     constructor(provider: ChatGptViewProvider) {
         this.provider = provider;
     }
 
     /**
      * Sends an API request to generate a response to the provided prompt.
+     * 
+     * This method manages the entire process of sending a prompt to the chat model, 
+     * including preparing the conversation, retrieving context, and handling the response. 
+     * It also ensures that requests are not sent if one is already in progress.
      * 
      * @param prompt - The prompt to be sent to the API.
      * @param options - Additional options related to the API call, including command, code, etc.

@@ -1,13 +1,18 @@
 import { ILogger } from "../interfaces/ILogger";
 
 /**
- * The `BaseErrorHandler` class serves as an abstract base class for error handlers.
- * It provides a common interface and shared functionality for handling errors 
- * in the application. Subclasses must implement specific error handling logic 
- * as needed.
+ * This module provides an abstract base class for error handlers within the application.
+ * The `BaseErrorHandler` class serves as a foundation for creating specific error handlers,
+ * offering shared functionality and a common interface for handling various errors.
+ * 
+ * Key Features:
+ * - Implements a common interface for handling errors.
+ * - Provides logging capabilities for error handling.
+ * - Requires subclasses to implement specific error handling logic.
  */
+
 export abstract class BaseErrorHandler {
-    protected logger: ILogger;
+    protected logger: ILogger; // Logger instance for logging error events
 
     /**
      * Constructor for the `BaseErrorHandler` class.

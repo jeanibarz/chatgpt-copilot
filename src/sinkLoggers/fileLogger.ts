@@ -1,15 +1,18 @@
-// File: src/sinkLoggers/fileLogger.ts
-
 import * as fs from "fs";
 import { ISinkLogger } from "../interfaces/ISinkLogger";
 
 /**
- * The `FileLogger` class is responsible for logging messages to a file.
- * It appends messages to the specified log file, maintaining a record of events
- * or errors that occur during the application's execution.
+ * This module provides a logging mechanism that writes log messages to a specified file.
+ * The `FileLogger` class is responsible for appending messages to the log file, 
+ * enabling persistent logging of events or errors that occur during the application's execution.
+ * 
+ * Key Features:
+ * - Appends log messages to a specified file.
+ * - Maintains a record of events or errors across application sessions.
  */
+
 export class FileLogger implements ISinkLogger {
-    private logFilePath: string;
+    private logFilePath: string; // The path to the log file where messages will be written
 
     /**
      * Constructor for the `FileLogger` class.
@@ -27,7 +30,7 @@ export class FileLogger implements ISinkLogger {
      * 
      * @param message - The message to log.
      */
-    public log(message: string) {
+    public log(message: string): void {
         fs.appendFileSync(this.logFilePath, message + '\n', { encoding: 'utf8' });
     }
 }

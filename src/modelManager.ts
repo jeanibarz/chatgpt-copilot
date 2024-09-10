@@ -1,5 +1,3 @@
-// File: src/modelManager.ts
-
 /**
  * This module manages the configuration and initialization of AI models 
  * for use within a VS Code extension. It is responsible for loading model 

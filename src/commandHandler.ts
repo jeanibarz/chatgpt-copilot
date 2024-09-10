@@ -1,5 +1,3 @@
-// File: src/commandHandler.ts
-
 /**
  * This module handles command execution for the ChatGPT VS Code extension.
  * It defines various command classes that encapsulate specific actions 
@@ -42,15 +40,30 @@ import { CoreLogger } from "./coreLogger";
 
 const logger = CoreLogger.getInstance();
 
+/**
+ * The `CommandHandler` class manages the execution of various commands 
+ * related to the ChatGPT functionality within the extension. It maintains
+ * a registry of command instances and facilitates the execution of commands
+ * based on user interactions.
+ */
 export class CommandHandler {
-  private commandMap: Map<CommandType, ICommand>;
+  private commandMap: Map<CommandType, ICommand>; // Map to store command instances
 
+  /**
+   * Constructor for the `CommandHandler` class.
+   * Initializes a new instance and registers all available commands.
+   * 
+   * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
+   */
   constructor(private provider: ChatGptViewProvider) {
     this.commandMap = new Map();
     this.registerCommands();
   }
 
-  private registerCommands() {
+  /**
+   * Registers all command instances with their corresponding command types.
+   */
+  private registerCommands(): void {
     this.registerCommand(new AddFreeTextQuestionCommand());
     this.registerCommand(new EditCodeCommand());
     this.registerCommand(new OpenNewCommand());
@@ -66,11 +79,22 @@ export class CommandHandler {
     this.registerCommand(new GenerateDocstringsCommand());
   }
 
-  private registerCommand(command: ICommand) {
+  /**
+   * Registers a command instance with the command map.
+   * 
+   * @param command - The command instance to register.
+   */
+  private registerCommand(command: ICommand): void {
     this.commandMap.set(command.type, command);
   }
 
-  public async executeCommand(commandType: CommandType, data: any) {
+  /**
+   * Executes a command based on the provided command type and data.
+   * 
+   * @param commandType - The type of the command to execute.
+   * @param data - The data associated with the command execution.
+   */
+  public async executeCommand(commandType: CommandType, data: any): Promise<void> {
     const command = this.commandMap.get(commandType);
     if (command) {
       await command.execute(data, this.provider);

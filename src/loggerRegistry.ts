@@ -1,5 +1,3 @@
-// File: src/loggerRegistry.ts
-
 /**
  * This module provides a centralized registry for managing loggers within a VS Code extension.
  * The `LoggerRegistry` class ensures that loggers are uniquely identified by their names and 
@@ -23,6 +21,7 @@ export class LoggerRegistry {
      * If both a loggerName and channelName exist, they are stored in the appropriate maps.
      * 
      * @param logger - The CoreLogger instance to add.
+     * @throws Will throw an error if a logger with the same name or channel name already exists.
      */
     public addLogger(logger: CoreLogger): void {
         const loggerName = logger.getLoggerName();
@@ -47,6 +46,7 @@ export class LoggerRegistry {
      * If the logger has an associated channelName, it is removed from the channel map as well.
      * 
      * @param loggerName - The name of the logger to remove.
+     * @throws Will throw an error if no logger is found with the specified name.
      */
     public removeLoggerByName(loggerName: string): void {
         const logger = this.loggersByName.get(loggerName);

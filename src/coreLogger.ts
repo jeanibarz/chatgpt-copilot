@@ -1,5 +1,3 @@
-// File: src/coreLogger.ts
-
 /**
  * This module provides a flexible logging mechanism for use within a VS Code extension.
  * It includes both file-based and output-channel-based logging, and supports multiple log levels.
@@ -57,10 +55,10 @@ interface CoreLoggerOptions {
  * duplicate logger creation.
  */
 export class CoreLogger {
-    private loggerName: string;
-    private static registry: LoggerRegistry = new LoggerRegistry();
-    private fileSinkLogger?: FileLogger;
-    private outputChannelSinkLogger?: OutputChannelLogger;
+    private loggerName: string; // The name of the logger
+    private static registry: LoggerRegistry = new LoggerRegistry(); // Logger registry for managing loggers
+    private fileSinkLogger?: FileLogger; // Optional file logger instance
+    private outputChannelSinkLogger?: OutputChannelLogger; // Optional output channel logger instance
 
     /**
      * Constructor for the `CoreLogger` class.
@@ -151,7 +149,7 @@ export class CoreLogger {
      * @param message - The message to log.
      * @param properties - Optional properties to include in the log.
      */
-    public log(level: LogLevel, message: string, properties?: any) {
+    public log(level: LogLevel, message: string, properties?: any): void {
         const formattedMessage = `${level} ${message} ${properties ? JSON.stringify(properties) : ""
             }`.trim();
 
@@ -173,7 +171,7 @@ export class CoreLogger {
      * @param message - The info message to log.
      * @param properties - Optional properties to include in the log.
      */
-    public info(message: string, properties?: any) {
+    public info(message: string, properties?: any): void {
         this.log(LogLevel.Info, message, properties);
     }
 
@@ -182,7 +180,7 @@ export class CoreLogger {
      * @param message - The warning message to log.
      * @param properties - Optional properties to include in the log.
      */
-    public warn(message: string, properties?: any) {
+    public warn(message: string, properties?: any): void {
         this.log(LogLevel.Warning, message, properties);
     }
 
@@ -191,7 +189,7 @@ export class CoreLogger {
      * @param message - The debug message to log.
      * @param properties - Optional properties to include in the log.
      */
-    public debug(message: string, properties?: any) {
+    public debug(message: string, properties?: any): void {
         this.log(LogLevel.Debug, message, properties);
     }
 
@@ -200,7 +198,7 @@ export class CoreLogger {
      * @param message - The error message to log.
      * @param properties - Optional properties to include in the log.
      */
-    public error(message: string, properties?: any) {
+    public error(message: string, properties?: any): void {
         this.log(LogLevel.Error, message, properties);
     }
 

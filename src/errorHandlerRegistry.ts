@@ -1,5 +1,3 @@
-// File: src/errorHandlerRegistry.ts
-
 /**
  * This module provides a centralized registry for managing error handlers
  * associated with different HTTP status codes within a VS Code extension.
@@ -46,7 +44,7 @@ export class ErrorHandlerRegistry {
      * @param statusCode - The HTTP status code to associate with the handler.
      * @param handler - A function that takes an error object and returns a string message.
      */
-    public registerHandler(statusCode: number, handler: (error: any) => string) {
+    public registerHandler(statusCode: number, handler: (error: any) => string): void {
         this.handlers.set(statusCode, handler);
         this.logger.info(`Handler registered for status code: ${statusCode}`);
     }
@@ -56,7 +54,7 @@ export class ErrorHandlerRegistry {
      * 
      * @param statusCode - The HTTP status code for which to unregister the handler.
      */
-    public unregisterHandler(statusCode: number) {
+    public unregisterHandler(statusCode: number): void {
         this.handlers.delete(statusCode);
         this.logger.info(`Handler unregistered for status code: ${statusCode}`);
     }
@@ -67,7 +65,7 @@ export class ErrorHandlerRegistry {
      * @param statusCode - The HTTP status code for which to retrieve the handler.
      * @returns The error handler function associated with the status code, or undefined if not found.
      */
-    public getHandler(statusCode: number) {
+    public getHandler(statusCode: number): ((error: any) => string) | undefined {
         return this.handlers.get(statusCode);
     }
 }

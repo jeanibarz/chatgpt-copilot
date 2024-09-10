@@ -1,5 +1,3 @@
-// File: src/errorHandler.ts
-
 /**
  * This module provides a centralized error handling mechanism for use within a VS Code extension.
  * The `ErrorHandler` class manages error handlers for different HTTP status codes,
@@ -48,7 +46,7 @@ export class ErrorHandler extends BaseErrorHandler {
      * @param statusCode - The HTTP status code to associate with the handler.
      * @param handler - A function that takes an error object and returns a string message.
      */
-    public registerHandler(statusCode: number, handler: (error: any) => string) {
+    public registerHandler(statusCode: number, handler: (error: any) => string): void {
         this.registry.registerHandler(statusCode, handler);
     }
 
@@ -57,7 +55,7 @@ export class ErrorHandler extends BaseErrorHandler {
      * 
      * @param statusCode - The HTTP status code for which to unregister the handler.
      */
-    public unregisterHandler(statusCode: number) {
+    public unregisterHandler(statusCode: number): void {
         this.registry.unregisterHandler(statusCode);
     }
 
@@ -71,7 +69,7 @@ export class ErrorHandler extends BaseErrorHandler {
      * @param sendMessage - A function to send messages back to the webview.
      * @param configurationManager - The configuration manager instance for accessing settings.
      */
-    public handleApiError(error: any, options: any, sendMessage: (message: any) => void, configurationManager: any) {
+    public handleApiError(error: any, options: any, sendMessage: (message: any) => void, configurationManager: any): void {
         const handler = this.registry.getHandler(error?.statusCode);
         let message;
 

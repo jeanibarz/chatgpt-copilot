@@ -1,15 +1,30 @@
-// File: src/responseHandler.ts
-
 import { ChatGptViewProvider } from './chatgptViewProvider';
 import { IChatModel } from './llm_models/IChatModel';
 
 /**
- * The `ResponseHandler` class manages the chat response, including processing, updating, 
- * and finalizing the response in the webview.
+ * This module handles chat responses within the ChatGPT view provider 
+ * for a VS Code extension. It processes messages sent to the chat model, 
+ * updates the response, and finalizes it for display in the webview.
+ * 
+ * The `ResponseHandler` class is responsible for managing the entire 
+ * lifecycle of a chat response, including sending the prompt to the model, 
+ * updating the response in real-time, and handling any errors that may occur.
+ * 
+ * Key Features:
+ * - Sends messages to the chat model and updates the response.
+ * - Finalizes the response and updates chat history.
+ * - Handles incomplete responses and prompts the user to continue.
  */
-export class ResponseHandler {
-    private provider: ChatGptViewProvider;
 
+export class ResponseHandler {
+    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing responses
+
+    /**
+     * Constructor for the `ResponseHandler` class.
+     * Initializes a new instance of ResponseHandler with the provided view provider.
+     * 
+     * @param provider - An instance of `ChatGptViewProvider` for managing chat responses.
+     */
     constructor(provider: ChatGptViewProvider) {
         this.provider = provider;
     }
@@ -20,7 +35,7 @@ export class ResponseHandler {
      * @param model - The chat model to send the message to.
      * @param prompt - The prompt to send.
      * @param additionalContext - Additional context for the prompt.
-     * @param options - Options related to the API call.
+     * @param options - Options related to the API call, including command and previous answer.
      */
     public async handleChatResponse(
         model: IChatModel,
@@ -45,7 +60,7 @@ export class ResponseHandler {
     /**
      * Finalizes the response after processing and updates the chat history.
      * 
-     * @param options - Options related to the API call.
+     * @param options - Options related to the API call, including command and previous answer.
      */
     private async finalizeResponse(options: { command: string; previousAnswer?: string; }) {
         if (options.previousAnswer != null) {
@@ -89,7 +104,7 @@ export class ResponseHandler {
     /**
      * Prompts the user to continue if the response is incomplete.
      * 
-     * @param options - Options related to the API call.
+     * @param options - Options related to the API call, including command.
      */
     private async promptToContinue(options: { command: string; }) {
         const choice = await vscode.window.showInformationMessage(

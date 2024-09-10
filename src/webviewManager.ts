@@ -1,5 +1,3 @@
-// File: src/webviewManager.ts
-
 /**
  * This module provides a management system for webviews within a VS Code extension.
  * It handles the initialization and configuration of webviews, including setting up 
@@ -40,12 +38,13 @@ export class WebviewManager {
   }
 
   /**
-     * Sets up the webview with HTML content and webview options.
-     * 
-     * @param webviewView - The webview view to be set up.
-     * @param extensionUri - The URI of the extension for resource paths.
-     * @param nonce - A nonce value for security purposes.
-     */
+   * Sets up the webview with HTML content and webview options.
+   * 
+   * @param webviewView - The webview view to be set up.
+   * @param extensionUri - The URI of the extension for resource paths.
+   * @param nonce - A nonce value for security purposes.
+   * @throws Will throw an error if the HTML generation fails.
+   */
   public initializeWebView(webviewView: vscode.WebviewView, extensionUri: vscode.Uri, nonce: string) {
     this.webviewView = webviewView;
     this.logger.info("Webview set");
@@ -82,10 +81,12 @@ export class WebviewManager {
   }
 
   /**
-   * Generates URIs for various resources used in the webview.
+   * Generates the HTML content for the webview.
    * 
    * @param extensionUri - The URI of the extension for resource paths.
-   * @returns An object containing URIs for scripts and stylesheets.
+   * @param nonce - A nonce value for security purposes.
+   * @returns The generated HTML content for the webview.
+   * @throws Will throw an error if the webview is not set.
    */
   private generateWebviewHtml(extensionUri: vscode.Uri, nonce: string): string {
     if (!this.webviewView) {
@@ -100,6 +101,12 @@ export class WebviewManager {
     return html;
   }
 
+  /**
+   * Generates URIs for various resources used in the webview.
+   * 
+   * @param extensionUri - The URI of the extension for resource paths.
+   * @returns An object containing URIs for scripts and stylesheets.
+   */
   private generateResourceUris(extensionUri: vscode.Uri) {
     const webview = this.webviewView!.webview;
     return {

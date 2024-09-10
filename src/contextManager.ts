@@ -1,17 +1,28 @@
-// File: src/contextManager.ts
-
 import * as fs from 'fs';
 import * as path from 'path';
 import { ChatGptViewProvider } from './chatgptViewProvider';
 import { getConfig } from './config/configuration';
 
 /**
- * The `ContextManager` class is responsible for handling file context retrieval
- * and preparing the necessary context from project files for the ChatGPT view provider.
+ * This module manages the retrieval and preparation of file context for the ChatGPT view provider 
+ * within a VS Code extension. The `ContextManager` class is responsible for handling file context 
+ * retrieval and preparing the necessary context from project files.
+ * 
+ * Key Features:
+ * - Retrieves additional context from the codebase to be included in the prompt.
+ * - Supports filtering of files based on inclusion and exclusion patterns.
+ * - Formats file contents for easy integration into prompts for the AI model.
  */
-export class ContextManager {
-    private provider: ChatGptViewProvider;
 
+export class ContextManager {
+    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing context
+
+    /**
+     * Constructor for the `ContextManager` class.
+     * Initializes a new instance with the provided ChatGptViewProvider.
+     * 
+     * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
+     */
     constructor(provider: ChatGptViewProvider) {
         this.provider = provider;
     }
@@ -168,5 +179,4 @@ export class ContextManager {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         return fileContent.split('\n').length;
     }
-
 }

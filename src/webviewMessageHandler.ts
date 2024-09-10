@@ -1,5 +1,3 @@
-// File: src/webviewMessageHandler.ts
-
 /**
  * This module handles the communication between the webview and the extension within a VS Code environment.
  * It manages incoming messages from the webview and allows for sending responses back to the webview.
