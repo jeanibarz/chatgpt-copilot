@@ -4,7 +4,7 @@
   "displayName": "ChatGPT Copilot",
   "icon": "images/ai-logo.png",
   "description": "A forked version of the original ChatGPT Copilot Extension by jeanibarz (https://github.com/jeanibarz/chatgpt-copilot), providing additional features for VS Code integration.",
-  "version": "5.3.0",
+  "version": "5.4.0",
   "aiKey": "",
   "repository": {
     "url": "https://github.com/jeanibarz/chatgpt-copilot"
