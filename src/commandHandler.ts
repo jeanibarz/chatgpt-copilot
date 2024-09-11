@@ -48,6 +48,7 @@ const logger = CoreLogger.getInstance();
  */
 export class CommandHandler {
   private commandMap: Map<CommandType, ICommand>; // Map to store command instances
+  private provider?: ChatGptViewProvider;
 
   /**
    * Constructor for the `CommandHandler` class.
@@ -55,9 +56,18 @@ export class CommandHandler {
    * 
    * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
    */
-  constructor(private provider: ChatGptViewProvider) {
+  constructor(provider?: ChatGptViewProvider) {
     this.commandMap = new Map();
+    this.provider = provider;
     this.registerCommands();
+  }
+
+  /**
+   * Set the provider after the command handler has been instantiated.
+   * @param provider - The ChatGptViewProvider instance.
+   */
+  public setProvider(provider: ChatGptViewProvider): void {
+    this.provider = provider;
   }
 
   /**
@@ -95,6 +105,11 @@ export class CommandHandler {
    * @param data - The data associated with the command execution.
    */
   public async executeCommand(commandType: CommandType, data: any): Promise<void> {
+    if (!this.provider) {
+      logger.error(`Provider is not available, can\'t execute command ${commandType}`);
+      return
+    }
+
     const command = this.commandMap.get(commandType);
     if (command) {
       await command.execute(data, this.provider);

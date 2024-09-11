@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { ChatGptViewProvider } from './chatgptViewProvider';
 import { CoreLogger } from './coreLogger';
 import { IChatModel } from './llm_models/IChatModel';
@@ -53,8 +50,8 @@ export class DocstringGenerator {
     // Send the prompt to the model and get the response
     await chatModel.sendMessage(prompt, '', updateResponse); // Use the required 3 arguments
 
-    // Save the formatted docstring to a file and return the path
-    return this.saveDocstringToFile(response);
+    // Format and return the docstring content
+    return this.formatDocstring(response);
   }
 
   /**
@@ -98,23 +95,5 @@ export class DocstringGenerator {
     if (lines[lines.length - 1].trim().startsWith('```')) lines.pop();
 
     return lines.join('\n').trim();
-  }
-
-  /**
-   * Saves the generated docstring to a temporary file.
-   * 
-   * @param docstring - The raw generated docstring.
-   * @returns The path to the temporary file where the docstring is saved.
-   */
-  private saveDocstringToFile(docstring: string): string {
-    const tempDir = os.tmpdir();
-    const tempFileName = `generated_docstring_${Date.now()}.ts`; // Adjust the file extension based on your use case
-    const tempFilePath = path.join(tempDir, tempFileName);
-
-    // Save the formatted docstring to a temp file
-    fs.writeFileSync(tempFilePath, this.formatDocstring(docstring), { encoding: 'utf-8' });
-    this.logger.info(`Docstring saved to ${tempFilePath}`);
-
-    return tempFilePath;
   }
 }
