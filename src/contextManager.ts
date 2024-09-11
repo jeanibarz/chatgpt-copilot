@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from "vscode";
 import { ChatGptViewProvider } from './chatgptViewProvider';
 import { getConfig } from './config/configuration';
 
@@ -40,48 +41,38 @@ export class ContextManager {
 
             if (!inclusionRegex) {
                 this.provider.logger.info("Inclusion regex is not set in the configuration.");
-                return "";  // Return an empty string if the regex is not set
+                return "";  
             }
 
-            // Find matching files
             this.provider.logger.info("Finding matching files");
             const files = await this.findMatchingFiles(inclusionRegex, exclusionRegex);
 
-            // Get the content of the matched files
             this.provider.logger.info("Retrieving file content");
-            const contextContent = await this.getFilesContent(files);
-
-            // Generate context for prompt
-            const formattedContext = this.generateFormattedContext(contextContent);
-
-            return formattedContext;
+            return await this.getFilesContent(files);
         } catch (error) {
             this.provider.logger.logError(error, "retrieveContextForPrompt");
-            throw error; // Rethrow the error if necessary
+            throw error;
         }
     }
 
     /**
-     * Generates a formatted context string from the content of files.
-     * The context is structured with a title and section headers for each file's content.
+     * Recursively walks through the specified directory and collects file paths.
      * 
-     * @param fileContents - A string containing the content of files, 
-     *                      where each file's content is separated by double new lines.
-     * @returns A string that represents the formatted context, ready for use in a prompt.
+     * @param dir - The directory to walk through.
+     * @param fileList - An array to accumulate the file paths (default is an empty array).
+     * @returns An array of file paths found in the directory.
      */
-    private generateFormattedContext(fileContents: string): string {
-        // Split by double new lines to handle separate file contents
-        const contentSections = fileContents.split('\n\n');
-
-        // Prepend a title for the context
-        const contextTitle = "### Context from Project Files:\n\n";
-
-        // Format each section with index for better context understanding
-        const formattedContents = contentSections.map((content, idx) => {
-            return `#### File ${idx + 1}:\n${content}`;
-        }).join('\n\n'); // Join the formatted contents with double new lines
-
-        return contextTitle + formattedContents; // Combine title and contents
+    private walk(dir: string, fileList: string[] = []): string[] {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+            const fullPath = path.join(dir, file);
+            if (fs.statSync(fullPath).isDirectory()) {
+                this.walk(fullPath, fileList);
+            } else {
+                fileList.push(fullPath);
+            }
+        }
+        return fileList;
     }
 
     /**
@@ -93,7 +84,6 @@ export class ContextManager {
      */
     public async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
         try {
-            // Retrieve the explicitly added files/folders from global state
             const explicitFiles = this.provider.getContext().globalState.get<string[]>('chatgpt.explicitFiles', []);
             this.provider.logger.info("Explicit files and folders", { explicitFiles });
 
@@ -102,40 +92,22 @@ export class ContextManager {
                 return [];
             }
 
-            this.provider.logger.info("Finding matching files with inclusion pattern", { inclusionPattern, exclusionPattern });
+            this.provider.logger.info("Matching files with inclusion pattern", { inclusionPattern, exclusionPattern });
 
             const inclusionRegex = new RegExp(inclusionPattern);
             const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
 
-            // Helper function to recursively collect all files from a folder
-            const walk = (dir: string, fileList: string[] = []): string[] => {
-                const files = fs.readdirSync(dir);
-                files.forEach(file => {
-                    const fullPath = path.join(dir, file);
-                    if (fs.statSync(fullPath).isDirectory()) {
-                        walk(fullPath, fileList);
-                    } else {
-                        fileList.push(fullPath);
-                    }
-                });
-                return fileList;
-            };
-
             let allFiles: string[] = [];
 
-            // Go through each explicitly added file/folder
             for (const filePath of explicitFiles) {
                 const stat = fs.statSync(filePath);
                 if (stat.isDirectory()) {
-                    // If it's a directory, add all the files within the folder
-                    allFiles = allFiles.concat(walk(filePath));
+                    allFiles = allFiles.concat(this.walk(filePath));
                 } else {
-                    // If it's a file, just add it to the list
                     allFiles.push(filePath);
                 }
             }
 
-            // Filter files based on the inclusion and exclusion patterns
             const matchedFiles = allFiles.filter(file => {
                 const isFileIncluded = inclusionRegex.test(file);
                 const isFileExcluded = exclusionRegex ? exclusionRegex.test(file) : false;
@@ -152,21 +124,30 @@ export class ContextManager {
 
     /**
      * Retrieves the content of specified files and formats them for inclusion in a prompt to the AI model.
-     * Each file's content is prefixed with its relative path.
+     * Each file's content is prefixed with its full path and an index for better clarity.
      * 
      * @param files - An array of file paths to retrieve content from.
      * @returns A Promise that resolves to a string containing the formatted content of the files.
      */
     private async getFilesContent(files: string[]): Promise<string> {
         const fileContents: string[] = [];
+        const contextTitle = "### Context from Project Files:\n\n";  // Main title for the context
 
-        for (const file of files) {
-            const relativePath = path.relative("/home/jean/git/chatgpt-copilot", file); // Adjust the root path accordingly
-            const content = fs.readFileSync(file, 'utf-8');
-            fileContents.push(`// -----\n// File: ${relativePath}\n// Content below: ${content}\n-----`);
+        for (let idx = 0; idx < files.length; idx++) {
+            try {
+                const file = files[idx];
+                const content = fs.readFileSync(file, 'utf-8');
+
+                // Use the full file path in the output
+                fileContents.push(
+                    `#### File ${idx + 1}:\n// Full Path: ${file}\n// Content below:\n${content}\n-----`
+                );
+            } catch (error) {
+                this.provider.logger.error(`Error reading file: ${files[idx]}`, { error });
+            }
         }
 
-        return fileContents.join('\n\n'); // Join all file contents with double line breaks
+        return contextTitle + fileContents.join('\n\n');  // Join all file contents with double line breaks and prepend the title
     }
 
     /**
