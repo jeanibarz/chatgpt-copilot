@@ -41,6 +41,7 @@ export class RequestManager {
      * 
      * @param prompt - The prompt to be sent to the API.
      * @param options - Additional options related to the API call, including command, code, etc.
+     * @returns A promise that resolves when the API request has been processed.
      */
     public async sendApiRequest(
         prompt: string,

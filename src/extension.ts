@@ -176,6 +176,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 /**
  * Registers context-related commands for adding, removing, and clearing files/folders.
+ * 
+ * @param context - The extension context.
+ * @param explicitFilesManager - The manager for explicit files.
+ * @param contextDecorationProvider - The provider for file decorations.
  */
 function registerContextCommands(
   context: vscode.ExtensionContext,
@@ -221,6 +225,10 @@ function registerContextCommands(
 
 /**
  * Registers standard menu commands using a utility function to reduce code duplication.
+ * 
+ * @param context - The extension context.
+ * @param commands - The list of ChatGptCommand enums to register.
+ * @param provider - The ChatGptViewProvider instance.
  */
 function registerCommands(
   context: vscode.ExtensionContext,
@@ -263,6 +271,10 @@ function registerCommands(
 
 /**
  * Registers special commands that require custom handling.
+ * 
+ * @param context - The extension context.
+ * @param provider - The ChatGptViewProvider instance.
+ * @param adhocCommandPrefix - The prefix for ad-hoc commands.
  */
 function registerSpecialCommands(
   context: vscode.ExtensionContext,
@@ -361,6 +373,9 @@ function registerSpecialCommands(
 
 /**
  * Registers utility commands such as reset conversation, export conversation, etc.
+ * 
+ * @param context - The extension context.
+ * @param provider - The ChatGptViewProvider instance.
  */
 function registerUtilityCommands(
   context: vscode.ExtensionContext,
@@ -390,6 +405,11 @@ function registerUtilityCommands(
       context.globalState.update("chatgpt-clearance-token", null);
       context.globalState.update("chatgpt-user-agent", null);
       context.globalState.update("chatgpt-gpt3-apiKey", null);
+      context.globalState.update("chatgpt-gpt3.organization", null);
+      context.globalState.update("chatgpt-gpt3.maxTokens", null);
+      context.globalState.update("chatgpt-gpt3.temperature", null);
+      context.globalState.update("chatgpt.systemPrompt", null);
+      context.globalState.update("chatgpt.gpt3.top_p", null);
       provider.sessionManager.clearSession();
       provider.sendMessage({ type: "clearConversation" });
     },
@@ -416,6 +436,7 @@ function registerUtilityCommands(
 
 /**
  * Handles configuration changes and updates the provider's settings accordingly.
+ * 
  * @param e - The configuration change event.
  * @param provider - The ChatGptViewProvider instance.
  * @param logger - The logger instance.

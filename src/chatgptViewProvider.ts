@@ -38,7 +38,6 @@
  * - The `sendApiRequest` method sends prompts to the AI model and processes the responses.
  */
 
-
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import * as fs from "fs";
@@ -204,12 +203,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-     * Resolves the webview view with the provided context and sets up necessary event handling.
-     * 
-     * @param webviewView - The webview view that is being resolved.
-     * @param _context - Context information related to the webview view.
-     * @param _token - A cancellation token to signal if the operation is cancelled.
-     */
+   * Resolves the webview view with the provided context and sets up necessary event handling.
+   * 
+   * @param webviewView - The webview view that is being resolved.
+   * @param _context - Context information related to the webview view.
+   * @param _token - A cancellation token to signal if the operation is cancelled.
+   */
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
@@ -289,113 +288,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     return formattedQuestion;
   }
 
-  // /**
-  //  * Sends an API request to generate a response to the provided prompt.
-  //  * 
-  //  * @param prompt - The prompt to be sent to the API.
-  //  * @param options - Additional options related to the API call, including command, code, etc.
-  //  */
-  // public async sendApiRequest(
-  //   prompt: string,
-  //   options: ApiRequestOptions,
-  // ) {
-  //   // Focus the webview if not already focused
-  //   await this.commandHandler.executeCommand(CommandType.ShowConversation, {});
-
-  //   if (this.inProgress) {
-  //     vscode.window.showInformationMessage("Another request is already in progress. Please wait.");
-  //     return;
-  //   }
-
-  //   this.inProgress = true;
-  //   this.abortController = new AbortController();
-
-  //   this.questionCounter++;
-  //   this.logger.info("api-request-sent", {
-  //     "chatgpt.command": options.command,
-  //     "chatgpt.hasCode": String(!!options.code),
-  //     "chatgpt.hasPreviousAnswer": String(!!options.previousAnswer),
-  //   });
-
-  //   try {
-  //     if (!(await this.conversationManager.prepareConversation())) {
-  //       return;
-  //     }
-  //   } catch (error) {
-  //     this.logger.logError(error, "Failed to prepare conversation", true);
-  //     return;
-  //   }
-
-  //   this.response = "";
-
-  //   let additionalContext = "";
-  //   try {
-  //     additionalContext = await this.contextManager.retrieveContextForPrompt();
-  //   } catch (error) {
-  //     this.logger.logError(error, "Failed to retrieve context for prompt", true);
-  //     return;
-  //   }
-
-  //   const formattedQuestion = this.processQuestion(prompt, options.code, options.language);
-
-  //   // If the ChatGPT view is not in focus/visible; focus on it to render Q&A
-  //   try {
-  //     if (this.webView == null) {
-  //       await vscode.commands.executeCommand("chatgpt-copilot.view.focus");
-  //     } else {
-  //       this.webView?.show?.(true);
-  //     }
-  //   } catch (error) {
-  //     this.logger.logError(error, "Failed to focus or show the ChatGPT view", true);
-  //   }
-
-  //   this.logger.info("Preparing to create chat model...");
-
-  //   const modelType = this.modelManager.model;
-  //   const modelConfig = this.modelManager.modelConfig;
-
-  //   this.logger.info(`Model Type: ${modelType}`);
-  //   this.logger.info(`Model Config: ${JSON.stringify(modelConfig)}`);
-
-  //   let chatModel: IChatModel;
-  //   try {
-  //     chatModel = await ChatModelFactory.createChatModel(this, modelConfig);
-  //   } catch (error) {
-  //     this.logger.logError(error, "Failed to create chat model", true);
-  //     return;
-  //   }
-
-  //   this.logger.info('Chat model created successfully');
-
-  //   /**
-  //    * Sends a message to the webview via the webview manager.
-  //    * @param message - The message to be sent to the webview.
-  //    */
-  //   this.sendMessage({
-  //     type: "showInProgress",
-  //     inProgress: this.inProgress,
-  //     showStopButton: true,
-  //   });
-  //   this.currentMessageId = Utility.getRandomId();
-
-  //   try {
-  //     this.sendMessage({
-  //       type: "addQuestion",
-  //       value: prompt,
-  //       code: options.code,
-  //       autoScroll: this.configurationManager.autoScroll,
-  //     });
-  //     this.logger.info('handle chat response...');
-  //     await this.responseHandler.handleChatResponse(chatModel, formattedQuestion, additionalContext, options); // Centralized response handling
-  //   } catch (error: any) {
-  //     this.logger.logError(error, "Error in handleChatResponse", true);
-  //     this.handleApiError(error, formattedQuestion, options);
-  //   } finally {
-  //     this.inProgress = false;
-  //     this.sendMessage({ type: "showInProgress", inProgress: this.inProgress });
-  //   }
-  // }
-
   /**
    * Handles errors that occur during API requests, logging the error and
    * interacting with the user to provide feedback on the issue.
@@ -407,7 +299,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public handleApiError(error: any, prompt: string, options: any) {
     const errorId = Utility.getRandomId();
     this.logger.error(`Error ID: ${errorId} - API request failed`, { error, prompt, options });
-
 
     // Check if the error is an AbortError
     if (error.name === 'AbortError') {
@@ -480,6 +371,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     return this.context;
   }
 
+  /**
+   * Retrieves the text from the currently active editor.
+   * 
+   * @returns A Promise that resolves to the text content of the active editor, or null if no editor is active.
+   */
   public async getActiveEditorText(): Promise<string | null> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -490,11 +386,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Sends an API request to generate a response to the provided prompt.
- *
- * @param prompt - The prompt to be sent to the API.
- * @param options - Additional options related to the API call, including command, code, etc.
- */
+   * Sends an API request to generate a response to the provided prompt.
+   *
+   * @param prompt - The prompt to be sent to the API.
+   * @param options - Additional options related to the API call, including command, code, etc.
+   */
   public async sendApiRequest(
     prompt: string,
     options: ApiRequestOptions,
@@ -537,11 +433,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Checks if a request can proceed by ensuring no other request is in progress.
- * If another request is in progress, it notifies the user.
- *
- * @returns A boolean indicating whether the request can proceed.
- */
+   * Checks if a request can proceed by ensuring no other request is in progress.
+   * If another request is in progress, it notifies the user.
+   *
+   * @returns A boolean indicating whether the request can proceed.
+   */
   private async canProceedWithRequest(): Promise<boolean> {
     await this.commandHandler.executeCommand(CommandType.ShowConversation, {});
 
@@ -553,11 +449,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Initializes the state for a new API request, including setting the in-progress flag,
- * creating a new abort controller, incrementing the question counter, and logging the request.
- *
- * @param options - The options related to the API request.
- */
+   * Initializes the state for a new API request, including setting the in-progress flag,
+   * creating a new abort controller, incrementing the question counter, and logging the request.
+   *
+   * @param options - The options related to the API request.
+   */
   private initializeRequestState(options: ApiRequestOptions) {
     this.inProgress = true;
     this.abortController = new AbortController();
@@ -570,10 +466,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Checks and prepares the conversation by invoking the conversation manager.
- *
- * @returns A boolean indicating whether the conversation is prepared successfully.
- */
+   * Checks and prepares the conversation by invoking the conversation manager.
+   *
+   * @returns A boolean indicating whether the conversation is prepared successfully.
+   */
   private async checkAndPrepareConversation(): Promise<boolean> {
     try {
       if (!(await this.conversationManager.prepareConversation())) {
@@ -587,10 +483,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Retrieves additional context for the prompt by invoking the context manager.
- *
- * @returns The additional context as a string, or null if an error occurs.
- */
+   * Retrieves additional context for the prompt by invoking the context manager.
+   *
+   * @returns The additional context as a string, or null if an error occurs.
+   */
   private async retrieveAdditionalContext(): Promise<string | null> {
     try {
       return await this.contextManager.retrieveContextForPrompt();
@@ -601,8 +497,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Focuses the webview to ensure it is visible to the user.
- */
+   * Focuses the webview to ensure it is visible to the user.
+   */
   private async focusWebview() {
     try {
       if (this.webView == null) {
@@ -616,10 +512,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Creates the chat model using the model manager and chat model factory.
- *
- * @returns The chat model instance, or null if an error occurs.
- */
+   * Creates the chat model using the model manager and chat model factory.
+   *
+   * @returns The chat model instance, or null if an error occurs.
+   */
   private async createChatModel(): Promise<IChatModel | null> {
     this.logger.info("Preparing to create chat model...");
 
@@ -640,8 +536,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Sends a message to the webview to indicate that a request is in progress.
- */
+   * Sends a message to the webview to indicate that a request is in progress.
+   */
   private sendInProgressMessage() {
     this.sendMessage({
       type: "showInProgress",
@@ -652,11 +548,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Adds the user's question to the webview for display.
- *
- * @param prompt - The user's prompt.
- * @param code - Optional code associated with the prompt.
- */
+   * Adds the user's question to the webview for display.
+   *
+   * @param prompt - The user's prompt.
+   * @param code - Optional code associated with the prompt.
+   */
   private addQuestionToWebview(prompt: string, code?: string) {
     this.sendMessage({
       type: "addQuestion",
@@ -667,8 +563,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
- * Finalizes the request by resetting the in-progress flag and updating the webview.
- */
+   * Finalizes the request by resetting the in-progress flag and updating the webview.
+   */
   private finalizeRequest() {
     this.inProgress = false;
     this.sendMessage({ type: "showInProgress", inProgress: this.inProgress });
