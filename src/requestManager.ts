@@ -87,7 +87,7 @@ export class RequestManager {
             return;
         }
 
-        const formattedQuestion = await this.provider.processQuestion(prompt, options.code, options.language);
+        const formattedQuestion = this.provider.processQuestion(prompt, options.code, options.language);
 
         // If the ChatGPT view is not in focus/visible, focus on it to render Q&A
         try {
