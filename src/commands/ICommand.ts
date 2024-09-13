@@ -1,4 +1,4 @@
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
 
 export interface ICommand {
   type: CommandType;

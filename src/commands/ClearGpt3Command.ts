@@ -1,4 +1,4 @@
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
 import { ICommand } from './ICommand';
 
 export class ClearGpt3Command implements ICommand {

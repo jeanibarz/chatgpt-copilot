@@ -1,4 +1,4 @@
-import { LogLevel } from "../coreLogger";
+import { LogLevel } from "../CoreLogger";
 
 export interface ILogger {
     log(level: LogLevel, message: string, properties?: any): void;

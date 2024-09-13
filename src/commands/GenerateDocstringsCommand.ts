@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
-import { loadGenerateDocstringPrompt } from '../config/configuration';
-import { ICommand } from './ICommand';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as vscode from 'vscode';
+import { loadGenerateDocstringPrompt } from '../config/Configuration';
+import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
+import { ICommand } from './ICommand';
 
 /**
  * This module provides functionality for generating and inserting 
@@ -48,7 +48,7 @@ export class GenerateDocstringsCommand implements ICommand {
     const preSaveContent = activeEditor.document.getText();
     const originalFileUri = activeEditor.document.uri;
     const tempFilePath = this.createTempFile(preSaveContent);
-    
+
     const text = await provider.getActiveEditorText();
     if (!text) {
       this.showError('No text found in the active editor.');

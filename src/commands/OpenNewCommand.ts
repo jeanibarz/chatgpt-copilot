@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ChatGptViewProvider, CommandType } from '../chatgptViewProvider';
+import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
 import { ICommand } from './ICommand';
 
 export class OpenNewCommand implements ICommand {
