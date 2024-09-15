@@ -49,7 +49,7 @@ export class ExplicitFilesManager {
                 this.addFile(fsPath);
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to add resource: ${fsPath}`);
+            vscode.window.showErrorMessage(`Failed to add resource: ${fsPath}. Error: ${error.message}`);
         }
     }
 
@@ -78,7 +78,7 @@ export class ExplicitFilesManager {
                 });
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to remove resource: ${fsPath}`);
+            vscode.window.showErrorMessage(`Failed to remove resource: ${fsPath}. Error: ${error.message}`);
         }
     }
 

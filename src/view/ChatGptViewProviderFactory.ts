@@ -44,6 +44,5 @@ export function createChatGptViewProvider(context: vscode.ExtensionContext, logg
     });
 
     commandHandler.setProvider(provider);
-
     return provider;
 }

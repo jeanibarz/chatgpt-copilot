@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { loadGenerateDocstringPrompt } from '../config/Configuration';
+import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
 import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
 import { ICommand } from './ICommand';
 
@@ -110,7 +110,8 @@ export class GenerateDocstringsCommand implements ICommand {
    * @returns A promise that resolves to the generated docstring.
    */
   private async generateDocstring(text: string, provider: ChatGptViewProvider): Promise<string> {
-    const docstringPrompt = loadGenerateDocstringPrompt;
+    const docstringPrompt = defaultSystemPromptForGenerateDocstring;
+    provider.logger.info(`docstringPrompt: ${docstringPrompt}`);
     const prompt = `${docstringPrompt}\n\n${text}\n\n`;
     return await provider.docstringGenerator.generateDocstring(prompt);
   }

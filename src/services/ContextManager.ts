@@ -1,7 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { getConfig } from '../config/Configuration';
 import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { FileManager } from './FileManager';
 
 /**
  * This module manages the retrieval and preparation of file context for the ChatGPT view provider 
@@ -13,150 +12,208 @@ import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
  * - Supports filtering of files based on inclusion and exclusion patterns.
  * - Formats file contents for easy integration into prompts for the AI model.
  */
-
 export class ContextManager {
-    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing context
-
+    private contextRetriever: ContextRetriever;
+    private docstringExtractor: DocstringExtractor;
+    
     /**
      * Constructor for the `ContextManager` class.
      * Initializes a new instance with the provided ChatGptViewProvider.
      * 
-     * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
+     * @param contextRetriever - An instance of `ContextRetriever` for retrieving file contexts.
+     * @param docstringExtractor - An instance of `DocstringExtractor` for extracting docstrings from files.
      */
-    constructor(provider: ChatGptViewProvider) {
-        this.provider = provider;
+    constructor(
+        contextRetriever: ContextRetriever,
+        docstringExtractor: DocstringExtractor
+    ) {
+        this.contextRetriever = contextRetriever;
+        this.docstringExtractor = docstringExtractor;
     }
 
     /**
-     * Retrieves additional context from the codebase to be included in the prompt.
-     * This function finds files that match the inclusion pattern and retrieves their content.
+     * Retrieves the context needed for the prompt from the files.
      * 
-     * @returns A Promise that resolves to a string containing the formatted content.
+     * @returns A promise that resolves to a string containing the context for the prompt.
+     */
+    public async retrieveContextForPrompt(): Promise<string> {
+        return await this.contextRetriever.retrieveContextForPrompt();
+    }
+
+    /**
+     * Extracts docstrings from the matched files.
+     * 
+     * @returns A promise that resolves to an array of objects containing file paths and their respective docstrings.
+     */
+    public async extractDocstrings(): Promise<{ filePath: string; docstring: string }[]> {
+        const matchedFiles = await this.contextRetriever.getMatchedFiles();
+        return await this.docstringExtractor.extractModuleDocstrings(matchedFiles);
+    }
+}
+
+/**
+ * The `ContextRetriever` class is responsible for retrieving file contexts 
+ * based on user-defined inclusion and exclusion patterns. It interacts with 
+ * the `FileManager` to find and read the appropriate files and formats 
+ * their contents for use in prompts.
+ * 
+ * Key Features:
+ * - Retrieves context based on configured regex patterns.
+ * - Reads file contents and formats them for integration into prompts.
+ */
+export class ContextRetriever {
+    private provider: ChatGptViewProvider;
+    private fileManager: FileManager;
+    private regexConfigs: { inclusionRegex: string; exclusionRegex?: string };
+    private fileContentFormatter: FileContentFormatter;
+
+    /**
+     * Constructor for the `ContextRetriever` class.
+     * Initializes a new instance with the provided ChatGptViewProvider and FileManager.
+     * 
+     * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
+     * @param fileManager - An instance of `FileManager` for file operations.
+     */
+    constructor(provider: ChatGptViewProvider, fileManager: FileManager) {
+        this.provider = provider;
+        this.fileManager = fileManager;
+        this.regexConfigs = this.getRegexConfigs();
+        this.fileContentFormatter = new FileContentFormatter();
+    }
+
+    /**
+     * Retrieves regex configurations for file inclusion and exclusion.
+     * 
+     * @returns An object containing inclusion and exclusion regex patterns.
+     */
+    private getRegexConfigs() {
+        return {
+            inclusionRegex: getConfig<string>("fileInclusionRegex") ?? ".*",
+            exclusionRegex: getConfig<string>("fileExclusionRegex")
+        };
+    }
+
+    /**
+     * Retrieves context for the prompt by finding and reading matching files.
+     * 
+     * @returns A promise that resolves to a string containing the combined content from matched files.
+     * @throws An error if context retrieval fails.
      */
     public async retrieveContextForPrompt(): Promise<string> {
         try {
-            const inclusionRegex = getConfig<string>("fileInclusionRegex");
-            const exclusionRegex = getConfig<string>("fileExclusionRegex");
-
-            if (!inclusionRegex) {
-                this.provider.logger.info("Inclusion regex is not set in the configuration.");
-                return "";
-            }
-
             this.provider.logger.info("Finding matching files");
-            const files = await this.findMatchingFiles(inclusionRegex, exclusionRegex);
-
-            this.provider.logger.info("Retrieving file content");
-            return await this.getFilesContent(files);
+            const matchedFiles = this.getMatchedFiles();
+            return await this.getFilesContent(matchedFiles);
         } catch (error) {
             this.provider.logger.logError(error, "retrieveContextForPrompt");
-            throw error;
+            throw new Error("Failed to retrieve context for prompt");
         }
     }
 
     /**
-     * Recursively walks through the specified directory and collects file paths.
+     * Gets the list of matched files based on inclusion and exclusion regex patterns.
      * 
-     * @param dir - The directory to walk through.
-     * @param fileList - An array to accumulate the file paths (default is an empty array).
-     * @returns An array of file paths found in the directory.
+     * @returns An array of file paths that match the regex patterns.
      */
-    private walk(dir: string, fileList: string[] = []): string[] {
-        const files = fs.readdirSync(dir);
-        for (const file of files) {
-            const fullPath = path.join(dir, file);
-            if (fs.statSync(fullPath).isDirectory()) {
-                this.walk(fullPath, fileList);
-            } else {
-                fileList.push(fullPath);
-            }
-        }
-        return fileList;
+    public getMatchedFiles(): string[] {
+        const { inclusionRegex, exclusionRegex } = this.regexConfigs;
+        const explicitFiles = this.provider.getContext().globalState.get<string[]>('chatgpt.explicitFiles', []);
+        return this.fileManager.findMatchingFiles(
+            explicitFiles,
+            new RegExp(inclusionRegex),
+            exclusionRegex ? new RegExp(exclusionRegex) : undefined
+        );
     }
 
     /**
-     * Finds files in the explicitly added files/folders that match the inclusion pattern and do not match the exclusion pattern.
+     * Retrieves the content of the specified files and formats it for use in prompts.
      * 
-     * @param inclusionPattern - Regex pattern to include files.
-     * @param exclusionPattern - Optional regex pattern to exclude files.
-     * @returns A Promise that resolves to an array of matching file paths.
-     */
-    public async findMatchingFiles(inclusionPattern: string, exclusionPattern?: string): Promise<string[]> {
-        try {
-            const explicitFiles = this.provider.getContext().globalState.get<string[]>('chatgpt.explicitFiles', []);
-            this.provider.logger.info("Explicit files and folders", { explicitFiles });
-
-            if (explicitFiles.length === 0) {
-                this.provider.logger.info('No files or folders are explicitly added to the ChatGPT context.');
-                return [];
-            }
-
-            this.provider.logger.info("Matching files with inclusion pattern", { inclusionPattern, exclusionPattern });
-
-            const inclusionRegex = new RegExp(inclusionPattern);
-            const exclusionRegex = exclusionPattern ? new RegExp(exclusionPattern) : null;
-
-            let allFiles: string[] = [];
-
-            for (const filePath of explicitFiles) {
-                const stat = fs.statSync(filePath);
-                if (stat.isDirectory()) {
-                    allFiles = allFiles.concat(this.walk(filePath));
-                } else {
-                    allFiles.push(filePath);
-                }
-            }
-
-            const matchedFiles = allFiles.filter(file => {
-                const isFileIncluded = inclusionRegex.test(file);
-                const isFileExcluded = exclusionRegex ? exclusionRegex.test(file) : false;
-                return isFileIncluded && !isFileExcluded;
-            });
-
-            this.provider.logger.info("Matched files", { matchedFiles });
-            return matchedFiles;
-        } catch (error) {
-            this.provider.logger.error("Error while finding matching files", { error });
-            throw error;
-        }
-    }
-
-    /**
-     * Retrieves the content of specified files and formats them for inclusion in a prompt to the AI model.
-     * Each file's content is prefixed with its full path and an index for better clarity.
-     * 
-     * @param files - An array of file paths to retrieve content from.
-     * @returns A Promise that resolves to a string containing the formatted content of the files.
+     * @param files - An array of file paths to read.
+     * @returns A promise that resolves to a string containing the formatted content from the files.
      */
     private async getFilesContent(files: string[]): Promise<string> {
         const fileContents: string[] = [];
-        const contextTitle = "### Context from Project Files:\n\n";  // Main title for the context
+        const contextTitle = "### Context from Project Files:\n\n";
 
-        for (let idx = 0; idx < files.length; idx++) {
+        let totalLines = 0;
+        for (const [idx, file] of files.entries()) {
             try {
-                const file = files[idx];
-                const content = fs.readFileSync(file, 'utf-8');
-
-                // Use the full file path in the output
-                fileContents.push(
-                    `#### File ${idx + 1}:\n// Full Path: ${file}\n// Content below:\n${content}\n-----`
-                );
+                const { content, lineCount } = await this.fileManager.readFileContentWithLineCount(file);
+                fileContents.push(this.fileContentFormatter.formatFileContent(idx, file, content));
+                totalLines += lineCount;
             } catch (error) {
                 this.provider.logger.error(`Error reading file: ${files[idx]}`, { error });
             }
         }
 
-        return contextTitle + fileContents.join('\n\n');  // Join all file contents with double line breaks and prepend the title
+        this.provider.logger.info(`Added ${files.length} files to context. Total lines: ${totalLines}.`);
+        return contextTitle + fileContents.join('\n\n');
+    }
+}
+
+/**
+ * The `DocstringExtractor` class is responsible for extracting module-level 
+ * docstrings from provided files. It uses the `FileManager` to read file 
+ * contents and identify docstrings based on regex matching.
+ * 
+ * Key Features:
+ * - Extracts docstrings from files while ensuring they are correctly formatted.
+ * - Supports integration with the `FileManager` for file reading operations.
+ */
+export class DocstringExtractor {
+    private fileManager: FileManager;
+
+    /**
+     * Constructor for the `DocstringExtractor` class.
+     * Initializes a new instance with the provided FileManager.
+     * 
+     * @param fileManager - An instance of `FileManager` for file operations.
+     */
+    constructor(fileManager: FileManager) {
+        this.fileManager = fileManager;
     }
 
     /**
-     * Counts the number of lines in a specified file.
+     * Extracts module-level docstrings from the matched files.
      * 
-     * @param filePath - The path of the file to count lines in.
-     * @returns The number of lines in the file.
+     * @param matchedFiles - An array of file paths from which to extract docstrings.
+     * @returns A promise that resolves to an array of objects containing file paths and their respective docstrings.
      */
-    public static getLineCount(filePath: string): number {
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        return fileContent.split('\n').length;
+    public async extractModuleDocstrings(matchedFiles: string[]): Promise<{ filePath: string; docstring: string }[]> {
+        const docstrings: { filePath: string; docstring: string }[] = [];
+
+        for (const file of matchedFiles) {
+            const content = this.fileManager.readFileContent(file);
+            const docstringMatch = content.match(/\/\*\*([\s\S]*?)\*\//);
+            const importIndex = content.search(/^\s*import\s+/m);
+
+            if (docstringMatch && (importIndex === -1 || docstringMatch.index < importIndex)) {
+                docstrings.push({ filePath: file, docstring: docstringMatch[0] });
+            }
+        }
+
+        return docstrings;
+    }
+}
+
+/**
+ * The `FileContentFormatter` class is responsible for formatting the content 
+ * of files for integration into prompts. It structures the content in a 
+ * readable manner for better presentation in the ChatGPT interface.
+ * 
+ * Key Features:
+ * - Formats file content with appropriate headings and structure.
+ */
+export class FileContentFormatter {
+    /**
+     * Formats the content of a file for display.
+     * 
+     * @param idx - The index of the file in the list of files.
+     * @param file - The full path of the file.
+     * @param content - The content of the file to format.
+     * @returns A formatted string representing the file content.
+     */
+    public formatFileContent(idx: number, file: string, content: string): string {
+        return `#### File ${idx + 1}:\n// Full Path: ${file}\n// Content below:\n${content}\n-----`;
     }
 }

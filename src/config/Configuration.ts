@@ -23,42 +23,42 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { CoreLogger } from "../CoreLogger";
 
+let extensionContext: vscode.ExtensionContext;
 const logger = CoreLogger.getInstance();
 
-/**
- * Loads the default system prompt from a Markdown file.
- * If loading fails, an empty string is returned and an error is logged.
- * 
- * @returns The content of the system prompt or an empty string if loading fails.
- */
-export const defaultSystemPrompt = (() => {
-    try {
-        const promptPath = path.join(__dirname, '..', 'src', 'config', 'prompts', 'freeQuestionDefaultSystemPrompt.md');
-        const prompt = readFileSync(promptPath, 'utf-8');
-        return prompt;
-    } catch (error) {
-        logger.error('Failed to load system prompt: ', error);
-        return '';
-    }
-})();
+export let defaultSystemPromptForFreeQuestion: string = '';
+export let defaultSystemPromptForGenerateDocstring: string = '';
 
-/**
- * Loads the docstring prompt from a Markdown file.
- * If loading fails, throws an error instead of returning an empty string.
- * 
- * @returns {string} The content of the docstring prompt.
- * @throws {Error} If the prompt file cannot be found or read.
- */
-export const loadGenerateDocstringPrompt = (() => {
-    const promptPath = path.join(__dirname, '..', 'src', 'config', 'prompts', 'generateUpdateDocstringsPrompt.md');
+export function initialize(context: vscode.ExtensionContext) {
+    extensionContext = context;
+    loadPrompts();
+}
+
+function loadPrompts() {
+    // Load defaultSystemPromptForFreeQuestion
     try {
-        const prompt = readFileSync(promptPath, 'utf-8');
-        return prompt;
+        const promptPath = extensionContext.asAbsolutePath(
+            path.join('config', 'prompts', 'freeQuestionDefaultSystemPrompt.md')
+        );
+        logger.info(`Loading defaultSystemPromptForFreeQuestion from ${promptPath}`)
+        defaultSystemPromptForFreeQuestion = readFileSync(promptPath, 'utf-8');
     } catch (error) {
-        logger.error('Failed to load docstring prompt: ', error);
-        throw new Error(`Docstring prompt file not found at path: ${promptPath}`);
+        logger.logError(error, 'Failed to load system prompt', true);
+        defaultSystemPromptForFreeQuestion = '';
     }
-})();
+
+    // Load defaultSystemPromptForGenerateDocstring
+    try {
+        const promptPath = extensionContext.asAbsolutePath(
+            path.join('config', 'prompts', 'generateUpdateDocstringsPrompt.md')
+        );
+        logger.info(`Loading defaultSystemPromptForGenerateDocstring from ${promptPath}`)
+        defaultSystemPromptForGenerateDocstring = readFileSync(promptPath, 'utf-8');
+    } catch (error) {
+        logger.logError(error, 'Failed to load docstring prompt');
+        defaultSystemPromptForGenerateDocstring = '';
+    }
+}
 
 /**
  * Retrieves a configuration value based on the specified key.

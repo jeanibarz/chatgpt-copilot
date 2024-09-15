@@ -52,11 +52,12 @@ import { ChatModelFactory } from '../llm_models/ChatModelFactory';
 import { IChatModel } from '../llm_models/IChatModel';
 import { ChatHistoryManager } from "../services/ChatHistoryManager";
 import { ConfigurationManager } from "../services/ConfigurationManager";
-import { ContextManager } from "../services/ContextManager";
+import { ContextManager, ContextRetriever, DocstringExtractor } from "../services/ContextManager";
 import { ModelManager } from "../services/ModelManager";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
 import { WebviewMessageHandler } from "./WebviewMessageHandler";
+import { FileManager } from "../services/FileManager";
 
 /**
  * Enum representing the different command types for the ChatGPT extension.
@@ -123,6 +124,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public sessionManager: SessionManager;
   public conversationManager: ConversationManager;
   public chatHistoryManager: ChatHistoryManager;
+  public fileManager: FileManager;
   public contextManager: ContextManager;
   public messageHandler: WebviewMessageHandler;
   public responseHandler: ResponseHandler;
@@ -171,7 +173,12 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.sessionManager = new SessionManager(this);
     this.conversationManager = new ConversationManager(this);
     this.chatHistoryManager = chatHistoryManager;
-    this.contextManager = new ContextManager(this);
+
+    this.fileManager = new FileManager(this.logger); 
+    this.contextManager = new ContextManager(
+      new ContextRetriever(this, this.fileManager),
+      new DocstringExtractor(this.fileManager), 
+    );
     this.messageHandler = new WebviewMessageHandler(logger, commandHandler);
     this.responseHandler = new ResponseHandler(this);
     this.errorHandler = new ErrorHandler(logger);
@@ -305,57 +312,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       // Handle other types of errors
       const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
       vscode.window.showErrorMessage(`Something went wrong. Error ID: ${errorId}`);
-    }
-  }
-
-  /**
-   * Updates the list of files in the webview with information about 
-   * the available files in the current project.
-   * 
-   * @param files - An array of file objects containing path and line numbers.
-   */
-  public updateFilesList(files: { path: string; lines: number; }[]) {
-    if (this.webView) {
-      this.webView.webview.postMessage({ type: "updateFilesList", files });
-    } else {
-      this.leftOverMessage = { type: "updateFilesList", files };
-    }
-  }
-
-  /**
-   * Displays a list of files that match the inclusion and exclusion patterns 
-   * specified in the configuration.
-   * 
-   * @returns A Promise that resolves to an array of matched files.
-   */
-  public async showFiles() {
-    const inclusionRegex = getConfig<string>("fileInclusionRegex");
-    const exclusionRegex = getConfig<string>("fileExclusionRegex");
-
-    if (!inclusionRegex) {
-      vscode.window.showErrorMessage("Inclusion regex is not set in the configuration.");
-      return [];
-    }
-
-    this.logger.info("Inclusion Regex", { inclusionRegex });
-    this.logger.info("Exclusion Regex", { exclusionRegex });
-
-    try {
-      const files = await this.contextManager.findMatchingFiles(inclusionRegex, exclusionRegex);
-      this.logger.info("Matched Files", { files });
-
-      const filesWithLineCount = files.map(file => ({
-        path: file,
-        lines: ContextManager.getLineCount(file)
-      }));
-      this.updateFilesList(filesWithLineCount);
-
-      return files;  // Return matched files
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      vscode.window.showErrorMessage(`Error finding files: ${errorMessage}`);
-      this.logger.logError(error, "Error in showFiles");
-      return [];
     }
   }
 

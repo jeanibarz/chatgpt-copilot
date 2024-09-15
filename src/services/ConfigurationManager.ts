@@ -34,6 +34,12 @@ interface IConfigurationManager {
     getWorkspaceConfiguration(): any; // Define a more specific type if possible
 }
 
+interface ChatGptConfig {
+    model: string;
+    autoScroll: boolean;
+    conversationHistoryEnabled: boolean;
+}
+
 /**
  * The `ConfigurationManager` class handles loading and managing 
  * configuration settings for the extension. It initializes 

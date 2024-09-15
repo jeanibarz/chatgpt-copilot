@@ -21,6 +21,11 @@
 
 import { CoreMessage } from "ai";
 
+enum MessageRole {
+    User = 'user',
+    Assistant = 'assistant'
+}
+
 /**
  * The `ChatHistoryManager` class manages the chat history of user interactions
  * with the assistant. It allows for adding messages, clearing history, and
@@ -35,7 +40,7 @@ export class ChatHistoryManager {
      * @param role - The role of the message sender ('user' or 'assistant').
      * @param content - The content of the message.
      */
-    public addMessage(role: 'user' | 'assistant', content: string): void {
+    public addMessage(role: MessageRole, content: string): void {
         this.chatHistory.push({ role, content });
     }
 

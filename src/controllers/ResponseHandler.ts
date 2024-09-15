@@ -52,6 +52,7 @@ export class ResponseHandler {
 
         try {
             await model.sendMessage(prompt, additionalContext, updateResponse);
+            this.provider.chatHistoryManager.addMessage('user', prompt);
             await this.finalizeResponse(options);
         } catch (error) {
             this.provider.handleApiError(error, prompt, options);

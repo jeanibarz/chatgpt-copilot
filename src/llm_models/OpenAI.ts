@@ -30,13 +30,23 @@
 import { createAzure } from '@ai-sdk/azure';
 import { createOpenAI } from '@ai-sdk/openai';
 import { OpenAIChatLanguageModel } from "@ai-sdk/openai/internal/dist";
-import { streamText } from 'ai';
+import { AIMessage } from "@langchain/core/messages";
+import { Annotation, START, StateGraph } from "@langchain/langgraph";
+import { CoreMessage, streamText } from 'ai';
 import { CoreLogger } from "../CoreLogger";
 import { ModelConfig } from "../config/ModelConfig";
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
 import { OpenAIChatModel } from "./OpenAIChatModel";
 
 const logger = CoreLogger.getInstance();
+
+const MyGraphState = Annotation.Root({
+    messages: Annotation<CoreMessage[]>,
+    question: Annotation<string>,
+    answer: Annotation<string>,
+    provider: Annotation<ChatGptViewProvider>,
+    updateResponse: Annotation<(message: string) => void>,
+});
 
 /**
  * Initializes and returns the appropriate IChatModel instance based on the provided configuration.
@@ -86,6 +96,40 @@ export async function initGptModel(viewProvider: ChatGptViewProvider, config: Mo
     }
 }
 
+// Define the function that handles the input
+async function handleInput(state: typeof MyGraphState.State) {
+    const { messages, provider, updateResponse } = state;
+
+    logger.info('Invoking model with messages:', messages);
+
+    try {
+        const chunks = [];
+
+        const result = await streamText({
+            system: provider.modelManager.modelConfig.systemPrompt,
+            model: provider.apiChat,
+            messages: messages,
+            maxTokens: provider.modelManager.modelConfig.maxTokens,
+            topP: provider.modelManager.modelConfig.topP,
+            temperature: provider.modelManager.modelConfig.temperature,
+            abortSignal: provider.abortController ? provider.abortController.signal : undefined,
+        });
+
+        // Process the streamed response
+        for await (const textPart of result.textStream) {
+            updateResponse(textPart);
+            chunks.push(textPart);
+        }
+
+        // Return the final response
+        return { messages: [new AIMessage(chunks.join(""))] };
+    } catch (error) {
+        logger.error('Model invocation error:', error);
+        throw error;
+    }
+}
+
+
 /**
  * Manages the chat interaction with the OpenAI model, sending user queries and processing responses.
  * 
@@ -112,40 +156,39 @@ export async function chatCompletion(
     try {
         logger.info(`chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
-        // Add the user's question to the provider's chat history (without additionalContext)
-        provider.chatHistoryManager.addMessage('user', question);
+        // Create a new state graph with the MessagesAnnotation
+        const graph = new StateGraph(MyGraphState)
+            .addNode("handleInput", handleInput)
+            .addEdge(START, "handleInput");
+
+        // Compile the graph
+        const app = graph.compile();
 
         // Create a temporary chat history, including the additionalContext
-        const tempChatHistory = [...provider.chatHistoryManager.getHistory()]; // Get history from ChatHistoryManager
-        const fullQuestion = additionalContext ? `${additionalContext}\n\n${question}` : question;
-        tempChatHistory[tempChatHistory.length - 1] = { role: "user", content: fullQuestion }; // Replace last message with full question
+        const tempChatHistory = [...provider.chatHistoryManager.getHistory()];
+        const fullQuestion = additionalContext ? `${question}\n\n${additionalContext}` : question;
 
-        const chunks = [];
+        // Append a new message to the history
+        tempChatHistory.push({ role: "user", content: fullQuestion });
 
-        const result = await streamText({
-            system: provider.modelManager.modelConfig.systemPrompt,
-            model: provider.apiChat,
-            messages: tempChatHistory, // Use the temporary chat history with the additional context
-            maxTokens: provider.modelManager.modelConfig.maxTokens,
-            topP: provider.modelManager.modelConfig.topP,
-            temperature: provider.modelManager.modelConfig.temperature,
-            abortSignal: provider.abortController ? provider.abortController.signal : undefined,
-        });
+        // Invoke the graph with the current messages
+        const inputs = {
+            messages: tempChatHistory,
+            provider: provider,
+            updateResponse: updateResponse,
+        };
+        const response = await app.invoke(inputs);
 
-        // Process the streamed response
-        for await (const textPart of result.textStream) {
-            // logger.appendLine(
-            //     `INFO: chatgpt.model: ${provider.model} chatgpt.question: ${question} response: ${JSON.stringify(textPart, null, 2)}`
-            // );
-            updateResponse(textPart);
-            chunks.push(textPart);
-        }
-        provider.response = chunks.join("");
+        // provider.response = response;
 
-        // Add the assistant's response to the provider's chat history (without additionalContext)
-        provider.chatHistoryManager.addMessage('assistant', chunks.join(""));
+        // // Add the assistant's response to the provider's chat history (without additionalContext)
+        // provider.chatHistoryManager.addMessage('assistant', chunks.join(""));
 
-        logger.info(`chatgpt.response: ${provider.response}`);
+        // Assuming the response contains the assistant's message
+        const assistantResponse = response.messages[0].content; // Adjust this based on your actual response structure
+
+        provider.response = assistantResponse;
+        logger.info(`chatgpt.response: ${assistantResponse}`);
     } catch (error) {
         logger.info(`chatgpt.model: ${provider.modelManager.model} response: ${error}`);
         throw error;

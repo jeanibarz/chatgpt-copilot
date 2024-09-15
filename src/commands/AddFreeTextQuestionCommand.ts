@@ -9,7 +9,7 @@ export class AddFreeTextQuestionCommand implements ICommand {
     if (!provider.configurationManager.conversationHistoryEnabled) {
       provider.chatHistoryManager.clearHistory();
     }
-    provider.chatHistoryManager.addMessage('user', question);
+    
     await provider.sendApiRequest(question, { command: CommandType.AddFreeTextQuestion });
   }
 }

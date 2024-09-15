@@ -42,6 +42,7 @@ import { ContextDecorationProvider } from './decorators/ContextDecorationProvide
 import { ExplicitFilesManager } from './ExplicitFilesManager';
 import { ChatGptViewProvider, CommandType } from "./view/ChatGptViewProvider";
 import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
+import { initialize } from './config/Configuration';
 
 global.AbortController = AbortController;
 
@@ -98,6 +99,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Instantiate the ContextDecorationProvider
   const contextDecorationProvider = new ContextDecorationProvider(explicitFilesManager);
+
+  // Instantiate the Configuration, which load prompts
+  initialize(context);
 
   // Retrieve the adhoc command prefix from global state
   let adhocCommandPrefix: string =
@@ -415,10 +419,10 @@ function registerUtilityCommands(
     },
   );
 
-  // Command to show the files in the ChatGPT view
-  const showTypeHint = vscode.commands.registerCommand('chatgpt-copilot.showTypeHint', async () => {
-    provider.showFiles();
-  });
+  // // Command to show the files in the ChatGPT view
+  // const showTypeHint = vscode.commands.registerCommand('chatgpt-copilot.showTypeHint', async () => {
+  //   provider.showFiles();
+  // });
 
   // Command to generate docstrings
   const generateDocstringsCommand = vscode.commands.registerCommand('chatgpt-copilot.generateDocstrings', async () => {

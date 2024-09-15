@@ -16,7 +16,7 @@
  * - Provides methods to check the type of model currently in use.
  */
 
-import { defaultSystemPrompt, getApiKey, getRequiredConfig } from "../config/Configuration";
+import { defaultSystemPromptForFreeQuestion, getApiKey, getRequiredConfig } from "../config/Configuration";
 import { ModelConfig } from "../config/ModelConfig";
 import { CoreLogger } from "../CoreLogger";
 import { initClaudeModel } from '../llm_models/Anthropic';
@@ -96,7 +96,7 @@ export class ModelManager {
             logger.info("retrieving system prompt");
             if (!systemPrompt) {
                 logger.info("no systemPrompt found, using default system prompt");
-                systemPrompt = defaultSystemPrompt;
+                systemPrompt = defaultSystemPromptForFreeQuestion;
             }
 
             logger.info("retrieving api base url value");
@@ -135,14 +135,14 @@ export class ModelManager {
     }
 
     /**
-    * Initializes the appropriate model based on the current configuration.
-    * 
-    * This method checks the current model settings and initializes the corresponding
-    * model (e.g., GPT, Claude, Gemini) based on the configuration provided by the user.
-    * It ensures that the model is ready for use in chat interactions.
-    * 
-    * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
-    */
+     * Initializes the appropriate model based on the current configuration.
+     * 
+     * This method checks the current model settings and initializes the corresponding
+     * model (e.g., GPT, Claude, Gemini) based on the configuration provided by the user.
+     * It ensures that the model is ready for use in chat interactions.
+     * 
+     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
+     */
     private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
         if (this.isGpt35Model) {
             await initGptModel(viewProvider, this.modelConfig);
