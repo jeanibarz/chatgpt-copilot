@@ -2,13 +2,13 @@
 # yarn lockfile v1
 
 
-"@ai-sdk/anthropic@^0.0.30":
-  version "0.0.30"
-  resolved "https://registry.npmjs.org/@ai-sdk/anthropic/-/anthropic-0.0.30.tgz"
-  integrity sha512-iPJjKtIH8yk2cf5BNXLN6sn6TTghOh8puWothX4pPVBM/OKC4RWVjYTEELwUv2VDPIw918KBg2j/T0RfTgu+bw==
+"@ai-sdk/anthropic@^0.0.50":
+  version "0.0.50"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/anthropic/-/anthropic-0.0.50.tgz#95fc1cc49e0c9289a4d3a39ac42528fef25b5d02"
+  integrity sha512-++mqmFcUoQgjoCchAU6eVG3QfKdwkeJVNdMZ+jUiNdawn8diA6BlARlu7xFT4F7W3bcStfYv4hK1jwRyzAQtCg==
   dependencies:
-    "@ai-sdk/provider" "0.0.12"
-    "@ai-sdk/provider-utils" "1.0.2"
+    "@ai-sdk/provider" "0.0.23"
+    "@ai-sdk/provider-utils" "1.0.19"
 
 "@ai-sdk/azure@^0.0.14":
   version "0.0.14"
@@ -18,15 +18,6 @@
     "@ai-sdk/openai" "0.0.37"
     "@ai-sdk/provider" "0.0.12"
     "@ai-sdk/provider-utils" "1.0.2"
-
-"@ai-sdk/google-vertex@^0.0.36":
-  version "0.0.36"
-  resolved "https://registry.yarnpkg.com/@ai-sdk/google-vertex/-/google-vertex-0.0.36.tgz#2e33dd59cfe336f1e04fa86368bb1d603fd0016a"
-  integrity sha512-LtjbkurNt5K5IWWVL2ROmsxyMW9XNJV5XxIeL5+xrWNwt+smxFDGnnLDQDT/U3tbapRNvLmXmtVc8emSjbDFSg==
-  dependencies:
-    "@ai-sdk/provider" "0.0.23"
-    "@ai-sdk/provider-utils" "1.0.18"
-    json-schema "0.4.0"
 
 "@ai-sdk/google@^0.0.27":
   version "0.0.27"
@@ -54,10 +45,10 @@
     nanoid "3.3.6"
     secure-json-parse "2.7.0"
 
-"@ai-sdk/provider-utils@1.0.18":
-  version "1.0.18"
-  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-1.0.18.tgz#bd30948d6b4ad73a3fbc94f3beeb92f4fa198ded"
-  integrity sha512-9u/XE/dB1gsIGcxiC5JfGOLzUz+EKRXt66T8KYWwDg4x8d02P+fI/EPOgkf+T4oLBrcQgvs4GPXPKoXGPJxBbg==
+"@ai-sdk/provider-utils@1.0.19":
+  version "1.0.19"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-1.0.19.tgz#58562b7317c706f5afb24352183e38be4e72528b"
+  integrity sha512-p02Fq5Mnc8T6nwRBN1Iaou8YXvN1sDS6hbmJaD5UaRbXjizbh+8rpFS/o7jqAHTwf3uHCDitP3pnODyHdc/CDQ==
   dependencies:
     "@ai-sdk/provider" "0.0.23"
     eventsource-parser "1.1.2"
