@@ -1,6 +1,3 @@
-import { Utility } from './Utility';
-import { ChatGptViewProvider } from './view/ChatGptViewProvider';
-
 /**
  * This module manages the conversation context for the ChatGPT view provider 
  * within a VS Code extension. The `ConversationManager` class is responsible 
@@ -12,6 +9,9 @@ import { ChatGptViewProvider } from './view/ChatGptViewProvider';
  * - Handles conversation ID generation and management.
  * - Provides logging for conversation preparation and errors.
  */
+
+import { Utility } from './Utility';
+import { ChatGptViewProvider } from './view/ChatGptViewProvider';
 
 export class ConversationManager {
     private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing conversations

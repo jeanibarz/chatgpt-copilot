@@ -1,8 +1,11 @@
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+// src/commands/ClearGpt3Command.ts
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class ClearGpt3Command implements ICommand {
-  public type = CommandType.ClearGpt3;
+  public type = ChatGPTCommandType.ClearGpt3;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     provider.apiCompletion = undefined;

@@ -1,9 +1,6 @@
-// contextDecorationProvider.ts
-
-import * as vscode from 'vscode';
-import { ExplicitFilesManager } from '../ExplicitFilesManager';
-
 /**
+ * src/decorators/ContextDecorationProvider.ts
+ * 
  * This module provides a file decoration provider for the VS Code extension,
  * allowing files and folders to display specific decorations based on their
  * context within the ChatGPT environment.
@@ -19,22 +16,26 @@ import { ExplicitFilesManager } from '../ExplicitFilesManager';
  * - Supports event-driven updates for file decorations.
  */
 
+import * as vscode from 'vscode';
+import { InclusionState } from "../interfaces/enums/InclusionState";
+import { MyTreeDataProvider } from '../tree/MyTreeDataProvider';
+
 export class ContextDecorationProvider implements vscode.FileDecorationProvider {
     private onDidChange = new vscode.EventEmitter<vscode.Uri | vscode.Uri[]>();
     readonly onDidChangeFileDecorations = this.onDidChange.event;
 
-    /**
-     * Constructor for the `ContextDecorationProvider` class.
-     * Initializes the provider with the explicit files manager and registers it 
-     * with the VS Code window.
-     * 
-     * @param explicitFilesManager - An instance of `ExplicitFilesManager` used to manage 
-     * explicit file contexts.
-     */
-    constructor(private explicitFilesManager: ExplicitFilesManager) {
+    constructor(
+        private treeDataProvider: MyTreeDataProvider // Inject TreeDataProvider
+    ) {
         // Register the provider
         vscode.window.registerFileDecorationProvider(this);
+
+        // Listen to tree data changes to refresh decorations
+        this.treeDataProvider.onDidChangeTreeData(() => {
+            this.refresh();
+        });
     }
+
 
     /**
      * Provides file decoration for a given URI.
@@ -45,15 +46,29 @@ export class ContextDecorationProvider implements vscode.FileDecorationProvider 
      * @param uri - The URI of the file or folder for which to provide decoration.
      * @returns A `FileDecoration` if the file is in the context; otherwise, undefined.
      */
-    provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {
-        const isExplicitlyAdded = this.explicitFilesManager.getExplicitFiles().has(uri.fsPath);
+    public provideFileDecoration(uri: vscode.Uri): vscode.ProviderResult<vscode.FileDecoration> {
+        const filePath = uri.fsPath;
+        const treeNode = this.treeDataProvider.findNodeByPath(filePath, true);
 
-        if (isExplicitlyAdded) {
-            return {
-                badge: '★',
-                tooltip: 'This file/folder is in the ChatGPT context',
-                color: new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
-            };
+        if (treeNode) {
+            switch (treeNode.content) {
+                case InclusionState.Included:
+                    return {
+                        badge: '+',
+                        tooltip: 'This file/folder is in the ChatGPT context',
+                        color: new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
+                    };
+                case InclusionState.PartiallyIncluded:
+                    return {
+                        badge: '±', // Alternatively, choose a suitable symbol
+                        tooltip: 'This folder has some files in the ChatGPT context',
+                        color: new vscode.ThemeColor('gitDecoration.untrackedResourceForeground'),
+                    };
+                case InclusionState.NotIncluded:
+                    return undefined; // No decoration
+                default:
+                    return undefined;
+            }
         }
 
         return undefined;

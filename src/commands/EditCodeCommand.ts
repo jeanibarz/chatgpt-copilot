@@ -1,9 +1,13 @@
+// src/commands/EditCodeCommand.ts
+
 import * as vscode from 'vscode';
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class EditCodeCommand implements ICommand {
-  public type = CommandType.EditCode;
+  public type = ChatGPTCommandType.EditCode;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     const code = data.value;

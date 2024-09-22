@@ -1,7 +1,6 @@
-import { IHandler } from "../interfaces/IHandler";
-import { ILogger } from "../interfaces/ILogger";
-
 /**
+ * src/base/BaseHandler.ts
+ * 
  * This module provides an abstract base class for handlers that execute operations 
  * within the application. The `BaseHandler` class implements the `IHandler<T>` interface 
  * and provides a common structure for logging errors encountered during operation execution.
@@ -11,6 +10,9 @@ import { ILogger } from "../interfaces/ILogger";
  * - Provides logging capabilities for error handling.
  * - Requires subclasses to implement specific handling logic through the `execute` method.
  */
+
+import { IHandler } from "../interfaces/IHandler";
+import { ILogger } from "../interfaces/ILogger";
 
 export abstract class BaseHandler<T> implements IHandler<T> {
     protected logger: ILogger; // Logger instance for logging events

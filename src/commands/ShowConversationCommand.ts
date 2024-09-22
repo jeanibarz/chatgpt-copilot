@@ -1,8 +1,13 @@
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+// src/commands/ShowConversationCommand.ts
+
+import * as vscode from 'vscode';
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class ShowConversationCommand implements ICommand {
-  public type = CommandType.ShowConversation;
+  public type = ChatGPTCommandType.ShowConversation;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     // Focus the webview if not already focused

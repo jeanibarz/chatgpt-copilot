@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 import { ChatHistoryManager } from "../ChatHistoryManager";
 import { CommandHandler } from "../controllers/CommandHandler";
-import { CoreLogger } from "../CoreLogger";
+import { CoreLogger } from "../logging/CoreLogger";
 import { ConfigurationManager } from "../services/ConfigurationManager";
 import { ModelManager } from "../services/ModelManager";
 import { WebviewManager } from "../view/WebviewManager";
@@ -28,9 +28,9 @@ import { ChatGptViewProvider } from "./ChatGptViewProvider";
  * @returns An instance of `ChatGptViewProvider` configured with the provided context and logger.
  */
 export function createChatGptViewProvider(context: vscode.ExtensionContext, logger: CoreLogger): ChatGptViewProvider {
-    const webviewManager = new WebviewManager(logger);
+    const webviewManager = new WebviewManager();
     const modelManager = new ModelManager();
-    const configurationManager = new ConfigurationManager(logger, modelManager);
+    const configurationManager = new ConfigurationManager(modelManager);
     const commandHandler = new CommandHandler();
 
     const provider = new ChatGptViewProvider({

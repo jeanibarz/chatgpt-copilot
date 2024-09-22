@@ -1,8 +1,3 @@
-import { CoreLogger } from './CoreLogger';
-import { ChatModelFactory } from './llm_models/ChatModelFactory';
-import { IChatModel } from './llm_models/IChatModel';
-import { ChatGptViewProvider } from './view/ChatGptViewProvider';
-
 /**
  * This module provides functionality for generating and formatting docstrings 
  * using an AI model within a VS Code extension. The `DocstringGenerator` class 
@@ -14,6 +9,21 @@ import { ChatGptViewProvider } from './view/ChatGptViewProvider';
  * - Saves the formatted docstrings to temporary files for easy access.
  */
 
+import { IChatModel } from './interfaces';
+import { CoreLogger } from './logging/CoreLogger';
+import { ChatModelFactory } from './models/llm_models/ChatModelFactory';
+import { ChatGptViewProvider } from './view/ChatGptViewProvider';
+
+/**
+ * The DocstringGenerator class is responsible for generating and formatting 
+ * docstrings using an AI model. It interacts with the ChatGPT model to create 
+ * meaningful and context-aware docstrings based on the provided code prompts.
+ * 
+ * Key Features:
+ * - Generates docstrings by sending prompts to the AI model.
+ * - Formats generated docstrings to remove unnecessary annotations.
+ * - Integrates with a logger for event tracking and debugging.
+ */
 export class DocstringGenerator {
   private logger: CoreLogger; // Logger instance for logging events
   private provider: ChatGptViewProvider; // View provider for ChatGPT interactions
@@ -32,6 +42,8 @@ export class DocstringGenerator {
 
   /**
    * Generates docstrings by interacting with the AI model.
+   * This method sends a prompt to the AI model and waits for the generated 
+   * docstring response, which is then formatted for clarity.
    * 
    * @param prompt - The input code prompt for generating docstrings.
    * @returns A promise that resolves with the generated docstring.
@@ -56,6 +68,8 @@ export class DocstringGenerator {
 
   /**
    * Creates and returns the chat model for AI interaction.
+   * This method prepares the model for conversation, ensuring that the 
+   * necessary configurations are in place before creating the model instance.
    * 
    * @returns A promise that resolves to an instance of `IChatModel`.
    * @throws Will throw an error if the model preparation fails or the model configuration is incomplete.
@@ -82,6 +96,8 @@ export class DocstringGenerator {
 
   /**
    * Formats the generated docstring by removing unnecessary block annotations.
+   * This method trims the docstring and removes surrounding backticks to ensure 
+   * the final output is clean and readable.
    * 
    * @param docstring - The raw generated docstring.
    * @returns The formatted docstring.

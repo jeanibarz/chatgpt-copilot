@@ -1,9 +1,13 @@
+// src/commands/OpenNewCommand.ts
+
 import * as vscode from 'vscode';
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class OpenNewCommand implements ICommand {
-  public type = CommandType.OpenNew;
+  public type = ChatGPTCommandType.OpenNew;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     const content = data.value || '';

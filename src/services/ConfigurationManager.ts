@@ -21,8 +21,10 @@
  *   object for the "chatgpt" extension.
  */
 
+import * as vscode from 'vscode';
+
 import { getConfig, getRequiredConfig } from "../config/Configuration";
-import { CoreLogger } from "../CoreLogger";
+import { CoreLogger } from "../logging/CoreLogger";
 import { ModelManager } from "./ModelManager";
 
 /**
@@ -34,12 +36,6 @@ interface IConfigurationManager {
     getWorkspaceConfiguration(): any; // Define a more specific type if possible
 }
 
-interface ChatGptConfig {
-    model: string;
-    autoScroll: boolean;
-    conversationHistoryEnabled: boolean;
-}
-
 /**
  * The `ConfigurationManager` class handles loading and managing 
  * configuration settings for the extension. It initializes 
@@ -47,7 +43,7 @@ interface ChatGptConfig {
  * components within the application.
  */
 export class ConfigurationManager implements IConfigurationManager {
-    private logger: CoreLogger; // Logger instance for logging configuration events
+    private logger = CoreLogger.getInstance(); // Logger instance for logging configuration events
     public modelManager: ModelManager; // Instance of ModelManager to manage models
 
     // Configuration flags and settings
@@ -60,11 +56,9 @@ export class ConfigurationManager implements IConfigurationManager {
      * Constructor for the `ConfigurationManager` class.
      * Initializes the logger and model manager, and loads the configuration.
      * 
-     * @param logger - An instance of `CoreLogger` for logging configuration events.
      * @param modelManager - An instance of `ModelManager` to manage models.
      */
-    constructor(logger: CoreLogger, modelManager: ModelManager) {
-        this.logger = logger;
+    constructor(modelManager: ModelManager) {
         this.modelManager = modelManager;
         this.loadConfiguration(); // Load configuration upon instantiation
     }

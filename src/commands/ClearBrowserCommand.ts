@@ -1,8 +1,11 @@
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+// src/commands/ClearBrowserCommand.ts
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class ClearBrowserCommand implements ICommand {
-  public type = CommandType.ClearBrowser;
+  public type = ChatGPTCommandType.ClearBrowser;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     provider.logger.info('Browser cleared');

@@ -1,6 +1,6 @@
-import { ILogger } from "../interfaces/ILogger";
-
 /**
+ * src/errors/BaseErrorHandler.ts
+ * 
  * This module provides an abstract base class for error handlers within the application.
  * The `BaseErrorHandler` class serves as a foundation for creating specific error handlers,
  * offering shared functionality and a common interface for handling various errors.
@@ -10,6 +10,8 @@ import { ILogger } from "../interfaces/ILogger";
  * - Provides logging capabilities for error handling.
  * - Requires subclasses to implement specific error handling logic.
  */
+
+import { ILogger } from "../interfaces/ILogger";
 
 export abstract class BaseErrorHandler {
     protected logger: ILogger; // Logger instance for logging error events

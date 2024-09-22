@@ -16,7 +16,7 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { CoreLogger } from "../CoreLogger";
+import { CoreLogger } from "../logging/CoreLogger";
 
 /**
  * The `WebviewManager` class manages the setup and communication of webviews 
@@ -24,18 +24,8 @@ import { CoreLogger } from "../CoreLogger";
  * sending messages to them.
  */
 export class WebviewManager {
+  private logger = CoreLogger.getInstance(); // Logger instance for logging events
   private webviewView?: vscode.WebviewView; // The webview view instance
-  private logger: CoreLogger; // Logger instance for logging events
-
-  /**
-   * Constructor for the `WebviewManager` class.
-   * Initializes the WebviewManager with a logger instance.
-   * 
-   * @param logger - An instance of `CoreLogger` for logging events.
-   */
-  constructor(logger: CoreLogger) {
-    this.logger = logger;
-  }
 
   /**
    * Sets up the webview with HTML content and webview options.

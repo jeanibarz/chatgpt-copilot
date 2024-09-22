@@ -13,6 +13,8 @@
  */
 
 /**
+ * src/config/ModelConfig.ts
+ * 
  * This module defines the configuration settings for AI models used in the application.
  * It encapsulates the parameters required for initializing and managing the model's
  * behavior and interaction with the API.

@@ -1,4 +1,6 @@
 /**
+ * src/config/Configuration.ts
+ * 
  * The `configuration.ts` module manages application configuration settings 
  * for the ChatGPT VS Code extension. It provides functionalities to load 
  * default prompts, retrieve configuration values, and handle user input 
@@ -21,13 +23,14 @@
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { CoreLogger } from "../CoreLogger";
+import { CoreLogger } from "../logging/CoreLogger";
 
 let extensionContext: vscode.ExtensionContext;
 const logger = CoreLogger.getInstance();
 
 export let defaultSystemPromptForFreeQuestion: string = '';
 export let defaultSystemPromptForGenerateDocstring: string = '';
+export let defaultUserPromptForContextSelection: string = '';
 
 export function initialize(context: vscode.ExtensionContext) {
     extensionContext = context;
@@ -35,28 +38,19 @@ export function initialize(context: vscode.ExtensionContext) {
 }
 
 function loadPrompts() {
-    // Load defaultSystemPromptForFreeQuestion
-    try {
-        const promptPath = extensionContext.asAbsolutePath(
-            path.join('config', 'prompts', 'freeQuestionDefaultSystemPrompt.md')
-        );
-        logger.info(`Loading defaultSystemPromptForFreeQuestion from ${promptPath}`)
-        defaultSystemPromptForFreeQuestion = readFileSync(promptPath, 'utf-8');
-    } catch (error) {
-        logger.logError(error, 'Failed to load system prompt', true);
-        defaultSystemPromptForFreeQuestion = '';
-    }
+    defaultSystemPromptForFreeQuestion = loadPrompt('freeQuestionDefaultSystemPrompt.md');
+    defaultSystemPromptForGenerateDocstring = loadPrompt('generateUpdateDocstringsPrompt.md');
+    defaultUserPromptForContextSelection = loadPrompt('contextSelectionExpertPrompt.md');
+}
 
-    // Load defaultSystemPromptForGenerateDocstring
+function loadPrompt(filename: string): string {
+    const promptPath = extensionContext.asAbsolutePath(path.join('config', 'prompts', filename));
     try {
-        const promptPath = extensionContext.asAbsolutePath(
-            path.join('config', 'prompts', 'generateUpdateDocstringsPrompt.md')
-        );
-        logger.info(`Loading defaultSystemPromptForGenerateDocstring from ${promptPath}`)
-        defaultSystemPromptForGenerateDocstring = readFileSync(promptPath, 'utf-8');
+        logger.info(`Loading prompt from ${promptPath}`);
+        return readFileSync(promptPath, 'utf-8');
     } catch (error) {
-        logger.logError(error, 'Failed to load docstring prompt');
-        defaultSystemPromptForGenerateDocstring = '';
+        logger.logError(error, `Failed to load prompt: ${filename}`, true);
+        return '';
     }
 }
 
@@ -84,8 +78,9 @@ export function getConfig<T>(key: string, defaultValue?: T): T {
 export function getRequiredConfig<T>(key: string): T {
     const value = getConfig<T>(key);
     if (value === undefined) {
-        logger.error(`Configuration value for "${key}" is required but not found.`);
-        throw new Error(`Configuration value for "${key}" is required but not found.`);
+        const errorMessage = `Configuration value for "${key}" is required but not found.`;
+        logger.error(errorMessage);
+        throw new Error(errorMessage);
     }
     return value;
 }
@@ -113,44 +108,55 @@ export function onConfigurationChanged(callback: () => void): void {
  * @returns A Promise that resolves to the API Key or undefined if not found.
  */
 export async function getApiKey(): Promise<string | undefined> {
-    const state = vscode.extensions.getExtension('your.extension.id')?.exports.globalState; // Adjust as necessary
+    const state = vscode.extensions.getExtension('chatgpt-copilot')?.exports.globalState; // Adjust as necessary
     const configuration = vscode.workspace.getConfiguration('chatgpt');
     let apiKey = (configuration.get('gpt3.apiKey') as string) || (state?.get('chatgpt-gpt3-apiKey') as string);
 
-    if (!apiKey && process.env.OPENAI_API_KEY != null) {
-        apiKey = process.env.OPENAI_API_KEY;
-        logger.info('API key loaded from environment variable');
-    }
-
     if (!apiKey) {
-        const choice = await vscode.window.showErrorMessage(
-            'Please add your API Key to use OpenAI official APIs. Storing the API Key in Settings is discouraged due to security reasons.',
-            'Store in session (Recommended)',
-            'Open settings',
-        );
-
-        if (choice === 'Open settings') {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
-            return undefined;
-        } else if (choice === 'Store in session (Recommended)') {
-            const value = await vscode.window.showInputBox({
-                title: 'Store OpenAI API Key in session',
-                prompt: 'Please enter your OpenAI API Key to store in your session only. This option won’t persist the token in your settings.json file.',
-                ignoreFocusOut: true,
-                placeHolder: 'API Key',
-                value: apiKey || '',
-            });
-
-            if (value) {
-                apiKey = value;
-                state?.update('chatgpt-gpt3-apiKey', apiKey);
-                logger.info('API Key stored in session.');
-                vscode.window.showInformationMessage('API Key stored in session.');
-            }
+        const result = await promptForApiKey();
+        if (result) {
+            apiKey = result;
+        } else {
+            throw Error(`Can't proceed without a valid API key`);
         }
     }
 
     return apiKey;
+}
+
+async function promptForApiKey(): Promise<string | undefined> {
+    const choice = await vscode.window.showErrorMessage(
+        'Please add your API Key to use OpenAI official APIs. Storing the API Key in Settings is discouraged due to security reasons.',
+        'Store in session (Recommended)',
+        'Open settings',
+    );
+
+    if (choice === 'Open settings') {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
+        return undefined;
+    } else if (choice === 'Store in session (Recommended)') {
+        return await getApiKeyFromUser();
+    }
+
+    return undefined;
+}
+
+async function getApiKeyFromUser(): Promise<string | undefined> {
+    const value = await vscode.window.showInputBox({
+        title: 'Store OpenAI API Key in session',
+        prompt: 'Please enter your OpenAI API Key to store in your session only. This option won’t persist the token in your settings.json file.',
+        ignoreFocusOut: true,
+        placeHolder: 'API Key',
+    });
+
+    if (value) {
+        const state = vscode.extensions.getExtension('chatgpt-copilot')?.exports.globalState; // Adjust as necessary
+        state?.update('chatgpt-gpt3-apiKey', value);
+        logger.info('API Key stored in session.');
+        vscode.window.showInformationMessage('API Key stored in session.');
+    }
+
+    return value;
 }
 
 /**
@@ -162,30 +168,29 @@ export async function getApiKey(): Promise<string | undefined> {
  * @throws An error if the JSON credentials path is required but not provided.
  */
 export async function getJsonCredentialsPath(): Promise<string> {
-    const logger = CoreLogger.getInstance();
     const configuration = vscode.workspace.getConfiguration("chatgpt");
-
-    // Try to get the credentials path from configuration
     let jsonCredentialsPath = configuration.get<string>("gpt3.jsonCredentialsPath");
 
     if (!jsonCredentialsPath) {
-        // Prompt user for the JSON credentials path
-        const input = await vscode.window.showInputBox({
-            title: 'Enter Google Cloud JSON Credentials Path',
-            prompt: 'Please enter the path to your Google Cloud JSON credentials file.',
-            ignoreFocusOut: true,
-            placeHolder: 'Path to JSON credentials',
-        });
-
-        if (input) {
-            jsonCredentialsPath = input;
-            // Optionally, you could save it back to configuration
-            await configuration.update("gpt3.jsonCredentialsPath", jsonCredentialsPath, vscode.ConfigurationTarget.Global);
-            logger.info(`JSON credentials path set to: ${jsonCredentialsPath}`);
-        } else {
-            throw new Error("JSON credentials path is required for Vertex AI authentication.");
-        }
+        jsonCredentialsPath = await promptForJsonCredentialsPath();
+        await configuration.update("gpt3.jsonCredentialsPath", jsonCredentialsPath, vscode.ConfigurationTarget.Global);
+        logger.info(`JSON credentials path set to: ${jsonCredentialsPath}`);
     }
 
     return jsonCredentialsPath;
+}
+
+async function promptForJsonCredentialsPath(): Promise<string> {
+    const input = await vscode.window.showInputBox({
+        title: 'Enter Google Cloud JSON Credentials Path',
+        prompt: 'Please enter the path to your Google Cloud JSON credentials file.',
+        ignoreFocusOut: true,
+        placeHolder: 'Path to JSON credentials',
+    });
+
+    if (!input) {
+        throw new Error("JSON credentials path is required for Vertex AI authentication.");
+    }
+
+    return input;
 }

@@ -1,8 +1,11 @@
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
+// src/commands/ClearConversationCommand.ts
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class ClearConversationCommand implements ICommand {
-  public type = CommandType.ClearConversation;
+  public type = ChatGPTCommandType.ClearConversation;
 
   public async execute(data: any, provider: ChatGptViewProvider) {
     provider.conversationId = undefined;

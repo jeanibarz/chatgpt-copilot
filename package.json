@@ -90,18 +90,9 @@
           "command": "chatgpt-copilot.customPrompt2",
           "group": "chatGpt@10",
           "when": "editorHasSelection && customPrompt2-enabled"
-        },
-        {
-          "command": "chatgpt-copilot.showTypeHint",
-          "title": "Show Type Hint Window"
         }
       ],
       "commandPalette": [
-        {
-          "command": "chatgpt-copilot.showTypeHint",
-          "when": "editorTextFocus",
-          "group": "navigation"
-        },
         {
           "command": "chatgpt-copilot.addFileOrFolderToContext",
           "when": "editorTextFocus",
@@ -280,10 +271,6 @@
       {
         "command": "chatgpt-copilot.exportConversation",
         "title": "ChatGPT: Export conversation"
-      },
-      {
-        "command": "chatgpt-copilot.showTypeHint",
-        "title": "ChatGPT: Show Type Hint Window"
       }
     ],
     "viewsContainers": {
@@ -302,11 +289,42 @@
           "id": "chatgpt-copilot.view",
           "name": "Conversation window"
         }
+      ],
+      "explorer": [
+        {
+          "id": "chatgpt-copilot.projectExplorer",
+          "name": "ChatGPT-Copilot Project Explorer"
+        }
       ]
     },
     "configuration": {
       "title": "ChatGPT",
       "properties": {
+        "chatgpt.symbolsToInclude": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Class",
+              "Method",
+              "Function",
+              "Interface",
+              "Enum",
+              "Variable",
+              "Constant",
+              "Property",
+              "Event"
+            ]
+          },
+          "default": [
+            "Interface",
+            "Class",
+            "Method",
+            "Function",
+            "Enum"
+          ],
+          "description": "List of symbol kinds to include in the tree view."
+        },
         "chatgpt.systemPrompt": {
           "type": "string",
           "default": "",
@@ -636,11 +654,11 @@
     "@babel/preset-env": "^7.25.4",
     "@types/glob": "^8.1.0",
     "@types/isomorphic-fetch": "^0.0.39",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.13",
     "@types/mocha": "^10.0.7",
-    "@types/node": "^20.14.11",
+    "@types/node": "^22.5.5",
     "@types/uuid": "^10.0.0",
-    "@types/vscode": "^1.91.0",
+    "@types/vscode": "1.91.0",
     "@types/vscode-webview": "^1.57.5",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.31.1",
@@ -656,6 +674,7 @@
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.3",
     "util": "^0.12.5",
+    "vscode": "^1.1.37",
     "webpack": "^5.93.0"
   },
   "dependencies": {
@@ -669,8 +688,9 @@
     "@langchain/groq": "^0.0.17",
     "@langchain/langgraph": "^0.2.2",
     "@types/minimatch": "^5.1.2",
+    "@types/node-fetch": "^2.6.11",
     "abort-controller": "^3.0.0",
-    "ai": "^3.2.32",
+    "ai": "^3.3.37",
     "ajv": "^8.17.1",
     "axios": "^1.7.7",
     "cheerio": "^1.0.0-rc.12",
@@ -678,9 +698,13 @@
     "eventsource-parser": "^1.1.2",
     "gpt3-tokenizer": "^1.1.5",
     "isomorphic-fetch": "^3.0.0",
+    "jest-mock-extended": "^4.0.0-beta1",
     "keyv": "^4.5.4",
+    "langchain": "0.3.2",
+    "langsmith": "^0.1.55",
     "minimatch": "^10.0.1",
-    "openai": "4.61.0",
+    "node-fetch": "2",
+    "openai": "^4.61.0",
     "p-timeout": "^6.1.2",
     "punycode": "^2.3.1",
     "puppeteer": "^22.13.1",

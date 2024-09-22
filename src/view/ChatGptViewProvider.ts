@@ -40,74 +40,28 @@ import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { getConfig, onConfigurationChanged } from "../config/Configuration";
+import { onConfigurationChanged } from "../config/Configuration";
 import { CommandHandler } from "../controllers/CommandHandler";
 import { ResponseHandler } from "../controllers/ResponseHandler";
 import { SessionManager } from '../controllers/SessionManager';
 import { ConversationManager } from '../ConversationManager';
-import { CoreLogger } from "../CoreLogger";
 import { DocstringGenerator } from '../DocstringGenerator';
 import { ErrorHandler } from "../errors/ErrorHandler";
-import { ChatModelFactory } from '../llm_models/ChatModelFactory';
-import { IChatModel } from '../llm_models/IChatModel';
+import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatModel } from "../interfaces";
+import { CoreLogger } from "../logging/CoreLogger";
+import { ChatModelFactory } from '../models/llm_models/ChatModelFactory';
+import { ExplicitFilesManager } from "../services";
 import { ChatHistoryManager } from "../services/ChatHistoryManager";
 import { ConfigurationManager } from "../services/ConfigurationManager";
-import { ContextManager, ContextRetriever, DocstringExtractor } from "../services/ContextManager";
+import { ContextManager } from "../services/ContextManager";
+import { ContextRetriever } from "../services/ContextRetriever";
+import { DocstringExtractor } from "../services/DocstringExtractor";
+import { FileManager } from "../services/FileManager";
 import { ModelManager } from "../services/ModelManager";
+import { MyTreeDataProvider } from "../tree/MyTreeDataProvider";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
 import { WebviewMessageHandler } from "./WebviewMessageHandler";
-import { FileManager } from "../services/FileManager";
-
-/**
- * Enum representing the different command types for the ChatGPT extension.
- */
-export enum CommandType {
-  AddFreeTextQuestion = "addFreeTextQuestion",
-  EditCode = "editCode",
-  OpenNew = "openNew",
-  ClearConversation = "clearConversation",
-  ClearBrowser = "clearBrowser",
-  ClearGpt3 = "cleargpt3",
-  Login = "login",
-  OpenSettings = "openSettings",
-  OpenSettingsPrompt = "openSettingsPrompt",
-  ListConversations = "listConversations",
-  ShowConversation = "showConversation",
-  StopGenerating = "stopGenerating",
-  GenerateDocstrings = "generateDocstrings"
-}
-
-/**
- * Interface defining the options required to create a ChatGptViewProvider.
- */
-export interface ChatGptViewProviderOptions {
-  context: vscode.ExtensionContext;
-  logger: CoreLogger;
-  webviewManager: WebviewManager;
-  commandHandler: CommandHandler;
-  modelManager: ModelManager;
-  configurationManager: ConfigurationManager;
-  chatHistoryManager: ChatHistoryManager;
-}
-
-interface Message {
-  type: string;
-  value?: string;
-  code?: string;
-  inProgress?: boolean;
-  showStopButton?: boolean;
-  autoScroll?: boolean;
-  files?: { path: string; lines: number; }[];
-  [key: string]: any;
-}
-
-interface ApiRequestOptions {
-  command: string;
-  code?: string;
-  previousAnswer?: string;
-  language?: string;
-}
 
 /**
  * The `ChatGptViewProvider` class implements the `vscode.WebviewViewProvider` interface.
@@ -146,7 +100,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * Message to be rendered lazily if they haven't been rendered
    * in time before resolveWebviewView is called.
    */
-  private leftOverMessage?: Message;
+  private leftOverMessage?: IChatGPTMessage;
 
   /**
    * Constructor for the `ChatGptViewProvider` class.
@@ -154,7 +108,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * 
    * @param options - The options required to initialize the view provider.
    */
-  constructor(options: ChatGptViewProviderOptions) {
+  constructor(options: IChatGptViewProviderOptions) {
     const {
       context,
       logger,
@@ -174,10 +128,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.conversationManager = new ConversationManager(this);
     this.chatHistoryManager = chatHistoryManager;
 
-    this.fileManager = new FileManager(this.logger); 
+    this.fileManager = new FileManager();
     this.contextManager = new ContextManager(
       new ContextRetriever(this, this.fileManager),
-      new DocstringExtractor(this.fileManager), 
+      new DocstringExtractor(this.fileManager),
+      new MyTreeDataProvider(new ExplicitFilesManager(context)),
     );
     this.messageHandler = new WebviewMessageHandler(logger, commandHandler);
     this.responseHandler = new ResponseHandler(this);
@@ -237,7 +192,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * 
    * @param message - The message to be sent to the webview.
    */
-  public sendMessage(message: Message) {
+  public sendMessage(message: IChatGPTMessage) {
     this.webviewManager.sendMessage(message);
   }
 
@@ -393,7 +348,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns A boolean indicating whether the request can proceed.
    */
   private async canProceedWithRequest(): Promise<boolean> {
-    await this.commandHandler.executeCommand(CommandType.ShowConversation, {});
+    await this.commandHandler.executeCommand(ChatGPTCommandType.ShowConversation, {});
 
     if (this.inProgress) {
       vscode.window.showInformationMessage("Another request is already in progress. Please wait.");

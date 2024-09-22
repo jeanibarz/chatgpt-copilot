@@ -1,4 +1,6 @@
 /**
+ * src/errors/ErrorHandler.ts
+ * 
  * This module provides a centralized error handling mechanism for use within a VS Code extension.
  * The `ErrorHandler` class manages error handlers for different HTTP status codes,
  * allowing for customized responses and logging for various error scenarios.
@@ -16,7 +18,7 @@
  */
 
 import * as vscode from "vscode";
-import { CoreLogger } from "../CoreLogger";
+import { CoreLogger } from "../logging/CoreLogger";
 import { Utility } from "../Utility";
 import { BaseErrorHandler } from "./BaseErrorHandler";
 import { ErrorHandlerRegistry } from "./ErrorHandlerRegistry";

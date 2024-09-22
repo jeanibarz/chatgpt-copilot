@@ -1,4 +1,6 @@
 /**
+ * src/controllers/CommandHandler.ts
+ * 
  * This module handles command execution for the ChatGPT VS Code extension.
  * It defines various command classes that encapsulate specific actions 
  * that can be performed by the extension, such as adding questions, 
@@ -27,7 +29,6 @@ import { ClearConversationCommand } from '../commands/ClearConversationCommand';
 import { ClearGpt3Command } from '../commands/ClearGpt3Command';
 import { EditCodeCommand } from '../commands/EditCodeCommand';
 import { GenerateDocstringsCommand } from '../commands/GenerateDocstringsCommand';
-import { ICommand } from '../commands/ICommand';
 import { ListConversationsCommand } from '../commands/ListConversationsCommand';
 import { LoginCommand } from '../commands/LoginCommand';
 import { OpenNewCommand } from '../commands/OpenNewCommand';
@@ -35,8 +36,10 @@ import { OpenSettingsCommand } from '../commands/OpenSettingsCommand';
 import { OpenSettingsPromptCommand } from '../commands/OpenSettingsPromptCommand';
 import { ShowConversationCommand } from '../commands/ShowConversationCommand';
 import { StopGeneratingCommand } from '../commands/StopGeneratingCommand';
-import { CoreLogger } from "../CoreLogger";
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { CoreLogger } from "../logging/CoreLogger";
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 const logger = CoreLogger.getInstance();
 
@@ -47,7 +50,7 @@ const logger = CoreLogger.getInstance();
  * based on user interactions.
  */
 export class CommandHandler {
-  private commandMap: Map<CommandType, ICommand>; // Map to store command instances
+  private commandMap: Map<ChatGPTCommandType, ICommand>; // Map to store command instances
   private provider?: ChatGptViewProvider;
 
   /**
@@ -104,7 +107,7 @@ export class CommandHandler {
    * @param commandType - The type of the command to execute.
    * @param data - The data associated with the command execution.
    */
-  public async executeCommand(commandType: CommandType, data: any): Promise<void> {
+  public async executeCommand(commandType: ChatGPTCommandType, data: any): Promise<void> {
     if (!this.provider) {
       logger.error(`Provider is not available, can\'t execute command ${commandType}`);
       return;

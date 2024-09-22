@@ -1,9 +1,6 @@
-import { ChatModelFactory } from '../llm_models/ChatModelFactory';
-import { IChatModel } from '../llm_models/IChatModel';
-import { Utility } from '../Utility';
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-
 /**
+ * src/controllers/RequestManager.ts
+ * 
  * This module manages the API request logic for sending prompts and processing responses 
  * within the ChatGPT view provider for a VS Code extension. It handles the lifecycle 
  * of API requests, including preparing the conversation, sending prompts, and managing 
@@ -19,6 +16,22 @@ import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
  * - Prepares conversation context and processes the response from the chat model.
  */
 
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { IChatModel } from '../interfaces/IChatModel';
+import { ChatModelFactory } from '../models/llm_models/ChatModelFactory';
+import { Utility } from '../Utility';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+
+/**
+ * The RequestManager class is responsible for managing API requests to the chat model 
+ * within the ChatGPT view provider. It coordinates the lifecycle of sending prompts, 
+ * preparing the conversation context, and handling responses.
+ * 
+ * Key Features:
+ * - Sends API requests to generate responses based on user prompts.
+ * - Prevents concurrent requests by managing the state of ongoing requests.
+ * - Prepares the conversation context and processes responses from the chat model.
+ */
 export class RequestManager {
     private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing requests
 
@@ -53,7 +66,7 @@ export class RequestManager {
         },
     ) {
         // Focus the webview if not already focused
-        await this.provider.commandHandler.executeCommand(CommandType.ShowConversation, {});
+        await this.provider.commandHandler.executeCommand(ChatGPTCommandType.ShowConversation, {});
 
         if (this.provider.inProgress) {
             return; // Prevent new requests if one is already in progress

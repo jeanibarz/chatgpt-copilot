@@ -1,4 +1,6 @@
 /**
+ * src/errors/ErrorHandlerRegistry.ts
+ * 
  * This module provides a centralized registry for managing error handlers
  * associated with different HTTP status codes within a VS Code extension.
  * The `ErrorHandlerRegistry` class allows for registering, unregistering,

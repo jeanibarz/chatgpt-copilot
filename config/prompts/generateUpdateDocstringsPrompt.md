@@ -41,6 +41,8 @@ export class ModelManager {
 
 **Example Output:**
 /**
+ * src/ModelManager.ts
+ * 
  * This module manages the configuration and initialization of AI models 
  * for use within a VS Code extension. It is responsible for loading model 
  * settings from the configuration, preparing the models for conversation, 
@@ -105,9 +107,13 @@ export class ModelManager {
         // Implementation...
     }
 }
+
 ```
 
-The output should consist solely of the full content of the input code file, with the generated docstrings inserted where necessary. No part of the code should be reduced or simplified, and the output must contain the entire content of the file.
+Ensure you always generate a module docstring and ensure that it is placed BEFORE any imports statements.
+The beginning of the docstring text should always be 'This module ...', similar to the provided example.
+The output should consist solely of the full content of the input code file, with the generated docstrings inserted where necessary.
+No part of the code should be reduced or simplified, and the output must contain the entire content of the file.
 
 The output should only contain the updated code with the generated docstrings, without block surroundings, nothing else.
 

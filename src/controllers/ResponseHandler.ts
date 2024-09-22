@@ -1,7 +1,6 @@
-import { IChatModel } from '../llm_models/IChatModel';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
-
 /**
+ * src/controllers/ResponseHandler.ts
+ * 
  * This module handles chat responses within the ChatGPT view provider 
  * for a VS Code extension. It processes messages sent to the chat model, 
  * updates the response, and finalizes it for display in the webview.
@@ -15,6 +14,11 @@ import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
  * - Finalizes the response and updates chat history.
  * - Handles incomplete responses and prompts the user to continue.
  */
+
+import * as vscode from 'vscode';
+import { IChatModel } from '../interfaces/IChatModel';
+import { MessageRole } from "../services/ChatHistoryManager";
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class ResponseHandler {
     private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing responses
@@ -52,7 +56,7 @@ export class ResponseHandler {
 
         try {
             await model.sendMessage(prompt, additionalContext, updateResponse);
-            this.provider.chatHistoryManager.addMessage('user', prompt);
+            this.provider.chatHistoryManager.addMessage(MessageRole.User, prompt);
             await this.finalizeResponse(options);
         } catch (error) {
             this.provider.handleApiError(error, prompt, options);
@@ -70,7 +74,7 @@ export class ResponseHandler {
             this.provider.response = options.previousAnswer + this.provider.response; // Combine with previous answer
         }
 
-        this.provider.chatHistoryManager.addMessage('assistant', this.provider.response); // Add assistant response
+        this.provider.chatHistoryManager.addMessage(MessageRole.Assistant, this.provider.response); // Add assistant response
 
         if (this.isResponseIncomplete()) {
             await this.promptToContinue(options);

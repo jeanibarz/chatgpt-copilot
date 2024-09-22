@@ -1,5 +1,3 @@
-// extension.ts
-
 /**
  * @author Pengfei Ni
  *
@@ -37,12 +35,29 @@
 import * as vscode from 'vscode';
 
 import AbortController from "abort-controller";
-import { CoreLogger } from "./CoreLogger";
-import { ContextDecorationProvider } from './decorators/ContextDecorationProvider';
-import { ExplicitFilesManager } from './ExplicitFilesManager';
-import { ChatGptViewProvider, CommandType } from "./view/ChatGptViewProvider";
-import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
 import { initialize } from './config/Configuration';
+import { ContextDecorationProvider } from './decorators/ContextDecorationProvider';
+import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
+import { CoreLogger } from "./logging/CoreLogger";
+import { ExplicitFilesManager } from './services/ExplicitFilesManager';
+import TreeInteractionService from "./tree/TreeInteractionService";
+import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
+import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
+
+import fetch, {
+  Headers,
+  Request,
+  Response
+} from 'node-fetch';
+import { ContentInclusionCommandType, RenderMethod } from "./interfaces";
+import { MyTreeDataProvider } from './tree/MyTreeDataProvider';
+
+if (!globalThis.fetch) {
+  globalThis.fetch = fetch;
+  globalThis.Headers = Headers;
+  globalThis.Request = Request;
+  globalThis.Response = Response;
+}
 
 global.AbortController = AbortController;
 
@@ -96,9 +111,13 @@ const specialCommands: ChatGptCommand[] = [
 export async function activate(context: vscode.ExtensionContext) {
   // Instantiate the ExplicitFilesManager
   const explicitFilesManager = new ExplicitFilesManager(context);
+  const treeDataProvider = new MyTreeDataProvider(explicitFilesManager);
+  const decorationProvider = new ContextDecorationProvider(treeDataProvider);
 
-  // Instantiate the ContextDecorationProvider
-  const contextDecorationProvider = new ContextDecorationProvider(explicitFilesManager);
+  // Initialize event handlers
+  treeDataProvider.initialize();
+
+  vscode.window.registerTreeDataProvider('chatgpt-copilot-project-explorer', treeDataProvider);
 
   // Instantiate the Configuration, which load prompts
   initialize(context);
@@ -112,19 +131,33 @@ export async function activate(context: vscode.ExtensionContext) {
   // Instantiate the ChatGptViewProvider
   const provider = createChatGptViewProvider(context, logger);
 
+  logger.info('SHOWING INFO ABOUT TREE STRUCTURE');
+  logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
+
+  // Process the content commands (both inclusion and exclusion)
+  const treeInteractionService = new TreeInteractionService(provider.contextManager.treeDataProvider, logger);
+  const commands: Array<[ContentInclusionCommandType, string, string | null]> = [
+    [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers", null],  // Add the folder and its content
+    [ContentInclusionCommandType.Remove, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/FileLogger.ts", null],  // Exclude a specific file
+    [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/OutputChannelLogger.ts", "getChannelName"],  // Add a specific method inside the file
+  ];
+  await treeInteractionService.processInclusionOrExclusionCommands(commands);
+
+  // Refresh the tree to ensure it updates
+  // await provider.contextManager.treeDataProvider.refresh();
+
+  logger.info('SHOWING AGAIN THE TREE STRUCTURE');
+  logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
+
   // Register the webview provider
   const view = vscode.window.registerWebviewViewProvider(
     "chatgpt-copilot.view",
     provider,
-    {
-      webviewOptions: {
-        retainContextWhenHidden: true,
-      },
-    },
+    { webviewOptions: { retainContextWhenHidden: true } },
   );
 
   // Register commands related to file and folder context management
-  registerContextCommands(context, explicitFilesManager, contextDecorationProvider);
+  registerContextCommands(context, explicitFilesManager, decorationProvider);
 
   // Register menu commands using the utility function
   registerCommands(context, menuCommands, provider);
@@ -419,21 +452,15 @@ function registerUtilityCommands(
     },
   );
 
-  // // Command to show the files in the ChatGPT view
-  // const showTypeHint = vscode.commands.registerCommand('chatgpt-copilot.showTypeHint', async () => {
-  //   provider.showFiles();
-  // });
-
   // Command to generate docstrings
   const generateDocstringsCommand = vscode.commands.registerCommand('chatgpt-copilot.generateDocstrings', async () => {
-    await provider.commandHandler.executeCommand(CommandType.GenerateDocstrings, {});
+    await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateDocstrings, {});
   });
 
   context.subscriptions.push(
     resetThread,
     exportConversation,
     clearSession,
-    showTypeHint,
     generateDocstringsCommand,
   );
 }

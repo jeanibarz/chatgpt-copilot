@@ -18,11 +18,10 @@
 
 import { defaultSystemPromptForFreeQuestion, getApiKey, getRequiredConfig } from "../config/Configuration";
 import { ModelConfig } from "../config/ModelConfig";
-import { CoreLogger } from "../CoreLogger";
-import { initClaudeModel } from '../llm_models/Anthropic';
-import { initGeminiModel } from '../llm_models/Gemini';
-import { initGptModel } from '../llm_models/OpenAI';
-import { initGptLegacyModel } from '../llm_models/OpenAI-legacy';
+import { CoreLogger } from "../logging/CoreLogger";
+import { GeminiModel, OpenAIModel } from "../models/llm_models";
+import { initClaudeModel } from '../models/llm_models/Anthropic';
+import { initGptLegacyModel } from '../models/llm_models/OpenAI-legacy';
 import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 /**
@@ -145,11 +144,13 @@ export class ModelManager {
      */
     private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
         if (this.isGpt35Model) {
-            await initGptModel(viewProvider, this.modelConfig);
+            const model = new OpenAIModel();
+            model.initModel(viewProvider, this.modelConfig);
         } else if (this.isClaude) {
             await initClaudeModel(viewProvider, this.modelConfig);
         } else if (this.isGemini) {
-            await initGeminiModel(viewProvider, this.modelConfig);
+            const model = new GeminiModel();
+            model.initModel(viewProvider, this.modelConfig);
         } else {
             initGptLegacyModel(viewProvider, this.modelConfig);
         }

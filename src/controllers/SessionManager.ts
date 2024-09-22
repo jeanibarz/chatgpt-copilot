@@ -1,6 +1,6 @@
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-
 /**
+ * src/controllers/SessionManager.ts
+ * 
  * This module manages session-related tasks for the ChatGPT view provider 
  * within a VS Code extension. It includes functionalities to clear the session 
  * state, abort ongoing requests, and reset API models to ensure a fresh 
@@ -14,6 +14,9 @@ import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
  * - Clears the current session state and resets API models.
  * - Aborts ongoing generation requests when clearing the session.
  */
+
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
 export class SessionManager {
     private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing session state
@@ -39,7 +42,7 @@ export class SessionManager {
      */
     public clearSession(): void {
         // Abort ongoing generation if any
-        this.provider.commandHandler.executeCommand(CommandType.StopGenerating, {});
+        this.provider.commandHandler.executeCommand(ChatGPTCommandType.StopGenerating, {});
 
         // Reset API models and conversation state
         this.provider.apiChat = undefined;

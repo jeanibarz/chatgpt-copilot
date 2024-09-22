@@ -1,4 +1,6 @@
 /**
+ * src/view/WebviewMessageHandler.ts
+ * 
  * This module handles the communication between the webview and the extension within a VS Code environment.
  * It manages incoming messages from the webview and allows for sending responses back to the webview.
  * 
@@ -13,8 +15,9 @@
 
 import * as vscode from "vscode";
 import { CommandHandler } from "../controllers/CommandHandler";
-import { CoreLogger } from "../CoreLogger";
-import { ChatGptViewProvider, CommandType } from "./ChatGptViewProvider";
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { CoreLogger } from "../logging/CoreLogger";
+import { ChatGptViewProvider } from "./ChatGptViewProvider";
 
 /**
  * The `WebviewMessageHandler` class manages the message communication 
@@ -46,7 +49,7 @@ export class WebviewMessageHandler {
      */
     public handleMessages(webviewView: vscode.WebviewView, chatGptViewProvider: ChatGptViewProvider) {
         webviewView.webview.onDidReceiveMessage(async (data: {
-            type: CommandType; // The type of command to execute
+            type: ChatGPTCommandType; // The type of command to execute
             value: any; // The value associated with the command
             language?: string; // Optional language information
         }) => {

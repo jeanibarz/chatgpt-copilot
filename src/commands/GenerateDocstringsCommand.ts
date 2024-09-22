@@ -1,12 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import * as vscode from 'vscode';
-import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
-import { ChatGptViewProvider, CommandType } from '../view/ChatGptViewProvider';
-import { ICommand } from './ICommand';
-
 /**
+ * src/commands/GenerateDocstringsCommand.ts
+ * 
  * This module provides functionality for generating and inserting 
  * docstrings into code files within a VS Code extension. It handles 
  * the command execution for generating docstrings, managing temporary 
@@ -22,8 +16,19 @@ import { ICommand } from './ICommand';
  * - Manages temporary files for pre-save content comparison.
  * - Handles error messages and file saving operations.
  */
+
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import * as vscode from 'vscode';
+
+import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
+import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import { ICommand } from '../interfaces/ICommand';
+import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+
 export class GenerateDocstringsCommand implements ICommand {
-  public type = CommandType.GenerateDocstrings;
+  public type = ChatGPTCommandType.GenerateDocstrings;
 
   /**
    * Executes the command to generate and insert docstrings into the 
@@ -165,12 +170,12 @@ export class GenerateDocstringsCommand implements ICommand {
   private cleanupTempFile(tempFilePath: string) {
     const tempFileUri = vscode.Uri.file(tempFilePath);
     const listener = vscode.workspace.onDidCloseTextDocument((doc) => {
-      if (doc.uri.toString() === tempFileUri.toString()) {
-        fs.unlink(tempFilePath, (err) => {
+      if (doc.uri.fsPath === tempFileUri.fsPath) {
+        fs.unlink(tempFileUri.fsPath, (err) => {
           if (err) {
-            console.error(`Failed to delete temp file: ${tempFilePath}`, err);
+            console.error(`Failed to delete temp file: ${tempFileUri.fsPath}`, err);
           } else {
-            console.log(`Temp file ${tempFilePath} successfully deleted.`);
+            console.log(`Temp file ${tempFileUri.fsPath} successfully deleted.`);
           }
         });
         listener.dispose();
