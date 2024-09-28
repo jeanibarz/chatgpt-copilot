@@ -1,6 +1,6 @@
 // ./services/ExplicitFilesManager.ts
 
-import { readdirSync, statSync } from 'fs';
+import { promises } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { CoreLogger } from '../logging/CoreLogger'; // Ensure you have logging in place
@@ -17,6 +17,12 @@ export class ExplicitFilesManager {
     private explicitFolders: Set<string> = new Set<string>();
     private _onDidChangeFiles: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeFiles: vscode.Event<void> = this._onDidChangeFiles.event;
+
+    private debouncedSaveAndEmit = Utility.debounce(async () => {
+        this.saveExplicitFilesToState();
+        this.logger.debug('ExplicitFilesManager emitting debounced onDidChangeFiles event');
+        this._onDidChangeFiles.fire();
+    }, 100);
 
     /**
      * Constructor initializes the manager and loads explicit files from the extension's state.
@@ -61,8 +67,8 @@ export class ExplicitFilesManager {
      * Adds a resource (file or folder) to the explicit files/folders sets.
      * @param resourceUri - The URI of the file or folder to add.
      */
-    public addResource(resourceUri: vscode.Uri): void {
-        const fsPath = resourceUri.fsPath;
+    public async addResource(resourceUri: vscode.Uri): Promise<void> {
+        const fsPath = path.normalize(resourceUri.fsPath);
 
         // Check if the path is inside the workspace
         if (!this.isPathInWorkspace(fsPath)) {
@@ -72,26 +78,28 @@ export class ExplicitFilesManager {
         }
 
         try {
-            const stat = statSync(fsPath);
+            const stat = await promises.stat(fsPath);
 
             if (stat.isDirectory()) {
-                this.addFolderAndContents(fsPath);
+                await this.addFolderAndContents(fsPath);
             } else if (stat.isFile()) {
                 this.addFile(fsPath);
             }
-            this.emitFilesChanged(); // Emit event after adding
+
+            this.saveAndEmit();
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to add resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`);
             this.logger.error(`Failed to add resource: ${fsPath}`, { error });
         }
     }
 
+
     /**
      * Removes a resource (file or folder) from the explicit files/folders sets.
      * @param resourceUri - The URI of the file or folder to remove.
      */
-    public removeResource(resourceUri: vscode.Uri): void {
-        const fsPath = resourceUri.fsPath;
+    public async removeResource(resourceUri: vscode.Uri): Promise<void> {
+        const fsPath = path.normalize(resourceUri.fsPath);
 
         // Check if the path is inside the workspace
         if (!this.isPathInWorkspace(fsPath)) {
@@ -101,32 +109,64 @@ export class ExplicitFilesManager {
         }
 
         try {
-            if (this.explicitFiles.has(fsPath)) {
-                this.explicitFiles.delete(fsPath);
+            // Remove from explicitFiles and explicitFolders
+            if (this.explicitFiles.delete(fsPath)) {
                 this.logger.debug(`Removed file from explicitFiles: ${fsPath}`);
             }
 
-            if (this.explicitFolders.has(fsPath)) {
-                this.explicitFolders.delete(fsPath);
+            if (this.explicitFolders.delete(fsPath)) {
                 this.logger.debug(`Removed folder from explicitFolders: ${fsPath}`);
             }
 
-            const stat = statSync(fsPath);
-            if (stat.isDirectory()) {
-                // Recursively remove contents of the folder
-                const entries = readdirSync(fsPath);
-                entries.forEach((entry) => {
-                    const entryPath = path.join(fsPath, entry);
-                    this.removeResource(vscode.Uri.file(entryPath));
-                });
+            let stat;
+            try {
+                stat = await promises.stat(fsPath);
+            } catch (error) {
+                if (error.code === 'ENOENT') {
+                    // File or directory does not exist, no need to proceed further
+                    this.logger.debug(`File or directory does not exist: ${fsPath}`);
+                    stat = null;
+                } else {
+                    throw error; // Re-throw unexpected errors
+                }
             }
 
-            this.emitFilesChanged(); // Emit event after removal
+            if (stat && stat.isDirectory()) {
+                // Recursively remove contents of the folder
+                let entries: string[] = [];
+                try {
+                    entries = await promises.readdir(fsPath);
+                } catch (error) {
+                    if (error.code === 'ENOENT') {
+                        // Directory no longer exists
+                        this.logger.debug(`Directory does not exist: ${fsPath}`);
+                    } else {
+                        throw error; // Re-throw unexpected errors
+                    }
+                }
+
+                // Temporarily disable event emission during recursion
+                const originalSaveAndEmit = this.saveAndEmit;
+                this.saveAndEmit = () => { }; // No-op
+
+                try {
+                    for (const entry of entries) {
+                        const entryPath = path.join(fsPath, entry);
+                        await this.removeResource(vscode.Uri.file(entryPath));
+                    }
+                } finally {
+                    // Restore the original saveAndEmit method
+                    this.saveAndEmit = originalSaveAndEmit;
+                }
+            }
+
+            this.saveAndEmit();
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to remove resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`);
             this.logger.error(`Failed to remove resource: ${fsPath}`, { error });
         }
     }
+
 
     /**
      * Clears all resources from the explicit files/folders sets.
@@ -134,10 +174,9 @@ export class ExplicitFilesManager {
     public clearAllResources(): void {
         this.explicitFiles.clear();
         this.explicitFolders.clear();
-        this.saveExplicitFilesToState();
-        vscode.window.showInformationMessage('Cleared all files and folders from ChatGPT context.');
+        this.saveAndEmit();
+        vscode.window.showInformationMessage('Cleared all files and folders.');
         this.logger.info('Cleared all explicit files and folders.');
-        this.emitFilesChanged(); // Emit event after clearing
     }
 
     /**
@@ -162,7 +201,7 @@ export class ExplicitFilesManager {
      * @returns `true` if the file is included; otherwise, `false`.
      */
     public isFileIncluded(filePath: string): boolean {
-        return this.explicitFiles.has(filePath);
+        return this.explicitFiles.has(path.normalize(filePath));
     }
 
     /**
@@ -171,7 +210,7 @@ export class ExplicitFilesManager {
      * @returns `true` if the folder is included; otherwise, `false`.
      */
     public isFolderIncluded(folderPath: string): boolean {
-        return this.explicitFolders.has(folderPath);
+        return this.explicitFolders.has(path.normalize(folderPath));
     }
 
     /**
@@ -226,7 +265,7 @@ export class ExplicitFilesManager {
      * Adds a folder and all its contents to the explicit folders and files sets.
      * @param folderPath - The path of the folder to add.
      */
-    private addFolderAndContents(folderPath: string): void {
+    private async addFolderAndContents(folderPath: string): Promise<void> {
         if (!folderPath) {
             this.logger.warn('Received an undefined folderPath. Skipping.');
             return;
@@ -238,30 +277,40 @@ export class ExplicitFilesManager {
             return;
         }
 
-        if (!this.explicitFolders.has(folderPath)) {
-            this.explicitFolders.add(folderPath);
-            this.logger.debug(`Added folder to explicitFolders: ${folderPath}`);
+        const normalizedFolderPath = path.normalize(folderPath);
+        if (!this.explicitFolders.has(normalizedFolderPath)) {
+            this.explicitFolders.add(normalizedFolderPath);
+            this.logger.debug(`Added folder to explicitFolders: ${normalizedFolderPath}`);
         }
 
-        try {
-            const entries = readdirSync(folderPath);
-            entries.forEach((entry) => {
-                const entryPath = path.join(folderPath, entry);
-                try {
-                    const entryStat = statSync(entryPath);
-                    if (entryStat.isDirectory()) {
-                        this.addFolderAndContents(entryPath); // Recursively add subfolders
-                    } else if (entryStat.isFile()) {
-                        this.addFile(entryPath); // Add individual files
+        const stack: string[] = [folderPath];
+
+        while (stack.length > 0) {
+            const currentPath = stack.pop()!;
+            try {
+                const entries = await promises.readdir(currentPath, { withFileTypes: true });
+                for (const entry of entries) {
+                    const entryPath = path.join(currentPath, entry.name);
+                    if (entry.isDirectory()) {
+                        const normalizedEntryPath = path.normalize(entryPath);
+                        if (!this.explicitFolders.has(normalizedEntryPath)) {
+                            this.explicitFolders.add(normalizedEntryPath);
+                            this.logger.debug(`Added subfolder to explicitFolders: ${normalizedEntryPath}`);
+                        }
+                        stack.push(entryPath); // Add subdirectory to stack
+                    } else if (entry.isFile()) {
+                        const normalizedFilePath = path.normalize(entryPath);
+                        if (!this.explicitFiles.has(normalizedFilePath)) {
+                            this.explicitFiles.add(normalizedFilePath);
+                            this.logger.debug(`Added file to explicitFiles: ${normalizedFilePath}`);
+                        }
                     } else {
                         this.logger.warn(`Entry "${entryPath}" is neither a file nor a directory. Skipping.`);
                     }
-                } catch (error) {
-                    this.logger.error(`Failed to process entry "${entryPath}": ${Utility.getErrorMessage(error)}`, { error });
                 }
-            });
-        } catch (error) {
-            this.logger.error(`Failed to read directory: ${folderPath}: ${Utility.getErrorMessage(error)}`, { error });
+            } catch (error) {
+                this.logger.error(`Failed to read directory: ${currentPath}: ${Utility.getErrorMessage(error)}`, { error });
+            }
         }
     }
 
@@ -276,17 +325,18 @@ export class ExplicitFilesManager {
             return;
         }
 
-        if (!this.explicitFiles.has(filePath)) {
-            this.explicitFiles.add(filePath);
-            this.logger.debug(`Added file to explicitFiles: ${filePath}`);
+        const normalizedFilePath = path.normalize(filePath);
+        if (!this.explicitFiles.has(normalizedFilePath)) {
+            this.explicitFiles.add(normalizedFilePath);
+            this.logger.debug(`Added file to explicitFiles: ${normalizedFilePath}`);
         }
     }
 
     /**
-     * Emits the 'filesChanged' event to notify subscribers of changes.
+     * Saves the explicit files and folders to the workspace state and emits the change event.
+     * This method is debounced to prevent excessive state saves and event emissions.
      */
-    private emitFilesChanged(): void {
-        this.logger.debug('ExplicitFilesManager emitting event onDidChangeFiles');
-        this._onDidChangeFiles.fire();
+    private saveAndEmit(): void {
+        this.debouncedSaveAndEmit();
     }
 }

@@ -126,8 +126,8 @@ export class ModelManager {
                 modelSource,
             });
 
-            logger.info("initializing model");
-            await this.initModels(viewProvider);
+            // logger.info("initializing model");
+            // await this.initModels(viewProvider);
         }
 
         return true;

@@ -47,18 +47,17 @@ import { SessionManager } from '../controllers/SessionManager';
 import { ConversationManager } from '../ConversationManager';
 import { DocstringGenerator } from '../DocstringGenerator';
 import { ErrorHandler } from "../errors/ErrorHandler";
-import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatModel } from "../interfaces";
+import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatGptViewProviderOptions, IChatModel } from "../interfaces";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ChatModelFactory } from '../models/llm_models/ChatModelFactory';
-import { ExplicitFilesManager } from "../services";
-import { ChatHistoryManager } from "../services/ChatHistoryManager";
+import { ChatHistoryManager } from "../services";
 import { ConfigurationManager } from "../services/ConfigurationManager";
 import { ContextManager } from "../services/ContextManager";
 import { ContextRetriever } from "../services/ContextRetriever";
 import { DocstringExtractor } from "../services/DocstringExtractor";
 import { FileManager } from "../services/FileManager";
 import { ModelManager } from "../services/ModelManager";
-import { MyTreeDataProvider } from "../tree/MyTreeDataProvider";
+import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
 import { WebviewMessageHandler } from "./WebviewMessageHandler";
@@ -74,6 +73,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private context: vscode.ExtensionContext;
   public webviewManager: WebviewManager; // Responsible for handling webview initialization and interactions.
   public modelManager: ModelManager;
+  public treeDataProvider: FilteredTreeDataProvider;
+  public treeRenderer: TreeRenderer;
   public configurationManager: ConfigurationManager; // Responsible for managing and loading configuration values.
   public sessionManager: SessionManager;
   public conversationManager: ConversationManager;
@@ -116,6 +117,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       commandHandler,
       modelManager,
       configurationManager,
+      treeDataProvider,
+      treeRenderer,
       chatHistoryManager
     } = options;
     this.context = context;
@@ -124,15 +127,17 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.commandHandler = commandHandler;
     this.modelManager = modelManager;
     this.configurationManager = configurationManager;
+    this.treeRenderer = treeRenderer;
     this.sessionManager = new SessionManager(this);
     this.conversationManager = new ConversationManager(this);
+    this.treeDataProvider = treeDataProvider;
     this.chatHistoryManager = chatHistoryManager;
 
     this.fileManager = new FileManager();
     this.contextManager = new ContextManager(
       new ContextRetriever(this, this.fileManager),
       new DocstringExtractor(this.fileManager),
-      new MyTreeDataProvider(new ExplicitFilesManager(context)),
+      this.treeDataProvider,
     );
     this.messageHandler = new WebviewMessageHandler(logger, commandHandler);
     this.responseHandler = new ResponseHandler(this);
@@ -146,7 +151,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   /**
    * Initialize configuration settings and listeners.
    */
-  private initializeConfiguration() {
+  public initializeConfiguration() {
     this.configurationManager.loadConfiguration();
     onConfigurationChanged(() => {
       this.configurationManager.loadConfiguration();
@@ -314,10 +319,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    const additionalContext = await this.retrieveAdditionalContext();
-    if (additionalContext === null) {
-      return;
-    }
+    const additionalContext = "";
+    // const additionalContext = await this.retrieveAdditionalContext();
+    // if (additionalContext === null) {
+    //   return;
+    // }
 
     const formattedQuestion = this.processQuestion(prompt, options.code, options.language);
 
@@ -391,19 +397,19 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /**
-   * Retrieves additional context for the prompt by invoking the context manager.
-   *
-   * @returns The additional context as a string, or null if an error occurs.
-   */
-  private async retrieveAdditionalContext(): Promise<string | null> {
-    try {
-      return await this.contextManager.retrieveContextForPrompt();
-    } catch (error) {
-      this.logger.logError(error, "Failed to retrieve context for prompt", true);
-      return null;
-    }
-  }
+  // /**
+  //  * Retrieves additional context for the prompt by invoking the context manager.
+  //  *
+  //  * @returns The additional context as a string, or null if an error occurs.
+  //  */
+  // private async retrieveAdditionalContext(): Promise<string | null> {
+  //   try {
+  //     return await this.contextManager.retrieveContextForPrompt();
+  //   } catch (error) {
+  //     this.logger.logError(error, "Failed to retrieve context for prompt", true);
+  //     return null;
+  //   }
+  // }
 
   /**
    * Focuses the webview to ensure it is visible to the user.
@@ -435,7 +441,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.logger.info(`Model Config: ${JSON.stringify(modelConfig)}`);
 
     try {
-      const chatModel = await ChatModelFactory.createChatModel(this, modelConfig);
+      const chatModel = await ChatModelFactory.createChatModel(this);
       this.logger.info('Chat model created successfully');
       return chatModel;
     } catch (error) {

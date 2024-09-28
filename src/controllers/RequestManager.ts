@@ -94,12 +94,12 @@ export class RequestManager {
         this.provider.response = "";
 
         let additionalContext = "";
-        try {
-            additionalContext = await this.provider.contextManager.retrieveContextForPrompt();
-        } catch (error) {
-            this.provider.logger.logError(error, "Failed to retrieve context for prompt", true);
-            return;
-        }
+        // try {
+        //     additionalContext = await this.provider.contextManager.retrieveContextForPrompt();
+        // } catch (error) {
+        //     this.provider.logger.logError(error, "Failed to retrieve context for prompt", true);
+        //     return;
+        // }
 
         const formattedQuestion = this.provider.processQuestion(prompt, options.code, options.language);
 

@@ -31,6 +31,7 @@ const logger = CoreLogger.getInstance();
 export let defaultSystemPromptForFreeQuestion: string = '';
 export let defaultSystemPromptForGenerateDocstring: string = '';
 export let defaultUserPromptForContextSelection: string = '';
+export let defaultSystemPromptForContextSelection: string = '';
 
 export function initialize(context: vscode.ExtensionContext) {
     extensionContext = context;
@@ -40,7 +41,8 @@ export function initialize(context: vscode.ExtensionContext) {
 function loadPrompts() {
     defaultSystemPromptForFreeQuestion = loadPrompt('freeQuestionDefaultSystemPrompt.md');
     defaultSystemPromptForGenerateDocstring = loadPrompt('generateUpdateDocstringsPrompt.md');
-    defaultUserPromptForContextSelection = loadPrompt('contextSelectionExpertPrompt.md');
+    defaultUserPromptForContextSelection = loadPrompt('contextSelectionExpertDefaultUserPrompt.md');
+    defaultSystemPromptForContextSelection = loadPrompt('contextSelectionExpertDefaultSystemPrompt.md');
 }
 
 function loadPrompt(filename: string): string {

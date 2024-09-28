@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { CommandHandler } from "../controllers/CommandHandler";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ChatHistoryManager, ConfigurationManager, ModelManager } from "../services";
-import { MyTreeDataProvider } from "../tree";
+import { TreeRenderer } from "../tree";
+import { FilteredTreeDataProvider } from "../tree/FilteredTreeDataProvider";
 import { WebviewManager } from "../view";
 
 /**
@@ -10,11 +11,13 @@ import { WebviewManager } from "../view";
  */
 export interface IChatGptViewProviderOptions {
   context: vscode.ExtensionContext;
+  workspaceRoot: string,
   logger: CoreLogger;
   webviewManager: WebviewManager;
   commandHandler: CommandHandler;
   modelManager: ModelManager;
+  treeDataProvider: FilteredTreeDataProvider;
+  treeRenderer: TreeRenderer;
   configurationManager: ConfigurationManager;
   chatHistoryManager: ChatHistoryManager;
-  myTreeDataProvider: MyTreeDataProvider;
 }

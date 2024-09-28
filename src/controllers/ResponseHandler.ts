@@ -55,7 +55,7 @@ export class ResponseHandler {
         };
 
         try {
-            await model.sendMessage(prompt, additionalContext, updateResponse);
+            await model.generate(prompt, additionalContext, updateResponse, 'advanced');
             this.provider.chatHistoryManager.addMessage(MessageRole.User, prompt);
             await this.finalizeResponse(options);
         } catch (error) {
@@ -81,6 +81,7 @@ export class ResponseHandler {
         }
 
         this.sendResponseUpdate(true); // Send final response indicating completion
+        this.provider.response = '';
     }
 
     /**

@@ -1,9 +1,11 @@
 /**
  * src/PromptFormatter.ts
  * 
- * The `PromptFormatter` class is responsible for formatting various types of prompts
- * used in interactions with the AI models. It provides methods to format conversation
- * history, docstrings, project layouts, and retrieved content.
+ * This module defines the `PromptFormatter` class, which is responsible for 
+ * formatting various types of prompts used in interactions with AI models. 
+ * It provides methods to format conversation history, docstrings, project 
+ * layouts, and retrieved content, ensuring that the output is clear and 
+ * structured for effective communication with the models.
  */
 
 import { CoreMessage } from "ai";

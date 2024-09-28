@@ -19,7 +19,7 @@ import { ContentInclusionCommandType, InclusionState, ITreeCommandsJson, ITreeNo
 import { CoreLogger } from '../logging/CoreLogger';
 import { FileManager } from '../services/FileManager';
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
-import { MyTreeDataProvider } from './MyTreeDataProvider';
+import { FilteredTreeDataProvider } from "./FilteredTreeDataProvider";
 
 const logger = CoreLogger.getInstance();
 
@@ -41,11 +41,11 @@ export class TreeInteractionService {
      * Initializes a new instance of the TreeInteractionService with 
      * the provided tree data provider and logger.
      * 
-     * @param treeDataProvider - An instance of `MyTreeDataProvider` for managing tree data.
+     * @param treeDataProvider - An instance of `FilteredTreeDataProvider` for managing tree data.
      * @param logger - An instance of `ChatGptViewProvider['logger']` for logging events.
      */
-    constructor(private treeDataProvider: MyTreeDataProvider, logger: ChatGptViewProvider['logger']) {
-        this.fileManager = new FileManager(logger);
+    constructor(private treeDataProvider: FilteredTreeDataProvider, logger: ChatGptViewProvider['logger']) {
+        this.fileManager = new FileManager();
     }
 
     /**

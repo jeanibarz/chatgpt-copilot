@@ -35,22 +35,17 @@
 import * as vscode from 'vscode';
 
 import AbortController from "abort-controller";
-import { initialize } from './config/Configuration';
-import { ContextDecorationProvider } from './decorators/ContextDecorationProvider';
-import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
-import { CoreLogger } from "./logging/CoreLogger";
-import { ExplicitFilesManager } from './services/ExplicitFilesManager';
-import TreeInteractionService from "./tree/TreeInteractionService";
-import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
-import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
-
 import fetch, {
   Headers,
   Request,
   Response
 } from 'node-fetch';
-import { ContentInclusionCommandType, RenderMethod } from "./interfaces";
-import { MyTreeDataProvider } from './tree/MyTreeDataProvider';
+import { initialize } from './config/Configuration';
+import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
+import { CoreLogger } from "./logging/CoreLogger";
+import { FilteredTreeDataProvider } from './tree/FilteredTreeDataProvider';
+import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
+import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
 
 if (!globalThis.fetch) {
   globalThis.fetch = fetch;
@@ -109,15 +104,15 @@ const specialCommands: ChatGptCommand[] = [
  *                  and services.
  */
 export async function activate(context: vscode.ExtensionContext) {
-  // Instantiate the ExplicitFilesManager
-  const explicitFilesManager = new ExplicitFilesManager(context);
-  const treeDataProvider = new MyTreeDataProvider(explicitFilesManager);
-  const decorationProvider = new ContextDecorationProvider(treeDataProvider);
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  const workspaceRoot = (workspaceFolders && workspaceFolders.length > 0)
+    ? workspaceFolders[0].uri.fsPath : null;
 
-  // Initialize event handlers
-  treeDataProvider.initialize();
+  if (!workspaceRoot) {
+    throw Error('No workspace root');
+  }
 
-  vscode.window.registerTreeDataProvider('chatgpt-copilot-project-explorer', treeDataProvider);
+  const logger = CoreLogger.getInstance();
 
   // Instantiate the Configuration, which load prompts
   initialize(context);
@@ -126,28 +121,27 @@ export async function activate(context: vscode.ExtensionContext) {
   let adhocCommandPrefix: string =
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
-  const logger = CoreLogger.getInstance();
-
   // Instantiate the ChatGptViewProvider
-  const provider = createChatGptViewProvider(context, logger);
+  const provider = await createChatGptViewProvider(context, workspaceRoot, logger);
 
-  logger.info('SHOWING INFO ABOUT TREE STRUCTURE');
-  logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
+  // logger.info('SHOWING INFO ABOUT TREE STRUCTURE');
+  // logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
 
   // Process the content commands (both inclusion and exclusion)
-  const treeInteractionService = new TreeInteractionService(provider.contextManager.treeDataProvider, logger);
-  const commands: Array<[ContentInclusionCommandType, string, string | null]> = [
-    [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers", null],  // Add the folder and its content
-    [ContentInclusionCommandType.Remove, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/FileLogger.ts", null],  // Exclude a specific file
-    [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/OutputChannelLogger.ts", "getChannelName"],  // Add a specific method inside the file
-  ];
-  await treeInteractionService.processInclusionOrExclusionCommands(commands);
+
+  // const treeInteractionService = new TreeInteractionService(treeDataProvider, logger);
+  // const commands: Array<[ContentInclusionCommandType, string, string | null]> = [
+  //   [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers", null],  // Add the folder and its content
+  //   [ContentInclusionCommandType.Remove, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/FileLogger.ts", null],  // Exclude a specific file
+  //   [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/OutputChannelLogger.ts", "getChannelName"],  // Add a specific method inside the file
+  // ];
+  // await treeInteractionService.processInclusionOrExclusionCommands(commands);
 
   // Refresh the tree to ensure it updates
   // await provider.contextManager.treeDataProvider.refresh();
 
-  logger.info('SHOWING AGAIN THE TREE STRUCTURE');
-  logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
+  // logger.info('SHOWING AGAIN THE TREE STRUCTURE');
+  // logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
 
   // Register the webview provider
   const view = vscode.window.registerWebviewViewProvider(
@@ -157,7 +151,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   // Register commands related to file and folder context management
-  registerContextCommands(context, explicitFilesManager, decorationProvider);
+  registerContextCommands(context, provider.treeDataProvider);
 
   // Register menu commands using the utility function
   registerCommands(context, menuCommands, provider);
@@ -220,28 +214,49 @@ export async function activate(context: vscode.ExtensionContext) {
  */
 function registerContextCommands(
   context: vscode.ExtensionContext,
-  explicitFilesManager: ExplicitFilesManager,
-  contextDecorationProvider: ContextDecorationProvider
+  treeDataProvider: FilteredTreeDataProvider,
 ) {
   // Command to add a specific file or folder to the context
-  const addFileOrFolderToContext = vscode.commands.registerCommand('chatgpt-copilot.addFileOrFolderToContext', async (uri: vscode.Uri) => {
+  const addFileOrFolderToContext = vscode.commands.registerCommand('chatgpt-copilot.addFileOrFolderToContext', async (target: vscode.Uri | vscode.TreeItem) => {
+    let uri: vscode.Uri | undefined;
+
+    // Check if the target is a URI directly (Project Explorer)
+    if (target instanceof vscode.Uri) {
+      uri = target;
+    }
+    // Check if the target is a TreeItem (Custom Tree View)
+    else if (target instanceof vscode.TreeItem && target.resourceUri) {
+      uri = target.resourceUri;
+    }
+
     if (uri && uri.fsPath) {
-      explicitFilesManager.addResource(uri);
-      contextDecorationProvider.refresh();
-      vscode.window.showInformationMessage(`Added to ChatGPT context: ${uri.fsPath}`);
-      explicitFilesManager.saveExplicitFilesToState();
+      await treeDataProvider.explicitFilesManager.addResource(uri);
+      treeDataProvider.refresh();
+      vscode.window.showInformationMessage(`Added resource to ChatGPT-Copilot Context: ${uri.fsPath}`);
     } else {
       vscode.window.showErrorMessage("No file or folder selected.");
     }
   });
 
   // Command to remove a specific file or folder from the context
-  const removeFileOrFolderFromContext = vscode.commands.registerCommand('chatgpt-copilot.removeFileOrFolderFromContext', async (uri: vscode.Uri) => {
+  const removeFileOrFolderFromContext = vscode.commands.registerCommand('chatgpt-copilot.removeFileOrFolderFromContext', async (target: vscode.Uri | vscode.TreeItem) => {
+    let uri: vscode.Uri | undefined;
+
+    // Check if the target is a URI directly (Project Explorer)
+    if (target instanceof vscode.Uri) {
+      uri = target;
+    }
+    // Check if the target is a TreeItem (Custom Tree View)
+    else if (target instanceof vscode.TreeItem && target.resourceUri) {
+      uri = target.resourceUri;
+    }
+
     if (uri && uri.fsPath) {
-      explicitFilesManager.removeResource(uri);
-      contextDecorationProvider.refresh();
-      vscode.window.showInformationMessage(`Removed from ChatGPT context: ${uri.fsPath}`);
-      explicitFilesManager.saveExplicitFilesToState();
+      console.log(`Removing resource to E: ${uri.fsPath}`);
+      await treeDataProvider.explicitFilesManager.removeResource(uri);
+      // Refresh the tree or other views as needed
+      treeDataProvider.refresh();
+      vscode.window.showInformationMessage(`Removed from ChatGPT-Copilot Context: ${uri.fsPath}`);
     } else {
       vscode.window.showErrorMessage("No file or folder selected.");
     }
@@ -249,8 +264,8 @@ function registerContextCommands(
 
   // Command to clear all explicitly added files and folders
   const clearAllFilesFromContext = vscode.commands.registerCommand('chatgpt-copilot.clearAllFilesFromContext', async () => {
-    explicitFilesManager.clearAllResources();
-    contextDecorationProvider.refresh();
+    treeDataProvider.explicitFilesManager.clearAllResources();
+    treeDataProvider.refresh();
   });
 
   context.subscriptions.push(

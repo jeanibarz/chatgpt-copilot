@@ -126,13 +126,25 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
      * @returns A vscode.TreeItem representing the tree node.
      */
     public getTreeItem(element: ITreeNode): vscode.TreeItem {
+        // Check if the element is a folder and adjust collapsibleState based on children
+        if (element.type === NodeType.Folder) {
+            // If the folder has children, allow it to be collapsible
+            if (element.children && element.children.length > 0) {
+                element.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+            } else {
+                // If no children, set it to None, meaning it can't be collapsed
+                element.collapsibleState = vscode.TreeItemCollapsibleState.None;
+            }
+        }
+
+        // Create a new TreeItem with the appropriate label and collapsibleState
         const treeItem = new vscode.TreeItem(element.label, element.collapsibleState);
         treeItem.id = element.path;
 
-        // Set tooltip based on inclusion state
+        // Set tooltip based on the inclusion state of the element
         treeItem.tooltip = this.getTooltipForInclusionState(element.content);
 
-        // Set commands for files and symbols
+        // Set file or symbol-specific commands
         if (element.type === NodeType.File) {
             treeItem.resourceUri = vscode.Uri.file(element.path);
             treeItem.command = {
@@ -150,11 +162,12 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
             }
         }
 
-        // Set context value for UI interactions
+        // Set a context value to allow custom interactions (like right-click menus)
         treeItem.contextValue = this.getContextValue(element.type);
 
         return treeItem;
     }
+
 
     /**
      * Determines the tooltip text based on inclusion state.
@@ -261,8 +274,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
      */
     public async renderTree(format: RenderMethod): Promise<string> {
         try {
-            const tree = await this.getChildren();
-            return this.treeRenderer.renderTree(tree, format);
+            return this.treeRenderer.renderTree(format);
         } catch (error) {
             this.logger.error(`Error rendering tree: ${error instanceof Error ? error.message : String(error)}`);
             return '';
@@ -439,9 +451,10 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         try {
             const normalizedFolderPath = Utility.normalizePath(folderNode.path);
             const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(normalizedFolderPath));
-            this.logger.info(`Entries in ${normalizedFolderPath}:`, entries);
 
+            // Only process direct children, do not call getFolderChildren recursively
             const children = await this.processDirectoryEntries(entries, normalizedFolderPath);
+
             const inclusionState = this.determineFolderInclusionState(children);
             folderNode.content = inclusionState;
             folderNode.isIntermediary = inclusionState === InclusionState.PartiallyIncluded;
@@ -453,31 +466,6 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         }
     }
 
-    /**
-     * Creates a folder node using the TreeNodeFactory.
-     * 
-     * @param name - The name of the folder.
-     * @param fullPath - The full path of the folder.
-     * @returns A promise that resolves to a TreeNode representing the folder.
-     */
-    private async createFolderNode(name: string, fullPath: string): Promise<ITreeNode> {
-        const folderNode = TreeNodeFactory.createFolderNode(name, fullPath, vscode.TreeItemCollapsibleState.Collapsed);
-        folderNode.children = await this.getChildren(folderNode);
-
-        // Ensure children array is initialized
-        if (!folderNode.children) {
-            folderNode.children = [];
-        }
-
-        // Determine inclusion state based on children
-        const inclusionState = this.determineFolderInclusionState(folderNode.children);
-        folderNode.content = inclusionState;
-
-        // Update isIntermediary flag based on new inclusion state
-        folderNode.isIntermediary = inclusionState === InclusionState.PartiallyIncluded;
-
-        return folderNode;
-    }
 
     /**
      * Processes directory entries to create TreeNodes for matched folders and files.
@@ -491,172 +479,36 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         entries: [string, vscode.FileType][],
         parentPath: string,
     ): Promise<ITreeNode[]> {
-        // Input Validation
-        if (!Array.isArray(entries)) {
-            this.logger.error(`Expected 'entries' to be an array, but received: ${typeof entries}`);
-            return [];
-        }
-
-        if (!Utility.isString(parentPath) || parentPath.trim() == '') {
-            this.logger.error(`Invalid 'parentPath' provided: "${parentPath}". Expected a non-empty string.`);
-            return [];
-        }
-
         const children: ITreeNode[] = [];
-        let includedCount = 0;
-        let excludedCount = 0;
+
         for (const [name, type] of entries) {
-            let fullPath = path.join(parentPath, name);
-            fullPath = this.joinAndNormalizePath(parentPath, name); // Normalize the full path
-            this.logger.debug(`Processing entry: "${fullPath}" of type "${type}"`);
+            let fullPath = this.joinAndNormalizePath(parentPath, name);
 
-            try {
-                if (type === vscode.FileType.Directory) {
-                    const isFolderIncluded = this.getMatchedFolders().has(fullPath);
-                    const isIntermediary = !isFolderIncluded;
-
-                    const folderNode = TreeNodeFactory.createFolderNode(
-                        name,
-                        fullPath,
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        InclusionState.NotIncluded,
-                        isIntermediary,
-                    );
-                    children.push(folderNode);
-                    isFolderIncluded ? includedCount++ : excludedCount++;
-                    folderNode.children = await this.getFolderChildren(folderNode);
-                } else if (type === vscode.FileType.File) {
-                    const isFileIncluded = this.getMatchedFiles().has(fullPath);
-                    if (isFileIncluded) {
-                        this.logger.debug(`Including file: "${fullPath}"`);
-                        const fileNode = await this.nodeManager.createFileNode(name, fullPath);
-
-                        if (fileNode) {
-                            children.push(fileNode);
-                            includedCount++;
-                        } else {
-                            this.logger.warn(`Failed to create file node for "${fullPath}"`);
-                            excludedCount++;
-                        }
-                    } else {
-                        this.logger.debug(`Excluding file: "${fullPath}"`);
-                        excludedCount++;
+            if (type === vscode.FileType.Directory) {
+                // Only create the folder node, no need to recursively load its children here
+                const isFolderIncluded = this.getMatchedFolders().has(fullPath);
+                const folderNode = TreeNodeFactory.createFolderNode(
+                    name,
+                    fullPath,
+                    vscode.TreeItemCollapsibleState.Collapsed,  // Set folder as collapsible
+                    InclusionState.NotIncluded,
+                    !isFolderIncluded,
+                );
+                children.push(folderNode);
+            } else if (type === vscode.FileType.File) {
+                // Process files normally
+                const isFileIncluded = this.getMatchedFiles().has(fullPath);
+                if (isFileIncluded) {
+                    const fileNode = await this.nodeManager.createFileNode(name, fullPath);
+                    if (fileNode) {
+                        children.push(fileNode);
                     }
-                } else {
-                    this.logger.warn(`Unknown FileType for "${fullPath}". Skipping.`);
-                    excludedCount++;
                 }
-            } catch (error: any) {
-                this.logger.error(`Error processing entry "${fullPath}": ${error.message}`, { error, fullPath });
-                excludedCount++;
             }
         }
-
-        this.logger.info(`Processed ${entries.length} entries: ${includedCount} included, ${excludedCount} excluded.`);
         return children;
     }
 
-    // /**
-    //  * Checks if a folder is partially included based on its contents.
-    //  *
-    //  * @param folderPath - The path of the folder to check.
-    //  * @param matchedFilesSet - A Set of matched file paths for inclusion checking.
-    //  * @returns A promise that resolves to true if the folder is partially included; otherwise, false.
-    //  */
-    // private async isFolderPartiallyIncluded(
-    //     folderPath: string,
-    //     matchedFilesSet: Set<string>
-    // ): Promise<boolean> {
-    //     // Check if the folder's inclusion state is cached
-    //     if (this.folderInclusionCache.has(folderPath)) {
-    //         return this.folderInclusionCache.get(folderPath) === InclusionState.PartiallyIncluded;
-    //     }
-
-    //     try {
-    //         const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(folderPath));
-    //         this.logger.debug(`Reading directory "${folderPath}". Entries found: ${entries.length}`);
-
-    //         const inclusionState = await this.determineInclusionStateFromEntries(entries, folderPath, matchedFilesSet);
-    //         this.folderInclusionCache.set(folderPath, inclusionState);
-
-    //         return inclusionState === InclusionState.PartiallyIncluded;
-    //     } catch (error) {
-    //         this.logger.error(`Error checking partial inclusion for folder "${folderPath}": ${error instanceof Error ? error.message : String(error)}`, { error, folderPath });
-    //         return false;
-    //     }
-    // }
-
-    // private folderInclusionCache: Map<string, InclusionState> = new Map();
-
-    // /**
-    //  * Determines the inclusion state of a folder based on its entries.
-    //  *
-    //  * @param entries - The entries in the folder.
-    //  * @param folderPath - The path of the folder.
-    //  * @param matchedFilesSet - A Set of matched file paths for inclusion checking.
-    //  * @returns A promise that resolves to the determined inclusion state.
-    //  */
-    // private async determineInclusionStateFromEntries(
-    //     entries: [string, vscode.FileType][],
-    //     folderPath: string,
-    //     matchedFilesSet: Set<string>
-    // ): Promise<InclusionState> {
-    //     let hasIncluded = false;
-    //     let hasExcluded = false;
-
-    //     for (const [name, type] of entries) {
-    //         const fullPath = path.join(folderPath, name);
-
-    //         if (type === vscode.FileType.Directory) {
-    //             const inclusionState = await this.getFolderInclusionState(fullPath, matchedFilesSet);
-    //             if (inclusionState === InclusionState.Included) {
-    //                 hasIncluded = true;
-    //             } else if (inclusionState === InclusionState.PartiallyIncluded) {
-    //                 hasIncluded = true;
-    //                 hasExcluded = true;
-    //                 break;
-    //             } else {
-    //                 hasExcluded = true;
-    //             }
-    //         } else if (type === vscode.FileType.File) {
-    //             if (matchedFilesSet.has(fullPath)) {
-    //                 hasIncluded = true;
-    //             } else {
-    //                 hasExcluded = true;
-    //             }
-    //         }
-
-    //         if (hasIncluded && hasExcluded) {
-    //             return InclusionState.PartiallyIncluded;
-    //         }
-    //     }
-
-    //     if (hasIncluded) {
-    //         return InclusionState.Included;
-    //     } else {
-    //         return InclusionState.NotIncluded;
-    //     }
-    // }
-
-    // /**
-    //  * Retrieves the inclusion state of a folder based on its explicit inclusion
-    //  * and whether it is partially included.
-    //  *
-    //  * @param folderPath - The path of the folder to check.
-    //  * @param matchedFilesSet - A Set of matched file paths for inclusion checking.
-    //  * @returns A promise that resolves to the inclusion state of the folder.
-    //  */
-    // private async getFolderInclusionState(
-    //     folderPath: string,
-    //     matchedFilesSet: Set<string>
-    // ): Promise<InclusionState> {
-    //     if (this.explicitFilesManager.isFolderIncluded(folderPath)) {
-    //         return InclusionState.Included;
-    //     } else {
-    //         const isPartiallyIncluded = await this.isFolderPartiallyIncluded(folderPath, matchedFilesSet);
-    //         return isPartiallyIncluded ? InclusionState.PartiallyIncluded : InclusionState.NotIncluded;
-    //     }
-    // }
 
     /**
      * Traverses symbols and adds nested symbols to the output.

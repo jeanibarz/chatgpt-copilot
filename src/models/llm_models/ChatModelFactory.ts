@@ -12,8 +12,8 @@
  * - Ensures that the model factory is properly initialized before use.
  */
 
+import { error } from "console";
 import { GeminiModel, OpenAIModel } from ".";
-import { ModelConfig } from "../../config/ModelConfig";
 import { IChatModel } from '../../interfaces/IChatModel';
 import { CoreLogger } from "../../logging/CoreLogger";
 import { ChatGptViewProvider } from '../../view/ChatGptViewProvider';
@@ -23,6 +23,7 @@ import { GeminiNormalizer } from "../normalizers/GeminiNormalizer";
 import { OpenAINormalizer } from "../normalizers/OpenAINormalizer";
 import { AnthropicChatModel } from './AnthropicChatModel';
 import { ModelNormalizerRegistry } from "./ModelNormalizerRegistry";
+import { OpenAIModelInitializer } from "./OpenAIModelInitializer";
 
 /**
  * The `ChatModelFactory` class is responsible for creating instances of chat models
@@ -68,7 +69,12 @@ export class ChatModelFactory {
      * @returns A promise that resolves to an instance of IChatModel.
      * @throws Error if the model type is unsupported or if initialization fails.
      */
-    static async createChatModel(chatGptViewProvider: ChatGptViewProvider, modelConfig: ModelConfig): Promise<IChatModel> {
+    static async createChatModel(chatGptViewProvider: ChatGptViewProvider): Promise<IChatModel> {
+        if (!chatGptViewProvider.configurationManager.modelManager.modelConfig) {
+            await chatGptViewProvider.configurationManager.modelManager.prepareModelForConversation(undefined, CoreLogger.getInstance(), chatGptViewProvider);
+        }
+
+        const modelConfig = chatGptViewProvider.configurationManager.modelManager.modelConfig;
         const logger = CoreLogger.getInstance();
         logger.info("Entering createChatModel");
 
@@ -88,7 +94,14 @@ export class ChatModelFactory {
             switch (modelType) {
                 case 'openai':
                     logger.info("Creating OpenAI model...");
-                    const openAIModel = await new OpenAIModel().initModel(chatGptViewProvider, modelConfig);
+                    const chatModel = await OpenAIModelInitializer.initialize(chatGptViewProvider.modelManager);
+                    if (!chatModel) {
+                        const error_msg = 'Creation failed: model initialization failed';
+                        logger.error(error_msg);
+                        throw error(error_msg);
+                    }
+
+                    const openAIModel = new OpenAIModel(chatModel, chatGptViewProvider);
                     logger.info("OpenAI model created successfully");
                     return openAIModel;
                 case 'gemini':

@@ -9,7 +9,6 @@
  * - Saves the formatted docstrings to temporary files for easy access.
  */
 
-import { IChatModel } from './interfaces';
 import { CoreLogger } from './logging/CoreLogger';
 import { ChatModelFactory } from './models/llm_models/ChatModelFactory';
 import { ChatGptViewProvider } from './view/ChatGptViewProvider';
@@ -25,9 +24,6 @@ import { ChatGptViewProvider } from './view/ChatGptViewProvider';
  * - Integrates with a logger for event tracking and debugging.
  */
 export class DocstringGenerator {
-  private logger: CoreLogger; // Logger instance for logging events
-  private provider: ChatGptViewProvider; // View provider for ChatGPT interactions
-
   /**
    * Constructor for the `DocstringGenerator` class.
    * Initializes a new instance with the provided logger and ChatGPT view provider.
@@ -35,10 +31,7 @@ export class DocstringGenerator {
    * @param logger - An instance of `CoreLogger` for logging events.
    * @param provider - An instance of `ChatGptViewProvider` for managing interactions with the AI model.
    */
-  constructor(logger: CoreLogger, provider: ChatGptViewProvider) {
-    this.logger = logger;
-    this.provider = provider;
-  }
+  constructor(private logger: CoreLogger, private provider: ChatGptViewProvider) { }
 
   /**
    * Generates docstrings by interacting with the AI model.
@@ -52,7 +45,7 @@ export class DocstringGenerator {
     this.logger.info("Generating docstring...");
 
     // Prepare the AI model (e.g., OpenAI)
-    const chatModel = await this.createChatModel();
+    const chatModel = await ChatModelFactory.createChatModel(this.provider);
 
     let response = '';
     const updateResponse = (message: string) => {
@@ -60,56 +53,7 @@ export class DocstringGenerator {
     };
 
     // Send the prompt to the model and get the response
-    await chatModel.sendMessage(prompt, '', updateResponse); // Use the required 3 arguments
-
-    // Format and return the docstring content
-    return this.formatDocstring(response);
-  }
-
-  /**
-   * Creates and returns the chat model for AI interaction.
-   * This method prepares the model for conversation, ensuring that the 
-   * necessary configurations are in place before creating the model instance.
-   * 
-   * @returns A promise that resolves to an instance of `IChatModel`.
-   * @throws Will throw an error if the model preparation fails or the model configuration is incomplete.
-   */
-  private async createChatModel(): Promise<IChatModel> {
-    // Call prepareModelForConversation to initialize model configuration
-    const modelPrepared = await this.provider.modelManager.prepareModelForConversation(false, this.logger, this.provider);
-
-    if (!modelPrepared) {
-      this.logger.error('Failed to prepare model for conversation.');
-      throw new Error('Model preparation failed');
-    }
-
-    const modelConfig = this.provider.modelManager.modelConfig;
-
-    if (!modelConfig || !modelConfig.apiBaseUrl) {
-      this.logger.error("Model configuration is missing or incomplete.");
-      throw new Error("Model configuration is missing or incomplete.");
-    }
-
-    // Proceed to create the chat model with the prepared configuration
-    return await ChatModelFactory.createChatModel(this.provider, modelConfig);
-  }
-
-  /**
-   * Formats the generated docstring by removing unnecessary block annotations.
-   * This method trims the docstring and removes surrounding backticks to ensure 
-   * the final output is clean and readable.
-   * 
-   * @param docstring - The raw generated docstring.
-   * @returns The formatted docstring.
-   */
-  private formatDocstring(docstring: string): string {
-    let trimmedDocstring = docstring.trim();
-    let lines = trimmedDocstring.split(/\r?\n/);
-
-    // Remove surrounding backticks
-    if (lines[0].trim().startsWith('```')) lines.shift();
-    if (lines[lines.length - 1].trim().startsWith('```')) lines.pop();
-
-    return lines.join('\n').trim();
+    const formattedDocstrings = await chatModel.generate(prompt, '', updateResponse, 'basicDocstringGenerator');
+    return formattedDocstrings!;
   }
 }

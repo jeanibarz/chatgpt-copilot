@@ -1,6 +1,6 @@
 // src/tree/index.ts
 
-export { MyTreeDataProvider } from './MyTreeDataProvider';
+export { FilteredTreeDataProvider } from './FilteredTreeDataProvider';
 export { NodeManager } from './NodeManager';
 export { SymbolService } from './SymbolService';
 export { TreeBuilder } from './TreeBuilder';

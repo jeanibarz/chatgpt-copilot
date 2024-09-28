@@ -17,7 +17,7 @@ export class GeminiChatModel implements IChatModel {
      * @param updateResponse - A callback function to update the response as it is received.
      * @returns A Promise that resolves once the message has been sent.
      */
-    async sendMessage(prompt: string, additionalContext: string, updateResponse: (message: string) => void): Promise<void> {
+    async generate(prompt: string, additionalContext: string, updateResponse: (message: string) => void): Promise<void> {
         await this.llm_model.chatCompletion(this.provider, prompt, updateResponse, additionalContext);
     }
 }
