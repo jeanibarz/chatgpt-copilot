@@ -7,3 +7,7 @@ package-lock.json
 .DS_Store
 !node_modules/chatgpt/build/index.js
 .secrets/
+class_diagrams/
+google-credentials/
+old/
+scripts/
