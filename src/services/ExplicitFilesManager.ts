@@ -1,8 +1,10 @@
-// ./services/ExplicitFilesManager.ts
+// src/services/ExplicitFilesManager.ts
 
 import { promises } from 'fs';
+import { inject, injectable } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
+import TYPES from '../inversify.types';
 import { CoreLogger } from '../logging/CoreLogger'; // Ensure you have logging in place
 import { Utility } from "../Utility";
 
@@ -10,6 +12,7 @@ import { Utility } from "../Utility";
  * The ExplicitFilesManager class manages explicit files and folders within the ChatGPT VS Code extension.
  * It allows adding, removing, and clearing files and folders, ensuring they are tracked appropriately.
  */
+@injectable()
 export class ExplicitFilesManager {
     private logger = CoreLogger.getInstance();
     private workspaceFolders: Array<string> = [];
@@ -28,7 +31,9 @@ export class ExplicitFilesManager {
      * Constructor initializes the manager and loads explicit files from the extension's state.
      * @param context - The VS Code extension context used for state management.
      */
-    constructor(private context: vscode.ExtensionContext) {
+    constructor(
+        @inject(TYPES.ExtensionContext) private context: vscode.ExtensionContext
+    ) {
         this.loadExplicitFilesFromState();
         this.updateWorkspaceFolders();
 

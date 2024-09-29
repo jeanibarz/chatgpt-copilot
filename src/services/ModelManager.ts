@@ -1,3 +1,5 @@
+// src/services/ModelManager.ts
+
 /**
  * This module manages the configuration and initialization of AI models 
  * for use within a VS Code extension. It is responsible for loading model 
@@ -16,6 +18,7 @@
  * - Provides methods to check the type of model currently in use.
  */
 
+import { injectable } from "inversify";
 import { defaultSystemPromptForFreeQuestion, getApiKey, getRequiredConfig } from "../config/Configuration";
 import { ModelConfig } from "../config/ModelConfig";
 import { CoreLogger } from "../logging/CoreLogger";
@@ -34,6 +37,7 @@ import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
  * - Handles API key retrieval and model settings initialization.
  * - Provides methods to check the type of model currently in use.
  */
+@injectable()
 export class ModelManager {
     public model?: string; // The currently selected model
     public modelConfig!: ModelConfig; // Configuration settings for the model
@@ -126,8 +130,8 @@ export class ModelManager {
                 modelSource,
             });
 
-            // logger.info("initializing model");
-            // await this.initModels(viewProvider);
+            logger.info("initializing model");
+            await this.initModels(viewProvider);
         }
 
         return true;

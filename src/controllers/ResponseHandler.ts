@@ -1,5 +1,6 @@
+// src/controllers/ResponseHandler.ts
+
 /**
- * src/controllers/ResponseHandler.ts
  * 
  * This module handles chat responses within the ChatGPT view provider 
  * for a VS Code extension. It processes messages sent to the chat model, 
@@ -15,21 +16,21 @@
  * - Handles incomplete responses and prompts the user to continue.
  */
 
+import { injectable } from "inversify";
 import * as vscode from 'vscode';
 import { IChatModel } from '../interfaces/IChatModel';
 import { MessageRole } from "../services/ChatHistoryManager";
 import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
+@injectable()
 export class ResponseHandler {
-    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing responses
+    private provider?: ChatGptViewProvider;
 
     /**
-     * Constructor for the `ResponseHandler` class.
-     * Initializes a new instance of ResponseHandler with the provided view provider.
-     * 
-     * @param provider - An instance of `ChatGptViewProvider` for managing chat responses.
+     * Set the provider after the handler has been instantiated.
+     * @param provider - The ChatGptViewProvider instance.
      */
-    constructor(provider: ChatGptViewProvider) {
+    public setProvider(provider: ChatGptViewProvider): void {
         this.provider = provider;
     }
 
@@ -48,9 +49,12 @@ export class ResponseHandler {
         additionalContext: string,
         options: { command: string; previousAnswer?: string; }
     ) {
-        const responseInMarkdown = !this.provider.modelManager.isCodexModel;
+        if (!this.provider) {
+            throw new Error("Provider is not set in ResponseHandler.");
+        }
+        const responseInMarkdown = this.provider.modelManager.isCodexModel;
         const updateResponse = (message: string) => {
-            this.provider.response += message;
+            this.provider!.response += message;
             this.sendResponseUpdate();
         };
 
@@ -70,6 +74,10 @@ export class ResponseHandler {
      * @returns A promise that resolves when the response has been finalized.
      */
     private async finalizeResponse(options: { command: string; previousAnswer?: string; }) {
+        if (!this.provider) {
+            throw new Error("Provider is not set in ResponseHandler.");
+        }
+
         if (options.previousAnswer != null) {
             this.provider.response = options.previousAnswer + this.provider.response; // Combine with previous answer
         }
@@ -90,6 +98,10 @@ export class ResponseHandler {
      * @param done - Indicates if the response is complete.
      */
     private sendResponseUpdate(done: boolean = false) {
+        if (!this.provider) {
+            throw new Error("Provider is not set in ResponseHandler.");
+        }
+
         this.provider.sendMessage({
             type: "addResponse",
             value: this.provider.response,
@@ -106,6 +118,10 @@ export class ResponseHandler {
      * @returns True if the response is incomplete; otherwise, false.
      */
     private isResponseIncomplete(): boolean {
+        if (!this.provider) {
+            throw new Error("Provider is not set in ResponseHandler.");
+        }
+
         return this.provider.response.split("```").length % 2 === 0;
     }
 
@@ -116,6 +132,10 @@ export class ResponseHandler {
      * @returns A promise that resolves when the user has made a choice.
      */
     private async promptToContinue(options: { command: string; }) {
+        if (!this.provider) {
+            throw new Error("Provider is not set in ResponseHandler.");
+        }
+
         const choice = await vscode.window.showInformationMessage(
             "It looks like the response was incomplete. Would you like to continue?",
             "Continue",

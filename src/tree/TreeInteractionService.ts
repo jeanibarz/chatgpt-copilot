@@ -1,5 +1,6 @@
+// src/TreeInteractionService.ts
+
 /**
- * src/TreeInteractionService.ts
  * 
  * This module provides a service for interacting with tree data structures 
  * within a VS Code extension. It facilitates the processing of commands 
@@ -15,13 +16,12 @@
  * - Refreshes the tree data provider after processing commands.
  */
 
+import { inject, injectable } from "inversify";
 import { ContentInclusionCommandType, InclusionState, ITreeCommandsJson, ITreeNode } from '../interfaces';
+import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FileManager } from '../services/FileManager';
-import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
 import { FilteredTreeDataProvider } from "./FilteredTreeDataProvider";
-
-const logger = CoreLogger.getInstance();
 
 /**
  * The `TreeInteractionService` class manages interactions with the tree 
@@ -33,8 +33,10 @@ const logger = CoreLogger.getInstance();
  * - Validates command input to ensure correct formatting.
  * - Refreshes the tree data provider after processing commands.
  */
+@injectable()
 export class TreeInteractionService {
     private fileManager: FileManager;
+    private logger: CoreLogger;
 
     /**
      * Constructor for the `TreeInteractionService` class.
@@ -44,8 +46,12 @@ export class TreeInteractionService {
      * @param treeDataProvider - An instance of `FilteredTreeDataProvider` for managing tree data.
      * @param logger - An instance of `ChatGptViewProvider['logger']` for logging events.
      */
-    constructor(private treeDataProvider: FilteredTreeDataProvider, logger: ChatGptViewProvider['logger']) {
-        this.fileManager = new FileManager();
+    constructor(
+        @inject(TYPES.FilteredTreeDataProvider) private treeDataProvider: FilteredTreeDataProvider,
+        @inject(TYPES.CoreLogger) logger: CoreLogger,
+        @inject(TYPES.FileManager) fileManager: FileManager) {
+        this.logger = logger;
+        this.fileManager = fileManager;
     }
 
     /**
@@ -71,7 +77,7 @@ export class TreeInteractionService {
             // // Refresh the tree to reflect inclusion/exclusion changes
             // await this.treeDataProvider.refresh();
         } catch (error) {
-            logger.error(`Error in processInclusionOrExclusionCommands: ${error instanceof Error ? error.message : String(error)}`, { error });
+            this.logger.error(`Error in processInclusionOrExclusionCommands: ${error instanceof Error ? error.message : String(error)}`, { error });
         }
     }
 
@@ -115,7 +121,7 @@ export class TreeInteractionService {
                 await this.processFileOrFolderInclusionOrExclusion(action, resolvedPath);
             }
         } catch (error) {
-            logger.error(`Error processing single inclusion/exclusion command: ${error instanceof Error ? error.message : String(error)}`, { error, command });
+            this.logger.error(`Error processing single inclusion/exclusion command: ${error instanceof Error ? error.message : String(error)}`, { error, command });
         }
     }
 
@@ -130,7 +136,7 @@ export class TreeInteractionService {
         try {
             return this.fileManager.resolvePath(fileOrFolderPath);
         } catch (error) {
-            logger.error(`Error resolving path "${fileOrFolderPath}": ${error instanceof Error ? error.message : String(error)}`, { error });
+            this.logger.error(`Error resolving path "${fileOrFolderPath}": ${error instanceof Error ? error.message : String(error)}`, { error });
             throw error;
         }
     }
@@ -151,10 +157,10 @@ export class TreeInteractionService {
                 const newInclusionState = this.getInclusionStateFromAction(action);
                 this.treeDataProvider.updateNodeInclusionState(node, newInclusionState);
             } else {
-                logger.warn(`File or folder not found: ${path}`);
+                this.logger.warn(`File or folder not found: ${path}`);
             }
         } catch (error) {
-            logger.error(`Error processing file or folder inclusion/exclusion: ${error instanceof Error ? error.message : String(error)}`, { error, action, path });
+            this.logger.error(`Error processing file or folder inclusion/exclusion: ${error instanceof Error ? error.message : String(error)}`, { error, action, path });
         }
     }
 
@@ -170,7 +176,7 @@ export class TreeInteractionService {
         } else if (action === ContentInclusionCommandType.Remove) {
             return InclusionState.NotIncluded;
         } else {
-            logger.warn(`Unknown CommandType: ${action}`);
+            this.logger.warn(`Unknown CommandType: ${action}`);
             return InclusionState.NotIncluded;
         }
     }
@@ -194,13 +200,13 @@ export class TreeInteractionService {
                     const newInclusionState = this.getInclusionStateFromAction(action);
                     this.treeDataProvider.updateNodeInclusionState(symbolNode, newInclusionState);
                 } else {
-                    logger.warn(`Symbol not found: ${symbolPath} in file ${filePath}`);
+                    this.logger.warn(`Symbol not found: ${symbolPath} in file ${filePath}`);
                 }
             } else {
-                logger.warn(`File not found for symbol inclusion: ${filePath}`);
+                this.logger.warn(`File not found for symbol inclusion: ${filePath}`);
             }
         } catch (error) {
-            logger.error(`Error processing symbol inclusion/exclusion: ${error instanceof Error ? error.message : String(error)}`, { error, action, filePath, symbolPath });
+            this.logger.error(`Error processing symbol inclusion/exclusion: ${error instanceof Error ? error.message : String(error)}`, { error, action, filePath, symbolPath });
         }
     }
 
@@ -224,7 +230,7 @@ export class TreeInteractionService {
                 return childSymbolPart === symbolPath;
             });
         } catch (error) {
-            logger.error(`Error finding symbol node: ${error instanceof Error ? error.message : String(error)}`, { error, fileNode, symbolPath });
+            this.logger.error(`Error finding symbol node: ${error instanceof Error ? error.message : String(error)}`, { error, fileNode, symbolPath });
             return undefined;
         }
     }
@@ -237,7 +243,7 @@ export class TreeInteractionService {
      * @returns A promise that resolves when the commands have been processed.
      */
     async processCommands(commandsJson: ITreeCommandsJson): Promise<void> {
-        logger.debug('Starting processCommands with input:', { commandsJson });
+        this.logger.debug('Starting processCommands with input:', { commandsJson });
 
         try {
             // Validate the commandsJson parameter
@@ -247,22 +253,22 @@ export class TreeInteractionService {
 
             // Process 'expand' commands
             if (expand && Array.isArray(expand)) {
-                logger.debug(`Processing ${expand.length} expand commands.`);
+                this.logger.debug(`Processing ${expand.length} expand commands.`);
                 await this.processCommandList(expand, 'expand');
             }
 
             // Process 'fold' commands
             if (fold && Array.isArray(fold)) {
-                logger.debug(`Processing ${fold.length} fold commands.`);
+                this.logger.debug(`Processing ${fold.length} fold commands.`);
                 await this.processCommandList(fold, 'fold');
             }
 
             // Refresh the tree to reflect changes
             // this.refreshTreeDataProvider();
 
-            logger.debug('Completed processCommands.');
+            this.logger.debug('Completed processCommands.');
         } catch (error) {
-            logger.error(`Error in processCommands: ${error instanceof Error ? error.message : String(error)}`, { error });
+            this.logger.error(`Error in processCommands: ${error instanceof Error ? error.message : String(error)}`, { error });
         }
     }
 
@@ -276,7 +282,7 @@ export class TreeInteractionService {
     private validateCommandsJson(commandsJson: ITreeCommandsJson): void {
         if (!commandsJson || typeof commandsJson !== 'object') {
             const errorMsg = 'Invalid JSON command format. Expected an object.';
-            logger.error(errorMsg, { commandsJson });
+            this.logger.error(errorMsg, { commandsJson });
             throw new Error(errorMsg);
         }
 
@@ -284,7 +290,7 @@ export class TreeInteractionService {
 
         if ((!expand || !Array.isArray(expand)) && (!fold || !Array.isArray(fold))) {
             const errorMsg = 'JSON must contain "expand" and/or "fold" arrays.';
-            logger.error(errorMsg, { expand, fold });
+            this.logger.error(errorMsg, { expand, fold });
             throw new Error(errorMsg);
         }
     }
@@ -299,7 +305,7 @@ export class TreeInteractionService {
     private async processCommandList(paths: string[], action: 'expand' | 'fold'): Promise<void> {
         try {
             if (!Array.isArray(paths)) {
-                logger.warn(`Expected an array of paths for action "${action}", but received: ${typeof paths}`);
+                this.logger.warn(`Expected an array of paths for action "${action}", but received: ${typeof paths}`);
                 return;
             }
 
@@ -307,7 +313,7 @@ export class TreeInteractionService {
                 await this.processSingleCommand(path, action);
             }
         } catch (error) {
-            logger.error(`Error processing command list for action "${action}": ${error instanceof Error ? error.message : String(error)}`, { error, paths, action });
+            this.logger.error(`Error processing command list for action "${action}": ${error instanceof Error ? error.message : String(error)}`, { error, paths, action });
         }
     }
 
@@ -322,25 +328,25 @@ export class TreeInteractionService {
         try {
             // Validate the path
             if (typeof path !== 'string' || path.trim() === '') {
-                logger.warn(`${action.charAt(0).toUpperCase() + action.slice(1)}: Invalid path "${path}". Skipping.`);
+                this.logger.warn(`${action.charAt(0).toUpperCase() + action.slice(1)}: Invalid path "${path}". Skipping.`);
                 return;
             }
 
-            logger.debug(`${action.charAt(0).toUpperCase() + action.slice(1)}: Attempting to find node for path "${path}".`);
+            this.logger.debug(`${action.charAt(0).toUpperCase() + action.slice(1)}: Attempting to find node for path "${path}".`);
             const node = this.treeDataProvider.findNodeByPath(path);
             if (node) {
-                logger.debug(`${action.charAt(0).toUpperCase() + action.slice(1)}: Found node for path "${path}". Processing.`);
+                this.logger.debug(`${action.charAt(0).toUpperCase() + action.slice(1)}: Found node for path "${path}". Processing.`);
                 if (action === 'expand') {
                     await this.expandNode(node);
                 } else {
                     await this.foldNode(node);
                 }
-                logger.info(`${action.charAt(0).toUpperCase() + action.slice(1)}: Successfully processed node at path "${path}".`);
+                this.logger.info(`${action.charAt(0).toUpperCase() + action.slice(1)}: Successfully processed node at path "${path}".`);
             } else {
-                logger.warn(`${action.charAt(0).toUpperCase() + action.slice(1)}: Node not found for path "${path}".`);
+                this.logger.warn(`${action.charAt(0).toUpperCase() + action.slice(1)}: Node not found for path "${path}".`);
             }
         } catch (error: unknown) {
-            logger.error(`${action.charAt(0).toUpperCase() + action.slice(1)}: Failed to process node at path "${path}": ${error instanceof Error ? error.message : String(error)}`, { error, path });
+            this.logger.error(`${action.charAt(0).toUpperCase() + action.slice(1)}: Failed to process node at path "${path}": ${error instanceof Error ? error.message : String(error)}`, { error, path });
         }
     }
 
@@ -352,11 +358,11 @@ export class TreeInteractionService {
      */
     private refreshTreeDataProvider(): void {
         try {
-            logger.debug('Refreshing the tree data provider after processing commands.');
+            this.logger.debug('Refreshing the tree data provider after processing commands.');
             this.treeDataProvider.refresh();
-            logger.info('Tree data provider refreshed successfully.');
+            this.logger.info('Tree data provider refreshed successfully.');
         } catch (error: unknown) {
-            logger.error(`Failed to refresh the tree data provider: ${error instanceof Error ? error.message : String(error)}`, { error });
+            this.logger.error(`Failed to refresh the tree data provider: ${error instanceof Error ? error.message : String(error)}`, { error });
             throw new Error(`Failed to refresh the tree data provider: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
@@ -376,7 +382,7 @@ export class TreeInteractionService {
             node.collapsibleState = 2; // vscode.TreeItemCollapsibleState.Expanded
             this.treeDataProvider.refreshNode(node);
         } catch (error) {
-            logger.error(`Error expanding node: ${error instanceof Error ? error.message : String(error)}`, { error, node });
+            this.logger.error(`Error expanding node: ${error instanceof Error ? error.message : String(error)}`, { error, node });
         }
     }
 
@@ -395,7 +401,7 @@ export class TreeInteractionService {
             node.collapsibleState = 1; // vscode.TreeItemCollapsibleState.Collapsed
             this.treeDataProvider.refreshNode(node);
         } catch (error) {
-            logger.error(`Error folding node: ${error instanceof Error ? error.message : String(error)}`, { error, node });
+            this.logger.error(`Error folding node: ${error instanceof Error ? error.message : String(error)}`, { error, node });
         }
     }
 }

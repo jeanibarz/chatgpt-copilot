@@ -1,5 +1,6 @@
+// src/errors/BaseErrorHandler.ts
+
 /**
- * src/errors/BaseErrorHandler.ts
  * 
  * This module provides an abstract base class for error handlers within the application.
  * The `BaseErrorHandler` class serves as a foundation for creating specific error handlers,
@@ -11,10 +12,13 @@
  * - Requires subclasses to implement specific error handling logic.
  */
 
-import { ILogger } from "../interfaces/ILogger";
+import { inject, injectable } from "inversify";
+import TYPES from "../inversify.types";
+import { CoreLogger } from "../logging/CoreLogger";
 
+@injectable()
 export abstract class BaseErrorHandler {
-    protected logger: ILogger; // Logger instance for logging error events
+    protected logger: CoreLogger; // Logger instance for logging error events
 
     /**
      * Constructor for the `BaseErrorHandler` class.
@@ -22,7 +26,9 @@ export abstract class BaseErrorHandler {
      * 
      * @param logger - An instance of ILogger for logging purposes.
      */
-    constructor(logger: ILogger) {
+    constructor(
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
         this.logger = logger;
     }
 

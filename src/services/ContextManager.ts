@@ -1,4 +1,4 @@
-// ./services/ContextManager.ts
+// src/services/ContextManager.ts
 
 /**
  * This module manages the retrieval and preparation of file context for the ChatGPT view provider 
@@ -11,13 +11,12 @@
  * - Formats file contents for easy integration into prompts for the AI model.
  */
 
-import * as vscode from 'vscode';
-import { ITreeNode, RenderMethod } from "../interfaces";
+import { inject, injectable, LazyServiceIdentifer } from "inversify";
+import { RenderMethod } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FilteredTreeDataProvider } from "../tree/FilteredTreeDataProvider";
 import { ContextRetriever } from './ContextRetriever';
-import { DocstringExtractor } from './DocstringExtractor';
-import { FileContentFormatter } from './FileContentFormatter';
 import { FileManager } from "./FileManager";
 
 /**
@@ -29,76 +28,29 @@ import { FileManager } from "./FileManager";
  * - Retrieves context needed for AI prompts from project files.
  * - Extracts docstrings from matched files for enhanced prompt context.
  */
+@injectable()
 export class ContextManager {
-    private logger = CoreLogger.getInstance();
-    private contextRetriever: ContextRetriever;
-    private docstringExtractor: DocstringExtractor;
-    public treeDataProvider: FilteredTreeDataProvider;
-    private fileContentFormatter: FileContentFormatter;
-    private fileManager: FileManager;
+    private logger: CoreLogger;
 
     /**
      * Constructor for the `ContextManager` class.
-     * Initializes a new instance with the provided ChatGptViewProvider.
+     * Initializes a new instance with the injected dependencies.
      * 
      * @param contextRetriever - An instance of `ContextRetriever` for retrieving file contexts.
      * @param docstringExtractor - An instance of `DocstringExtractor` for extracting docstrings from files.
-     * @param treeDataProvider - An instance of `MyTreeDataProvider` for managing the project tree.
+     * @param treeDataProvider - An instance of `FilteredTreeDataProvider` for managing the project tree.
+     * @param logger - An instance of `CoreLogger` for logging.
+     * @param fileManager - An instance of `FileManager` for file operations.
      */
     constructor(
-        contextRetriever: ContextRetriever,
-        docstringExtractor: DocstringExtractor,
-        treeDataProvider: FilteredTreeDataProvider
+        @inject(new LazyServiceIdentifer(() => TYPES.ContextRetriever)) private contextRetriever: ContextRetriever,
+        @inject(new LazyServiceIdentifer(() => TYPES.FilteredTreeDataProvider)) public treeDataProvider: FilteredTreeDataProvider,
+        @inject(TYPES.CoreLogger) logger: CoreLogger,
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+        @inject(TYPES.ExtensionContext) private extensionContext: vscode.ExtensionContext,
     ) {
-        this.contextRetriever = contextRetriever;
-        this.docstringExtractor = docstringExtractor;
-        this.treeDataProvider = treeDataProvider;
-        this.fileContentFormatter = new FileContentFormatter();
-        this.fileManager = new FileManager();
+        this.logger = logger;
     }
-
-    // /**
-    //  * Retrieves the context needed for the prompt from the files.
-    //  * 
-    //  * @returns A promise that resolves to a string containing the context for the prompt.
-    //  */
-    // public async retrieveContextForPrompt(): Promise<string> {
-    //     try {
-    //         const matchedFiles = this.treeDataProvider.getMatchedFiles();
-    //         if (!matchedFiles || matchedFiles.size === 0) {
-    //             this.logger.warn("No matched files found in the tree structure.");
-    //             return "No context available.";
-    //         }
-    //         return await this.contextRetriever.getFilesContent(matchedFiles);
-    //     } catch (error) {
-    //         this.logger.error(`Failed to retrieve context for prompt: ${error instanceof Error ? error.message : String(error)}`, { error });
-    //         throw new Error("Context retrieval failed.");
-    //     }
-    // }
-
-    // /**
-    //  * Extracts the content and docstring for a specified method from the provided node.
-    //  * 
-    //  * @param node - The node representing the method to extract content from.
-    //  * @returns A promise that resolves to an object containing the file path, content, and docstring of the method.
-    //  */
-    // public async extractMethodContent(node: ITreeNode): Promise<{ filePath: string; content: string; docstring: string | null; }> {
-    //     try {
-    //         const fileNode = this.treeDataProvider.findNodeByPath(node.path, true);
-
-    //         if (fileNode && node.type === 'symbol') {
-    //             const content = await this.getMethodContent(fileNode.path, node.label);
-    //             const docstring = await this.docstringExtractor.extractMethodDocstring(fileNode.path, node.label);
-    //             return { filePath: fileNode.path, content, docstring };
-    //         }
-
-    //         this.logger.warn(`Invalid node for extracting method content: ${node.path}`);
-    //         return { filePath: '', content: '', docstring: null }; // Handle cases where the node is not valid
-    //     } catch (error) {
-    //         this.logger.error(`Error extracting method content: ${error instanceof Error ? error.message : String(error)}`, { error, node });
-    //         return { filePath: '', content: '', docstring: null };
-    //     }
-    // }
 
     /**
      * Constructs the complete prompt for the AI assistant.
@@ -153,125 +105,6 @@ ${userQuestion}
         }
     }
 
-    // /**
-    //  * Generates the CONTENT section, which includes the actual contents of files or symbols 
-    //  * that are marked as 'Included'.
-    //  * 
-    //  * @returns A promise that resolves to a formatted string containing the included content.
-    //  */
-    // public async generateIncludedContent(): Promise<string> {
-    //     try {
-    //         const rootNodes = await this.treeDataProvider.getChildren();
-    //         let includedContent = '';
-
-    //         const traverse = async (nodes: ITreeNode[], path: string) => {
-    //             for (const node of nodes) {
-    //                 const currentPath = path ? `${path}/${node.label}` : node.label;
-
-    //                 if (node.content === InclusionState.Included) {
-    //                     if (node.type === 'file') {
-    //                         includedContent += `#### Path: ${currentPath}\n\n`;
-    //                         includedContent += '```' + this.getLanguageTag(node.label) + '\n';
-    //                         const content = await this.getFullFileContent(node);
-    //                         includedContent += `${content}\n`;
-    //                         includedContent += '```\n\n';
-    //                     }
-    //                 }
-
-    //                 if (node.children && node.children.length > 0) {
-    //                     await traverse(node.children, currentPath);
-    //                 }
-    //             }
-    //         };
-
-    //         await traverse(rootNodes, '');
-    //         return includedContent.trim() || 'No included content.';
-    //     } catch (error) {
-    //         this.logger.error(`Error generating included content: ${error instanceof Error ? error.message : String(error)}`, { error });
-    //         return 'Failed to generate included content.';
-    //     }
-    // }
-
-    /**
-     * Retrieves the full content of a file.
-     * 
-     * @param node - The TreeNode representing the file.
-     * @returns The content of the file as a string.
-     */
-    private async getFullFileContent(node: ITreeNode): Promise<string> {
-        try {
-            return await this.fileManager.readFileContent(node.path);
-        } catch (error) {
-            this.logger.error(`Error reading file content for ${node.path}: ${error instanceof Error ? error.message : String(error)}`, { error });
-            return '// Error retrieving content.';
-        }
-    }
-
-    /**
-     * Determines the language tag based on the file extension.
-     * 
-     * @param fileName - The name of the file.
-     * @returns The appropriate language tag for syntax highlighting.
-     */
-    private getLanguageTag(fileName: string): string {
-        const extension = fileName.split('.').pop()?.toLowerCase();
-        switch (extension) {
-            case 'ts':
-            case 'tsx':
-                return 'typescript';
-            case 'js':
-            case 'jsx':
-                return 'javascript';
-            case 'py':
-                return 'python';
-            // Add more cases as needed
-            default:
-                return ''; // No specific language
-        }
-    }
-
-    /**
-     * Retrieves the content of a specified method based on its name and file path.
-     * 
-     * @param filePath - The path of the file containing the method.
-     * @param methodName - The name of the method to retrieve content for.
-     * @returns A promise that resolves to a string containing the method's content.
-     */
-    private async getMethodContent(filePath: string, methodName: string): Promise<string> {
-        try {
-            const document = await vscode.workspace.openTextDocument(filePath);
-            const lines = document.getText().split('\n');
-            const methodRegex = new RegExp(`^\\s*(async\\s+)?(function\\s+)?${methodName}\\s*\\(`); // Regex to find method declaration
-            let methodContent = '';
-            let inMethodBody = false;
-            let braceCount = 0;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-
-                if (methodRegex.test(line)) {
-                    methodContent += line + '\n'; // Include the method declaration
-                    inMethodBody = true;
-                    braceCount += (line.match(/\{/g) || []).length; // Count opening braces
-                    braceCount -= (line.match(/\}/g) || []).length; // Count closing braces
-                } else if (inMethodBody) {
-                    methodContent += line + '\n';
-                    braceCount += (line.match(/\{/g) || []).length;
-                    braceCount -= (line.match(/\}/g) || []).length;
-
-                    if (braceCount === 0) {
-                        break; // Exit once the method body is fully captured
-                    }
-                }
-            }
-
-            return methodContent.trim();
-        } catch (error) {
-            this.logger.error(`Error retrieving method content from ${filePath}: ${error instanceof Error ? error.message : String(error)}`, { error });
-            return '// Error retrieving method content.';
-        }
-    }
-
     /**
      * Retrieves the content of the specified files.
      * 
@@ -294,15 +127,15 @@ ${userQuestion}
     /**
      * Retrieves the matched files based on user-defined patterns.
      * 
-     * @returns An array of matched file paths.
+     * @returns A promise that resolves to an array of matched file paths.
      */
-    public getMatchedFiles(): string[] {
+    public async generateIncludedContent(): Promise<string> {
         try {
-            const matchedFiles = this.contextRetriever.getMatchedFiles();
-            return matchedFiles || [];
+            const explicitFiles = this.extensionContext.globalState.get<string[]>('chatgpt.explicitFiles', []);
+            return await this.contextRetriever.retrieveContextForPrompt(explicitFiles);
         } catch (error) {
-            this.logger.error(`Error retrieving matched files: ${error instanceof Error ? error.message : String(error)}`, { error });
-            return [];
+            this.logger.error(`Error generating included content: ${error instanceof Error ? error.message : String(error)}`, { error });
+            return '';
         }
     }
 }

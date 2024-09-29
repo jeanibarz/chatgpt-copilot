@@ -1,3 +1,5 @@
+// rc/DocstringGenerator.ts
+
 /**
  * This module provides functionality for generating and formatting docstrings 
  * using an AI model within a VS Code extension. The `DocstringGenerator` class 
@@ -9,6 +11,8 @@
  * - Saves the formatted docstrings to temporary files for easy access.
  */
 
+import { inject, injectable } from "inversify";
+import TYPES from './inversify.types';
 import { CoreLogger } from './logging/CoreLogger';
 import { ChatModelFactory } from './models/llm_models/ChatModelFactory';
 import { ChatGptViewProvider } from './view/ChatGptViewProvider';
@@ -23,7 +27,10 @@ import { ChatGptViewProvider } from './view/ChatGptViewProvider';
  * - Formats generated docstrings to remove unnecessary annotations.
  * - Integrates with a logger for event tracking and debugging.
  */
+@injectable()
 export class DocstringGenerator {
+  private provider?: ChatGptViewProvider;
+
   /**
    * Constructor for the `DocstringGenerator` class.
    * Initializes a new instance with the provided logger and ChatGPT view provider.
@@ -31,7 +38,19 @@ export class DocstringGenerator {
    * @param logger - An instance of `CoreLogger` for logging events.
    * @param provider - An instance of `ChatGptViewProvider` for managing interactions with the AI model.
    */
-  constructor(private logger: CoreLogger, private provider: ChatGptViewProvider) { }
+  constructor(
+    @inject(TYPES.CoreLogger) private logger: CoreLogger
+  ) { }
+
+  /**
+   * Sets the `ChatGptViewProvider` instance after the generator has been initialized.
+   * This allows the provider to be injected later if needed.
+   * 
+   * @param provider - The `ChatGptViewProvider` instance to interact with the AI model.
+   */
+  public setProvider(provider: ChatGptViewProvider): void {
+    this.provider = provider;
+  }
 
   /**
    * Generates docstrings by interacting with the AI model.
@@ -42,6 +61,10 @@ export class DocstringGenerator {
    * @returns A promise that resolves with the generated docstring.
    */
   public async generateDocstring(prompt: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error("ChatGptViewProvider is not set.");
+    }
+
     this.logger.info("Generating docstring...");
 
     // Prepare the AI model (e.g., OpenAI)

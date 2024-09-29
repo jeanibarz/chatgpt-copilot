@@ -1,5 +1,6 @@
+// src/services/FileManager.ts
+
 /**
- * src/services/FileManager.ts
  * 
  * This module provides a utility class for managing file system operations, 
  * including file search and content retrieval. It facilitates navigation through 
@@ -14,6 +15,7 @@
  */
 
 import * as fs from 'fs';
+import { injectable } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { CoreLogger } from "../logging/CoreLogger";
@@ -31,6 +33,7 @@ import { Utility } from "../Utility";
  * - Reads the content of files and counts lines.
  * - Finds files matching specific patterns while logging progress and errors.
  */
+@injectable()
 export class FileManager {
     private logger = CoreLogger.getInstance();
     private workspaceRoot: string;

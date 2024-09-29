@@ -1,6 +1,8 @@
-// ./services/DocstringExtractor.ts
+// src/services/DocstringExtractor.ts
 
+import { inject, injectable } from "inversify";
 import { IFileDocstring } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FileManager } from './FileManager';
 
@@ -13,10 +15,16 @@ import { FileManager } from './FileManager';
  * - Extracts docstrings from files while ensuring they are correctly formatted.
  * - Supports integration with the `FileManager` for file reading operations.
  */
+@injectable()
 export class DocstringExtractor {
-    logger = CoreLogger.getInstance();
+    private logger: CoreLogger;
 
-    constructor(private fileManager: FileManager) { }
+    constructor(
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
+        this.logger = logger;
+    }
 
     /**
      * Extracts module-level docstrings from the matched files.

@@ -1,8 +1,9 @@
-// ./services/ContextRetriever.ts
+// src/services/ContextRetriever.ts
 
+import { inject, injectable } from "inversify";
 import { getConfig } from '../config/Configuration';
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 import { FileContentFormatter } from './FileContentFormatter';
 import { FileManager } from './FileManager';
 
@@ -16,32 +17,21 @@ import { FileManager } from './FileManager';
  * - Retrieves context based on configured regex patterns.
  * - Reads file contents and formats them for integration into prompts.
  */
+@injectable()
 export class ContextRetriever {
     private logger = CoreLogger.getInstance();
-    private provider: ChatGptViewProvider;
-    private fileManager: FileManager;
     private regexConfigs: { inclusionRegex: string; exclusionRegex?: string; };
     private fileContentFormatter: FileContentFormatter;
 
-    /**
-     * Constructor for the `ContextRetriever` class.
-     * Initializes a new instance with the provided ChatGptViewProvider and FileManager.
-     * 
-     * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
-     * @param fileManager - An instance of `FileManager` for file operations.
-     */
-    constructor(provider: ChatGptViewProvider, fileManager: FileManager) {
-        this.provider = provider;
-        this.fileManager = fileManager;
+    constructor(
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
+        this.logger = logger;
         this.regexConfigs = this.getRegexConfigs();
         this.fileContentFormatter = new FileContentFormatter();
     }
 
-    /**
-     * Retrieves regex configurations for file inclusion and exclusion.
-     * 
-     * @returns An object containing inclusion and exclusion regex patterns.
-     */
     private getRegexConfigs() {
         return {
             inclusionRegex: getConfig<string>("fileInclusionRegex") ?? ".*",
@@ -49,14 +39,8 @@ export class ContextRetriever {
         };
     }
 
-    /**
-     * Gets the list of matched files based on inclusion and exclusion regex patterns.
-     * 
-     * @returns An array of file paths that match the regex patterns.
-     */
-    public getMatchedFiles(): string[] {
+    public getMatchedFiles(explicitFiles: string[]): string[] {
         const { inclusionRegex, exclusionRegex } = this.regexConfigs;
-        const explicitFiles = this.provider.getContext().globalState.get<string[]>('chatgpt.explicitFiles', []);
         return this.fileManager.findMatchingFiles(
             explicitFiles,
             new RegExp(inclusionRegex),
@@ -64,12 +48,6 @@ export class ContextRetriever {
         );
     }
 
-    /**
-     * Retrieves the content of the specified files.
-     * 
-     * @param files - An array of file paths to read.
-     * @returns A promise that resolves to a string containing the combined content from the files.
-     */
     public async getFilesContent(files: Set<string>): Promise<string> {
         const fileContents: string[] = [];
         const contextTitle = "### Context from Project Files:\n\n";
@@ -89,16 +67,10 @@ export class ContextRetriever {
         return contextTitle + fileContents.join('\n\n');
     }
 
-    /**
-     * Retrieves context for the prompt by finding and reading matching files.
-     * 
-     * @returns A promise that resolves to a string containing the combined content from matched files.
-     * @throws An error if context retrieval fails.
-     */
-    public async retrieveContextForPrompt(): Promise<string> {
+    public async retrieveContextForPrompt(explicitFiles: string[]): Promise<string> {
         try {
             this.logger.info("Finding matching files");
-            const matchedFiles = new Set(this.getMatchedFiles());
+            const matchedFiles = new Set(this.getMatchedFiles(explicitFiles));
             return await this.getFilesContent(matchedFiles);
         } catch (error) {
             this.logger.logError(error, "retrieveContextForPrompt");

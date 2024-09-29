@@ -1,4 +1,7 @@
+// src/view/WebviewManager.ts
+
 /**
+ * 
  * This module provides a management system for webviews within a VS Code extension.
  * It handles the initialization and configuration of webviews, including setting up 
  * HTML content and managing communication between the webview and the extension.
@@ -15,6 +18,7 @@
  */
 
 import * as fs from "fs";
+import { injectable } from "inversify";
 import * as vscode from "vscode";
 import { CoreLogger } from "../logging/CoreLogger";
 
@@ -23,6 +27,7 @@ import { CoreLogger } from "../logging/CoreLogger";
  * within the extension. It provides methods for initializing webviews and 
  * sending messages to them.
  */
+@injectable()
 export class WebviewManager {
   private logger = CoreLogger.getInstance(); // Logger instance for logging events
   private webviewView?: vscode.WebviewView; // The webview view instance

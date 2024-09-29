@@ -1,3 +1,5 @@
+// src/view/ChatGptViewProvider.ts
+
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
 /**
@@ -39,24 +41,18 @@
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import * as fs from "fs";
+import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
 import { onConfigurationChanged } from "../config/Configuration";
-import { CommandHandler } from "../controllers/CommandHandler";
-import { ResponseHandler } from "../controllers/ResponseHandler";
-import { SessionManager } from '../controllers/SessionManager';
+import { CommandHandler, ResponseHandler, SessionManager } from "../controllers";
 import { ConversationManager } from '../ConversationManager';
 import { DocstringGenerator } from '../DocstringGenerator';
 import { ErrorHandler } from "../errors/ErrorHandler";
-import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatGptViewProviderOptions, IChatModel } from "../interfaces";
+import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatModel } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ChatModelFactory } from '../models/llm_models/ChatModelFactory';
-import { ChatHistoryManager } from "../services";
-import { ConfigurationManager } from "../services/ConfigurationManager";
-import { ContextManager } from "../services/ContextManager";
-import { ContextRetriever } from "../services/ContextRetriever";
-import { DocstringExtractor } from "../services/DocstringExtractor";
-import { FileManager } from "../services/FileManager";
-import { ModelManager } from "../services/ModelManager";
+import { ChatHistoryManager, ConfigurationManager, ContextManager, FileManager, ModelManager } from "../services";
 import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
@@ -67,15 +63,16 @@ import { WebviewMessageHandler } from "./WebviewMessageHandler";
  * It manages the webview view for the ChatGPT extension, handling user interactions,
  * messages, and commands related to chat functionality.
  */
+@injectable()
 export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public webView?: vscode.WebviewView;
   public logger: CoreLogger;
   private context: vscode.ExtensionContext;
-  public webviewManager: WebviewManager; // Responsible for handling webview initialization and interactions.
+  public webviewManager: WebviewManager;
   public modelManager: ModelManager;
   public treeDataProvider: FilteredTreeDataProvider;
   public treeRenderer: TreeRenderer;
-  public configurationManager: ConfigurationManager; // Responsible for managing and loading configuration values.
+  public configurationManager: ConfigurationManager;
   public sessionManager: SessionManager;
   public conversationManager: ConversationManager;
   public chatHistoryManager: ChatHistoryManager;
@@ -84,11 +81,11 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public messageHandler: WebviewMessageHandler;
   public responseHandler: ResponseHandler;
   public errorHandler: ErrorHandler;
-  public commandHandler: CommandHandler; // CommandHandler: Responsible for managing command execution.
+  public commandHandler: CommandHandler;
+  public docstringGenerator: DocstringGenerator;
 
   public apiCompletion?: OpenAICompletionLanguageModel | LanguageModelV1;
   public apiChat?: OpenAIChatLanguageModel | LanguageModelV1;
-  public docstringGenerator: DocstringGenerator;
   public conversationId?: string;
   public questionCounter: number = 0;
   public inProgress: boolean = false;
@@ -109,40 +106,49 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * 
    * @param options - The options required to initialize the view provider.
    */
-  constructor(options: IChatGptViewProviderOptions) {
-    const {
-      context,
-      logger,
-      webviewManager,
-      commandHandler,
-      modelManager,
-      configurationManager,
-      treeDataProvider,
-      treeRenderer,
-      chatHistoryManager
-    } = options;
-    this.context = context;
+  /**
+     * Constructor for the `ChatGptViewProvider` class.
+     * Initializes the view provider with the necessary dependencies and sets up event handling.
+     */
+  constructor(
+    @inject(TYPES.CoreLogger) logger: CoreLogger,
+    @inject(TYPES.WebviewManager) webviewManager: WebviewManager,
+    @inject(TYPES.CommandHandler) commandHandler: CommandHandler,
+    @inject(TYPES.ModelManager) modelManager: ModelManager,
+    @inject(TYPES.ConfigurationManager) configurationManager: ConfigurationManager,
+    @inject(TYPES.FilteredTreeDataProvider) treeDataProvider: FilteredTreeDataProvider,
+    @inject(TYPES.TreeRenderer) treeRenderer: TreeRenderer,
+    @inject(TYPES.ChatHistoryManager) chatHistoryManager: ChatHistoryManager,
+    @inject(TYPES.FileManager) fileManager: FileManager,
+    @inject(TYPES.ContextManager) contextManager: ContextManager,
+    @inject(TYPES.WebviewMessageHandler) messageHandler: WebviewMessageHandler,
+    @inject(TYPES.ResponseHandler) responseHandler: ResponseHandler,
+    @inject(TYPES.ErrorHandler) errorHandler: ErrorHandler,
+    @inject(TYPES.DocstringGenerator) docstringGenerator: DocstringGenerator,
+    @inject(TYPES.ExtensionContext) extensionContext: vscode.ExtensionContext,
+  ) {
+    this.context = extensionContext;
     this.logger = logger;
     this.webviewManager = webviewManager;
     this.commandHandler = commandHandler;
     this.modelManager = modelManager;
     this.configurationManager = configurationManager;
     this.treeRenderer = treeRenderer;
-    this.sessionManager = new SessionManager(this);
-    this.conversationManager = new ConversationManager(this);
     this.treeDataProvider = treeDataProvider;
     this.chatHistoryManager = chatHistoryManager;
+    this.fileManager = fileManager;
+    this.contextManager = contextManager;
+    this.messageHandler = messageHandler;
+    this.responseHandler = responseHandler;
+    this.errorHandler = errorHandler;
+    this.docstringGenerator = docstringGenerator;
 
-    this.fileManager = new FileManager();
-    this.contextManager = new ContextManager(
-      new ContextRetriever(this, this.fileManager),
-      new DocstringExtractor(this.fileManager),
-      this.treeDataProvider,
-    );
-    this.messageHandler = new WebviewMessageHandler(logger, commandHandler);
-    this.responseHandler = new ResponseHandler(this);
-    this.errorHandler = new ErrorHandler(logger);
-    this.docstringGenerator = new DocstringGenerator(options.logger, this);
+    this.responseHandler.setProvider(this);
+    this.commandHandler.setProvider(this);
+    this.docstringGenerator.setProvider(this);
+
+    this.sessionManager = new SessionManager(this);
+    this.conversationManager = new ConversationManager(this);
 
     this.initializeConfiguration();
     this.logger.info("ChatGptViewProvider initialized");

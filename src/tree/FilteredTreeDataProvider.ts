@@ -1,4 +1,7 @@
+// src/tree/FilteredTreeDataProvider.ts
+
 import { Semaphore } from 'async-mutex';
+import { inject, injectable, LazyServiceIdentifier } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { RenderMethod } from "../interfaces";
@@ -7,6 +10,7 @@ import { ExplicitFilesManager } from "../services";
 import { Utility } from "../Utility";
 import { TreeRenderer } from "./TreeRenderer";
 
+@injectable()
 export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     private treeSemaphore = new Semaphore(1); // Only allow one operation (refresh or render) at a time.
     private ongoingLineCountTasks = 0; // Track how many files are still being processed
@@ -26,10 +30,10 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     private lineCountSemaphore = new Semaphore(10); // Limit to 10 concurrent line counts
 
     constructor(
-        private workspaceRoot: string | undefined,
-        public explicitFilesManager: ExplicitFilesManager,
-        private treeRenderer: TreeRenderer,
-        private context: vscode.ExtensionContext,
+        @inject("workspaceRoot") private workspaceRoot: string | undefined,
+        @inject(new LazyServiceIdentifier(() => ExplicitFilesManager)) public explicitFilesManager: ExplicitFilesManager,
+        @inject(new LazyServiceIdentifier(() => TreeRenderer)) private treeRenderer: TreeRenderer,
+        @inject(new LazyServiceIdentifier(() => vscode.ExtensionContext)) private context: vscode.ExtensionContext,
     ) {
         this.workspaceRoot = workspaceRoot ? path.resolve(workspaceRoot) : undefined;
         if (!this.workspaceRoot) {

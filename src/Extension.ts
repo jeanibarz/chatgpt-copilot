@@ -1,3 +1,5 @@
+// src/Extension.ts
+
 /**
  * @author Pengfei Ni
  *
@@ -32,6 +34,7 @@
  * - The `deactivate` function allows for cleanup when the extension is deactivated.
  */
 
+import 'reflect-metadata';
 import * as vscode from 'vscode';
 
 import AbortController from "abort-controller";
@@ -123,25 +126,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Instantiate the ChatGptViewProvider
   const provider = await createChatGptViewProvider(context, workspaceRoot, logger);
-
-  // logger.info('SHOWING INFO ABOUT TREE STRUCTURE');
-  // logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
-
-  // Process the content commands (both inclusion and exclusion)
-
-  // const treeInteractionService = new TreeInteractionService(treeDataProvider, logger);
-  // const commands: Array<[ContentInclusionCommandType, string, string | null]> = [
-  //   [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers", null],  // Add the folder and its content
-  //   [ContentInclusionCommandType.Remove, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/FileLogger.ts", null],  // Exclude a specific file
-  //   [ContentInclusionCommandType.Add, "/home/jean/git/chatgpt-copilot/src/logging/sinkLoggers/OutputChannelLogger.ts", "getChannelName"],  // Add a specific method inside the file
-  // ];
-  // await treeInteractionService.processInclusionOrExclusionCommands(commands);
-
-  // Refresh the tree to ensure it updates
-  // await provider.contextManager.treeDataProvider.refresh();
-
-  // logger.info('SHOWING AGAIN THE TREE STRUCTURE');
-  // logger.info('\n' + await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails));
 
   // Register the webview provider
   const view = vscode.window.registerWebviewViewProvider(

@@ -1,5 +1,6 @@
+// src/errors/ErrorHandler.ts
+
 /**
- * src/errors/ErrorHandler.ts
  * 
  * This module provides a centralized error handling mechanism for use within a VS Code extension.
  * The `ErrorHandler` class manages error handlers for different HTTP status codes,
@@ -17,7 +18,9 @@
  *   of error handlers for specific status codes.
  */
 
+import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { Utility } from "../Utility";
 import { BaseErrorHandler } from "./BaseErrorHandler";
@@ -28,6 +31,7 @@ import { ErrorHandlerRegistry } from "./ErrorHandlerRegistry";
  * It manages a registry of error handlers for different HTTP status codes and facilitates
  * the logging and reporting of errors that occur during API requests.
  */
+@injectable()
 export class ErrorHandler extends BaseErrorHandler {
     private registry: ErrorHandlerRegistry;
 
@@ -37,7 +41,9 @@ export class ErrorHandler extends BaseErrorHandler {
      * 
      * @param logger - An instance of `CoreLogger` for logging events.
      */
-    constructor(logger: CoreLogger) {
+    constructor(
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
         super(logger);
         this.registry = new ErrorHandlerRegistry(logger);
     }

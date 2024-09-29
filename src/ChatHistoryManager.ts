@@ -1,3 +1,5 @@
+// src/ChatHistoryManager.ts
+
 /**
  * This module manages the chat history for the ChatGPT VS Code extension.
  * It provides methods to add messages from users and assistants, clear the history,
@@ -20,12 +22,14 @@
  */
 
 import { CoreMessage } from "ai";
+import { injectable } from "inversify";
 
 /**
  * The `ChatHistoryManager` class manages the chat history of user interactions
  * with the assistant. It allows for adding messages, clearing history, and
  * retrieving past messages.
  */
+@injectable()
 export class ChatHistoryManager {
     private chatHistory: CoreMessage[] = []; // Array to store chat messages
 

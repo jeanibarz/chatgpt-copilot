@@ -1,5 +1,6 @@
+// src/controllers/CommandHandler.ts
+
 /**
- * src/controllers/CommandHandler.ts
  * 
  * This module handles command execution for the ChatGPT VS Code extension.
  * It defines various command classes that encapsulate specific actions 
@@ -23,6 +24,7 @@
  *   the command type and associated data.
  */
 
+import { injectable } from "inversify";
 import { AddFreeTextQuestionCommand } from '../commands/AddFreeTextQuestionCommand';
 import { ClearBrowserCommand } from '../commands/ClearBrowserCommand';
 import { ClearConversationCommand } from '../commands/ClearConversationCommand';
@@ -49,6 +51,7 @@ const logger = CoreLogger.getInstance();
  * a registry of command instances and facilitates the execution of commands
  * based on user interactions.
  */
+@injectable()
 export class CommandHandler {
   private commandMap: Map<ChatGPTCommandType, ICommand>; // Map to store command instances
   private provider?: ChatGptViewProvider;
@@ -59,9 +62,8 @@ export class CommandHandler {
    * 
    * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
    */
-  constructor(provider?: ChatGptViewProvider) {
+  constructor() {
     this.commandMap = new Map();
-    this.provider = provider;
     this.registerCommands();
   }
 
@@ -109,7 +111,7 @@ export class CommandHandler {
    */
   public async executeCommand(commandType: ChatGPTCommandType, data: any): Promise<void> {
     if (!this.provider) {
-      logger.error(`Provider is not available, can\'t execute command ${commandType}`);
+      logger.error(`Provider is not available, can't execute command ${commandType}`);
       return;
     }
 

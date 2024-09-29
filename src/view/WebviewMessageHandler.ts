@@ -1,5 +1,6 @@
+// src/view/WebviewMessageHandler.ts
+
 /**
- * src/view/WebviewMessageHandler.ts
  * 
  * This module handles the communication between the webview and the extension within a VS Code environment.
  * It manages incoming messages from the webview and allows for sending responses back to the webview.
@@ -13,9 +14,11 @@
  * - Handles different types of messages, enabling extensible command processing.
  */
 
+import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
-import { CommandHandler } from "../controllers/CommandHandler";
+import { CommandHandler } from "../controllers";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ChatGptViewProvider } from "./ChatGptViewProvider";
 
@@ -24,6 +27,7 @@ import { ChatGptViewProvider } from "./ChatGptViewProvider";
  * between the webview and the VS Code extension. It processes incoming 
  * messages and performs actions based on the message type.
  */
+@injectable()
 export class WebviewMessageHandler {
     private logger: CoreLogger; // Logger instance for logging events
     private commandHandler: CommandHandler; // Command handler for executing commands
@@ -35,7 +39,10 @@ export class WebviewMessageHandler {
      * @param logger - An instance of `CoreLogger` for logging events.
      * @param commandHandler - An instance of `CommandHandler` for executing commands.
      */
-    constructor(logger: CoreLogger, commandHandler: CommandHandler) {
+    constructor(
+        @inject(TYPES.CoreLogger) logger: CoreLogger,
+        @inject(TYPES.CommandHandler) commandHandler: CommandHandler
+    ) {
         this.logger = logger;
         this.commandHandler = commandHandler;
     }

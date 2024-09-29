@@ -1,5 +1,6 @@
+// src/TreeRenderer.ts
+
 /**
- * src/TreeRenderer.ts
  * 
  * This module provides functionality for rendering project trees in various formats 
  * within a VS Code extension. It handles the visualization of project files and 
@@ -13,11 +14,13 @@
  * - Handles rendering using the new `FilteredFileExplorerProvider`.
  */
 
+import { injectable } from "inversify";
 import * as vscode from 'vscode';
 import { RenderMethod } from "../interfaces";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FilteredTreeDataProvider } from "./FilteredTreeDataProvider";
 
+@injectable()
 export class TreeRenderer {
     private logger = CoreLogger.getInstance();
 

@@ -1,3 +1,5 @@
+// src/logging/CoreLogger.ts
+
 /**
  * This module provides a flexible logging mechanism for use within a VS Code extension.
  * It includes both file-based and output-channel-based logging, and supports multiple log levels.
@@ -21,6 +23,7 @@
 
 import * as vscode from "vscode";
 
+import { injectable } from "inversify";
 import { LoggerRegistry } from "./LoggerRegistry";
 import { FileLogger } from "./sinkLoggers/FileLogger";
 import { OutputChannelLogger } from "./sinkLoggers/OutputChannelLogger";
@@ -57,6 +60,7 @@ interface CoreLoggerOptions {
  * This class also interacts with a `LoggerRegistry` to manage named loggers and prevent 
  * duplicate logger creation.
  */
+@injectable()
 export class CoreLogger {
     private loggerName: string; // The name of the logger
     private static registry: LoggerRegistry = new LoggerRegistry(); // Logger registry for managing loggers
@@ -71,7 +75,7 @@ export class CoreLogger {
      * 
      * @param options - The configuration options for the logger.
      */
-    private constructor(options: CoreLoggerOptions) {
+    public constructor(options: CoreLoggerOptions) {
         // loggerName is mandatory here
         this.loggerName = options.loggerName;
 

@@ -1,3 +1,5 @@
+// src/services/ConfigurationManager.ts
+
 /**
  * This module provides a configuration management system for use within a VS Code extension.
  * It handles loading and managing application settings and configurations, particularly 
@@ -23,7 +25,9 @@
 
 import * as vscode from 'vscode';
 
+import { inject, injectable } from "inversify";
 import { getConfig, getRequiredConfig } from "../config/Configuration";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ModelManager } from "./ModelManager";
 
@@ -42,6 +46,7 @@ interface IConfigurationManager {
  * configuration values and provides access to them for other 
  * components within the application.
  */
+@injectable()
 export class ConfigurationManager implements IConfigurationManager {
     private logger = CoreLogger.getInstance(); // Logger instance for logging configuration events
     public modelManager: ModelManager; // Instance of ModelManager to manage models
@@ -58,7 +63,9 @@ export class ConfigurationManager implements IConfigurationManager {
      * 
      * @param modelManager - An instance of `ModelManager` to manage models.
      */
-    constructor(modelManager: ModelManager) {
+    constructor(
+        @inject(TYPES.ModelManager) modelManager: ModelManager
+    ) {
         this.modelManager = modelManager;
         this.loadConfiguration(); // Load configuration upon instantiation
     }
