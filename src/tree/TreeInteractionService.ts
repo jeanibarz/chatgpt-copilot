@@ -1,7 +1,6 @@
 // src/TreeInteractionService.ts
 
 /**
- * 
  * This module provides a service for interacting with tree data structures 
  * within a VS Code extension. It facilitates the processing of commands 
  * related to expanding and folding nodes in a tree view.

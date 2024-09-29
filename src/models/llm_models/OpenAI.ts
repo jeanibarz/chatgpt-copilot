@@ -1,3 +1,5 @@
+// src/models/llm_models/OpenAI.ts
+
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
 /**
@@ -33,9 +35,9 @@ import { CoreLogger } from "../../logging/CoreLogger";
 import { GenerateObjectCallOptions, StreamTextCallOptions, WorkflowType } from "../../types/coreTypes";
 import { ChatGptViewProvider } from "../../view/ChatGptViewProvider";
 import { DocstringsResponseGenerator } from "../../workflows/BasicDocstringGenerator";
+import { MermaidDiagramResponseGenerator } from "../../workflows/BasicMermaidDiagramGenerator";
 import { BasicResponseGenerator } from '../../workflows/BasicResponseGenerator';
 import { KnowledgeEnhancedResponseGenerator } from "../../workflows/KnowledgeEnhancedResponseGenerator";
-
 
 /**
  * The OpenAIModel class implements the IChatModel interface and provides methods
@@ -48,7 +50,7 @@ import { KnowledgeEnhancedResponseGenerator } from "../../workflows/KnowledgeEnh
  */
 export class OpenAIModel implements IChatModel {
     private logger = CoreLogger.getInstance();
-    
+
     /**
      * Constructor for the OpenAIModel class.
      * 
@@ -99,6 +101,8 @@ export class OpenAIModel implements IChatModel {
             await new KnowledgeEnhancedResponseGenerator(provider, this).generate(question, updateResponse);
         } else if (workflowType === 'basicDocstringGenerator') {
             return await new DocstringsResponseGenerator(provider, this).generate(question, updateResponse);
+        } else if (workflowType === 'mermaidDiagramGenerator') {
+            return await new MermaidDiagramResponseGenerator(provider, this).generate(question, updateResponse);
         } else {
             throw Error('Unknown workflow type');
         }

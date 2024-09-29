@@ -1,5 +1,10 @@
 // src/services/ExplicitFilesManager.ts
 
+/**
+ * This module manages explicit files and folders within the ChatGPT VS Code extension.
+ * It allows adding, removing, and clearing files and folders, ensuring they are tracked appropriately.
+ */
+
 import { promises } from 'fs';
 import { inject, injectable } from "inversify";
 import * as path from 'path';
@@ -98,7 +103,6 @@ export class ExplicitFilesManager {
         }
     }
 
-
     /**
      * Removes a resource (file or folder) from the explicit files/folders sets.
      * @param resourceUri - The URI of the file or folder to remove.
@@ -171,7 +175,6 @@ export class ExplicitFilesManager {
             this.logger.error(`Failed to remove resource: ${fsPath}`, { error });
         }
     }
-
 
     /**
      * Clears all resources from the explicit files/folders sets.

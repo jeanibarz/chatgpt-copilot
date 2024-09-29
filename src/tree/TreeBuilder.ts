@@ -1,5 +1,11 @@
 // src/services/TreeBuilder.ts
 
+/**
+ * This module is responsible for building a tree structure from file and folder paths.
+ * It utilizes the NodeManager and ExplicitFilesManager to manage nodes and determine 
+ * inclusions based on explicit file and folder configurations.
+ */
+
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ITreeNode, InclusionState } from '../interfaces';

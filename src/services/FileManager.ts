@@ -1,7 +1,6 @@
 // src/services/FileManager.ts
 
 /**
- * 
  * This module provides a utility class for managing file system operations, 
  * including file search and content retrieval. It facilitates navigation through 
  * directories, reading file contents, counting lines in files, and finding files 
@@ -40,7 +39,7 @@ export class FileManager {
 
     /**
      * Creates an instance of `FileManager`.
-     * 
+     * Initializes the workspace root based on the current workspace folders.
      */
     constructor() {
         const workspaceFolders = vscode.workspace.workspaceFolders;

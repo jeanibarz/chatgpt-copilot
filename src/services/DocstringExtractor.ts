@@ -1,20 +1,21 @@
 // src/services/DocstringExtractor.ts
 
+/**
+ * This module is responsible for extracting module-level docstrings 
+ * from provided files. It utilizes the FileManager for file reading 
+ * operations and regex matching to identify docstrings.
+ * 
+ * Key Features:
+ * - Extracts docstrings from files while ensuring they are correctly formatted.
+ * - Supports integration with the FileManager for file reading operations.
+ */
+
 import { inject, injectable } from "inversify";
 import { IFileDocstring } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FileManager } from './FileManager';
 
-/**
- * The `DocstringExtractor` class is responsible for extracting module-level 
- * docstrings from provided files. It uses the `FileManager` to read file 
- * contents and identify docstrings based on regex matching.
- * 
- * Key Features:
- * - Extracts docstrings from files while ensuring they are correctly formatted.
- * - Supports integration with the `FileManager` for file reading operations.
- */
 @injectable()
 export class DocstringExtractor {
     private logger: CoreLogger;

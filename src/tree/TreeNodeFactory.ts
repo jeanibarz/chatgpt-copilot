@@ -1,6 +1,6 @@
+// src/tree/TreeNodeFactory.ts
+
 /**
- * src/TreeNodeFactory.ts
- * 
  * This module provides a factory for creating TreeNode objects, which represent 
  * different types of nodes in a tree structure within a VS Code extension. 
  * It includes methods to create folder nodes, file nodes, and symbol nodes, 
@@ -86,7 +86,6 @@ export class TreeNodeFactory {
      * 
      * @param symbol - The DocumentSymbol object.
      * @param filePath - The path of the file containing the symbol.
-     * @param symbolsToInclude - Set of symbol kinds to include.
      * @returns A TreeNode representing the symbol, or null if not included.
      */
     public static createSymbolNode(

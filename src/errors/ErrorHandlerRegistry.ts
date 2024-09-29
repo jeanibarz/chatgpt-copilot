@@ -1,22 +1,9 @@
+// src/errors/ErrorHandlerRegistry.ts
+
 /**
- * src/errors/ErrorHandlerRegistry.ts
- * 
- * This module provides a centralized registry for managing error handlers
- * associated with different HTTP status codes within a VS Code extension.
- * The `ErrorHandlerRegistry` class allows for registering, unregistering,
- * and retrieving error handlers, enabling flexible error handling strategies.
- * 
- * Key Features:
- * - Register and unregister error handlers for specific status codes.
- * - Retrieve error handlers by status code for consistent error processing.
- * - Log registration and unregistration events for observability.
- * 
- * Usage:
- * - The `registerHandler` method allows you to associate a handler function
- *   with a specific HTTP status code.
- * - The `unregisterHandler` method removes a previously registered handler.
- * - The `getHandler` method retrieves the handler associated with a given
- *   status code for use in error processing.
+ * This module manages a collection of error handlers for various HTTP 
+ * status codes. It allows for dynamic registration and retrieval of 
+ * handlers to facilitate customized error responses.
  */
 
 import { ILogger } from "../interfaces/ILogger";

@@ -1,5 +1,12 @@
 // src/services/ContextRetriever.ts
 
+/**
+ * This module provides the ContextRetriever class, which is responsible for 
+ * retrieving context from project files based on configurable inclusion and 
+ * exclusion regex patterns. It utilizes the FileManager for file operations 
+ * and formats the content for output.
+ */
+
 import { inject, injectable } from "inversify";
 import { getConfig } from '../config/Configuration';
 import TYPES from "../inversify.types";
@@ -7,16 +14,6 @@ import { CoreLogger } from "../logging/CoreLogger";
 import { FileContentFormatter } from './FileContentFormatter';
 import { FileManager } from './FileManager';
 
-/**
- * The `ContextRetriever` class is responsible for retrieving file contexts 
- * based on user-defined inclusion and exclusion patterns. It interacts with 
- * the `FileManager` to find and read the appropriate files and formats 
- * their contents for use in prompts.
- * 
- * Key Features:
- * - Retrieves context based on configured regex patterns.
- * - Reads file contents and formats them for integration into prompts.
- */
 @injectable()
 export class ContextRetriever {
     private logger = CoreLogger.getInstance();
@@ -39,6 +36,13 @@ export class ContextRetriever {
         };
     }
 
+    /**
+     * Retrieves a list of files that match the configured inclusion and 
+     * exclusion regex patterns.
+     * 
+     * @param explicitFiles - An array of file paths to check against the regex patterns.
+     * @returns An array of file paths that match the inclusion and exclusion criteria.
+     */
     public getMatchedFiles(explicitFiles: string[]): string[] {
         const { inclusionRegex, exclusionRegex } = this.regexConfigs;
         return this.fileManager.findMatchingFiles(
@@ -48,6 +52,13 @@ export class ContextRetriever {
         );
     }
 
+    /**
+     * Retrieves the content of the specified files and formats it for output.
+     * 
+     * @param files - A set of file paths from which to read content.
+     * @returns A promise that resolves to a formatted string containing the 
+     *          combined content of the files.
+     */
     public async getFilesContent(files: Set<string>): Promise<string> {
         const fileContents: string[] = [];
         const contextTitle = "### Context from Project Files:\n\n";
@@ -67,6 +78,15 @@ export class ContextRetriever {
         return contextTitle + fileContents.join('\n\n');
     }
 
+    /**
+     * Retrieves context for a prompt by finding matching files and 
+     * gathering their content.
+     * 
+     * @param explicitFiles - An array of file paths to search for context.
+     * @returns A promise that resolves to a formatted string containing the 
+     *          context gathered from the matching files.
+     * @throws An error if the context retrieval fails.
+     */
     public async retrieveContextForPrompt(explicitFiles: string[]): Promise<string> {
         try {
             this.logger.info("Finding matching files");

@@ -1,6 +1,6 @@
+// src/tree/TreeRenderer.ts
+
 /**
- * src/TreeRenderer.ts
- * 
  * This module provides functionality for rendering project trees in various formats 
  * within a VS Code extension. It handles the visualization of project files and 
  * directories, allowing users to view the structure of their projects in both ASCII 
@@ -32,6 +32,7 @@ export class TreeRenderer {
 
     /**
      * Renders the tree in the specified format.
+     * 
      * @param tree - The tree structure.
      * @param format - The render format.
      * @returns A string representing the tree.
@@ -64,6 +65,7 @@ export class TreeRenderer {
 
     /**
      * Recursively renders a node in ASCII format.
+     * 
      * @param node - The TreeNode.
      * @param prefix - The prefix string for formatting.
      * @param lines - The array of lines to append to.
@@ -81,6 +83,7 @@ export class TreeRenderer {
 
     /**
      * Renders the tree with full paths.
+     * 
      * @param tree - The tree structure.
      * @returns A string representing the tree.
      */
@@ -92,6 +95,7 @@ export class TreeRenderer {
 
     /**
      * Recursively renders a node with full paths.
+     * 
      * @param node - The TreeNode.
      * @param prefix - The prefix string for formatting.
      * @param lines - The array of lines to append to.

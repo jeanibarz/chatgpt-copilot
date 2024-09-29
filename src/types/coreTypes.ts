@@ -144,7 +144,7 @@ type StreamTextCallOptions<TOOLS extends Record<string, CoreTool>> = CallSetting
     };
 };
 
-type WorkflowType = 'simple' | 'advanced' | 'basicDocstringGenerator';
+type WorkflowType = 'simple' | 'advanced' | 'basicDocstringGenerator' | 'mermaidDiagramGenerator';
 
 export {
     GenerateObjectCallOptions,

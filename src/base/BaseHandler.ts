@@ -1,15 +1,9 @@
 // src/base/BaseHandler.ts
 
 /**
- * 
- * This module provides an abstract base class for handlers that execute operations 
- * within the application. The `BaseHandler` class implements the `IHandler<T>` interface 
- * and provides a common structure for logging errors encountered during operation execution.
- * 
- * Key Features:
- * - Implements a common interface for handling operations.
- * - Provides logging capabilities for error handling.
- * - Requires subclasses to implement specific handling logic through the `execute` method.
+ * This module defines the `BaseHandler` abstract class, which serves as a 
+ * base for implementing various handlers. It provides a common interface 
+ * for handling data and logging errors.
  */
 
 import { inject } from "inversify";
@@ -17,6 +11,15 @@ import { IHandler } from "../interfaces/IHandler";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 
+/**
+ * The BaseHandler class provides a base implementation for handlers, 
+ * ensuring that all handlers have a logger for logging events and 
+ * an abstract method for execution.
+ * 
+ * Key Features:
+ * - Provides a logger instance for logging errors and events.
+ * - Requires subclasses to implement the execute method for processing data.
+ */
 export abstract class BaseHandler<T> implements IHandler<T> {
     protected logger: CoreLogger; // Logger instance for logging events
 

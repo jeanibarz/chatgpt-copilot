@@ -247,7 +247,11 @@
       },
       {
         "command": "chatgpt-copilot.generateDocstrings",
-        "title": "Generate/Update Docstrings"
+        "title": "Generate/Update Docstrings for current file"
+      },
+      {
+        "command": "chatgpt-copilot.generateMermaidDiagram",
+        "title": "Generate/Update Mermaid Diagram for current file"
       },
       {
         "command": "chatgpt-copilot.completeCode",
@@ -658,6 +662,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.25.4",
     "@types/glob": "^8.1.0",
+    "@types/inversify": "^2.0.33",
     "@types/isomorphic-fetch": "^0.0.39",
     "@types/jest": "^29.5.13",
     "@types/mocha": "^10.0.7",
@@ -709,6 +714,7 @@
     "keyv": "^4.5.4",
     "langchain": "0.3.2",
     "langsmith": "^0.1.55",
+    "mediatr-ts": "^2.0.1",
     "minimatch": "^10.0.1",
     "node-fetch": "2",
     "openai": "^4.61.0",

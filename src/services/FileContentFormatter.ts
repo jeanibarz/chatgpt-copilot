@@ -1,9 +1,9 @@
-// ./services/FileContentFormatter.ts
+// src/services/FileContentFormatter.ts
 
 /**
- * The `FileContentFormatter` class is responsible for formatting the content 
- * of files and symbols for integration into prompts. It structures the content in a 
- * readable manner for better presentation in the ChatGPT interface.
+ * This module is responsible for formatting the content of files and symbols 
+ * for integration into prompts. It structures the content in a readable 
+ * manner for better presentation in the ChatGPT interface.
  * 
  * Key Features:
  * - Formats entire file content with appropriate headings and structure.

@@ -1,24 +1,8 @@
 // src/logging/CoreLogger.ts
 
 /**
- * This module provides a flexible logging mechanism for use within a VS Code extension.
- * It includes both file-based and output-channel-based logging, and supports multiple log levels.
- * 
- * The `CoreLogger` class allows for creating, managing, and logging to both file-based and 
- * output-channel-based loggers. A logger registry (`LoggerRegistry`) is used to manage loggers 
- * by name and prevent multiple loggers with the same name from being created.
- * 
- * Key Features:
- * - Supports multiple log levels: Info, Debug, Warning, Error.
- * - File-based logging with `FileLogger`.
- * - Output channel-based logging with `OutputChannelLogger`.
- * - Centralized registry for logger management to avoid duplicates.
- * - Optional default logger creation with the name "ChatGPT Copilot".
- * 
- * Usage:
- * - The `getInstance` method retrieves or creates a logger instance.
- * - The logger can log messages at different levels using methods like `info`, `warn`, `debug`, and `error`.
- * - The `logError` method provides a convenient way to log errors and notify users through the UI.
+ * This module provides a logging utility that supports both file-based and output channel-based loggers.
+ * It allows logging messages with varying levels of severity and manages loggers through a registry.
  */
 
 import * as vscode from "vscode";

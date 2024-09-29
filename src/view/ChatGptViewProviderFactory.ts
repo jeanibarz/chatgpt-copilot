@@ -22,9 +22,19 @@ import { CommandHandler, ResponseHandler, SessionManager } from "../controllers"
 import { ConversationManager } from "../ConversationManager";
 import { DocstringGenerator } from "../DocstringGenerator";
 import { ErrorHandler } from "../errors/ErrorHandler";
+import { AddChatHistoryMessageHandler } from '../handlers/AddChatHistoryMessageHandler';
+import { ConfigurationChangedHandler } from "../handlers/ConfigurationChangedHandler";
+import { CreateChatModelHandler } from "../handlers/CreateChatModelHandler";
+import { ExecuteCommandHandler } from "../handlers/ExecuteCommandHandler";
+import { HandleApiErrorHandler } from '../handlers/HandleApiErrorHandler';
+import { SendApiRequestHandler } from '../handlers/SendApiRequestHandler';
+import { SendMessageHandler } from '../handlers/SendMessageHandler';
+import { ShowSideBySideComparisonHandler } from "../handlers/ShowSideBySideComparisonHandler";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
 import { ConfigurationManager, ContextManager, ContextRetriever, DocstringExtractor, EventHandler, ExplicitFilesManager, FileManager, ModelManager } from "../services";
+import { MediatorService } from "../services/MediatorService";
 import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { WebviewManager } from "../view/WebviewManager";
 import { ChatGptViewProvider } from "./ChatGptViewProvider";
@@ -76,6 +86,18 @@ export async function createChatGptViewProvider(
     container.bind<ResponseHandler>(TYPES.ResponseHandler).to(ResponseHandler).inSingletonScope();
     container.bind<ErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler).inSingletonScope();
     container.bind<DocstringGenerator>(TYPES.DocstringGenerator).to(DocstringGenerator).inSingletonScope();
+    container.bind<MermaidDiagramGenerator>(TYPES.MermaidDiagramGenerator).to(MermaidDiagramGenerator).inSingletonScope();
+
+    // Bind Handlers
+    container.bind<SendMessageHandler>(SendMessageHandler).to(SendMessageHandler);
+    container.bind<AddChatHistoryMessageHandler>(AddChatHistoryMessageHandler).to(AddChatHistoryMessageHandler);
+    container.bind<SendApiRequestHandler>(SendApiRequestHandler).to(SendApiRequestHandler);
+    container.bind<HandleApiErrorHandler>(HandleApiErrorHandler).to(HandleApiErrorHandler);
+    container.bind<ShowSideBySideComparisonHandler>(ShowSideBySideComparisonHandler).to(ShowSideBySideComparisonHandler);
+    container.bind<ExecuteCommandHandler>(ExecuteCommandHandler).to(ExecuteCommandHandler);
+    container.bind<ConfigurationChangedHandler>(ConfigurationChangedHandler).to(ConfigurationChangedHandler);
+    container.bind<CreateChatModelHandler>(CreateChatModelHandler).to(CreateChatModelHandler);
+
 
     // Bind FilteredTreeDataProvider with dynamic value
     container.bind<FilteredTreeDataProvider>(TYPES.FilteredTreeDataProvider).toDynamicValue((ctx: interfaces.Context) => {
@@ -91,6 +113,9 @@ export async function createChatGptViewProvider(
     // Bind any remaining dependencies required by ChatGptViewProvider
     container.bind<SessionManager>(TYPES.SessionManager).to(SessionManager).inSingletonScope();
     container.bind<ConversationManager>(TYPES.ConversationManager).to(ConversationManager).inSingletonScope();
+
+    // --- Add Mediator Binding ---
+    container.bind<MediatorService>(TYPES.MediatorService).to(MediatorService).inSingletonScope();
 
     // Resolve ChatGptViewProvider
     logger.info("Resolving ChatGptViewProvider");

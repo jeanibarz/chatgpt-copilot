@@ -40,7 +40,6 @@
 
 import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/openai/internal";
 import { LanguageModelV1 } from "@ai-sdk/provider";
-import * as fs from "fs";
 import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
 import { onConfigurationChanged } from "../config/Configuration";
@@ -51,8 +50,13 @@ import { ErrorHandler } from "../errors/ErrorHandler";
 import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage, IChatModel } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatModelFactory } from '../models/llm_models/ChatModelFactory';
+import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
+import { CreateChatModelRequest } from "../requests/CreateChatModelRequest";
+import { HandleApiErrorRequest } from "../requests/HandleApiErrorRequest";
+import { SendMessageRequest } from "../requests/SendMessageRequest";
+import { ShowSideBySideComparisonRequest } from "../requests/ShowSideBySideComparisonRequest";
 import { ChatHistoryManager, ConfigurationManager, ContextManager, FileManager, ModelManager } from "../services";
+import { MediatorService } from "../services/MediatorService";
 import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
@@ -68,6 +72,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public webView?: vscode.WebviewView;
   public logger: CoreLogger;
   private context: vscode.ExtensionContext;
+  private mediatorService: MediatorService;
   public webviewManager: WebviewManager;
   public modelManager: ModelManager;
   public treeDataProvider: FilteredTreeDataProvider;
@@ -83,6 +88,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
   public errorHandler: ErrorHandler;
   public commandHandler: CommandHandler;
   public docstringGenerator: DocstringGenerator;
+  public mermaidDiagramGenerator: MermaidDiagramGenerator;
 
   public apiCompletion?: OpenAICompletionLanguageModel | LanguageModelV1;
   public apiChat?: OpenAIChatLanguageModel | LanguageModelV1;
@@ -102,16 +108,31 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Constructor for the `ChatGptViewProvider` class.
-   * Initializes the view provider with the necessary options and sets up event handling.
+   * Initializes the view provider with the necessary dependencies and sets up event handling.
    * 
-   * @param options - The options required to initialize the view provider.
+   * @param logger - The logger instance for logging activities.
+   * @param mediatorService - The service to mediate interactions between components.
+   * @param webviewManager - The manager responsible for handling webview interactions.
+   * @param commandHandler - The handler for executing commands.
+   * @param modelManager - The manager for handling models.
+   * @param configurationManager - The manager for configuration settings.
+   * @param treeDataProvider - The provider for tree data representation.
+   * @param treeRenderer - The renderer for displaying tree data.
+   * @param chatHistoryManager - The manager for handling chat history.
+   * @param fileManager - The manager for file interactions.
+   * @param contextManager - The manager for handling context-related operations.
+   * @param messageHandler - The handler for processing messages from the webview.
+   * @param responseHandler - The handler for processing responses from the API.
+   * @param errorHandler - The handler for managing errors.
+   * @param docstringGenerator - The generator for creating docstrings.
+   * @param mermaidDiagramGenerator - The generator for creating Mermaid diagrams.
+   * @param extensionContext - The context of the extension.
+   * @param sessionManager - The manager for handling session-related operations.
+   * @param conversationManager - The manager for handling conversations.
    */
-  /**
-     * Constructor for the `ChatGptViewProvider` class.
-     * Initializes the view provider with the necessary dependencies and sets up event handling.
-     */
   constructor(
     @inject(TYPES.CoreLogger) logger: CoreLogger,
+    @inject(TYPES.MediatorService) mediatorService: MediatorService,
     @inject(TYPES.WebviewManager) webviewManager: WebviewManager,
     @inject(TYPES.CommandHandler) commandHandler: CommandHandler,
     @inject(TYPES.ModelManager) modelManager: ModelManager,
@@ -125,10 +146,14 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     @inject(TYPES.ResponseHandler) responseHandler: ResponseHandler,
     @inject(TYPES.ErrorHandler) errorHandler: ErrorHandler,
     @inject(TYPES.DocstringGenerator) docstringGenerator: DocstringGenerator,
+    @inject(TYPES.MermaidDiagramGenerator) mermaidDiagramGenerator: MermaidDiagramGenerator,
     @inject(TYPES.ExtensionContext) extensionContext: vscode.ExtensionContext,
+    @inject(TYPES.SessionManager) sessionManager: SessionManager,
+    @inject(TYPES.ConversationManager) conversationManager: ConversationManager,
   ) {
     this.context = extensionContext;
     this.logger = logger;
+    this.mediatorService = mediatorService;
     this.webviewManager = webviewManager;
     this.commandHandler = commandHandler;
     this.modelManager = modelManager;
@@ -142,13 +167,16 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.responseHandler = responseHandler;
     this.errorHandler = errorHandler;
     this.docstringGenerator = docstringGenerator;
+    this.mermaidDiagramGenerator = mermaidDiagramGenerator;
+    this.sessionManager = sessionManager;
+    this.conversationManager = conversationManager;
 
     this.responseHandler.setProvider(this);
     this.commandHandler.setProvider(this);
     this.docstringGenerator.setProvider(this);
-
-    this.sessionManager = new SessionManager(this);
-    this.conversationManager = new ConversationManager(this);
+    this.mermaidDiagramGenerator.setProvider(this);
+    this.sessionManager.setProvider(this);
+    this.conversationManager.setProvider(this);
 
     this.initializeConfiguration();
     this.logger.info("ChatGptViewProvider initialized");
@@ -204,7 +232,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param message - The message to be sent to the webview.
    */
   public sendMessage(message: IChatGPTMessage) {
-    this.webviewManager.sendMessage(message);
+    this.mediatorService.send(new SendMessageRequest(message));
   }
 
   /**
@@ -214,29 +242,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param generatedDocstringPath - The path to the file containing the generated docstring.
    */
   public async showSideBySideComparison(originalFilePath: string, generatedDocstringPath: string) {
-    // Check if the original file exists
-    try {
-      await fs.promises.access(originalFilePath);
-    } catch {
-      vscode.window.showErrorMessage(`Original file not found: ${originalFilePath}`);
-      return;
-    }
-
-    // Check if the generated file exists
-    try {
-      await fs.promises.access(generatedDocstringPath);
-    } catch {
-      vscode.window.showErrorMessage(`Generated docstring file not found: ${generatedDocstringPath}`);
-      return;
-    }
-
-    // Open side-by-side diff view in VS Code
-    await vscode.commands.executeCommand(
-      'vscode.diff',
-      vscode.Uri.file(originalFilePath),
-      vscode.Uri.file(generatedDocstringPath),
-      'Generated Docstring vs Original Code'
-    );
+    await this.mediatorService.send(new ShowSideBySideComparisonRequest(originalFilePath, generatedDocstringPath));
   }
 
   /**
@@ -267,18 +273,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param prompt - The original prompt that was being processed.
    * @param options - Options related to the API request that failed.
    */
-  public handleApiError(error: any, prompt: string, options: any) {
-    const errorId = Utility.getRandomId();
-    this.logger.error(`Error ID: ${errorId} - API request failed`, { error, prompt, options });
-
-    // Check if the error is an AbortError
-    if (error.name === 'AbortError') {
-      vscode.window.showInformationMessage("Completion has been cancelled by the user.");
-    } else {
-      // Handle other types of errors
-      const apiMessage = error?.response?.data?.error?.message || error?.toString?.() || error?.message || error?.name;
-      vscode.window.showErrorMessage(`Something went wrong. Error ID: ${errorId}`);
-    }
+  public async handleApiError(error: any, options: any,) {
+    await this.mediatorService.send(
+      new HandleApiErrorRequest(error, options, this.sendMessage.bind(this))
+    );
   }
 
   /**
@@ -347,7 +345,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
       await this.responseHandler.handleChatResponse(chatModel, formattedQuestion, additionalContext, options);
     } catch (error) {
       this.logger.logError(error, "Error in handleChatResponse", true);
-      this.handleApiError(error, formattedQuestion, options);
+      this.handleApiError(error, options);
     } finally {
       this.finalizeRequest();
     }
@@ -403,20 +401,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  // /**
-  //  * Retrieves additional context for the prompt by invoking the context manager.
-  //  *
-  //  * @returns The additional context as a string, or null if an error occurs.
-  //  */
-  // private async retrieveAdditionalContext(): Promise<string | null> {
-  //   try {
-  //     return await this.contextManager.retrieveContextForPrompt();
-  //   } catch (error) {
-  //     this.logger.logError(error, "Failed to retrieve context for prompt", true);
-  //     return null;
-  //   }
-  // }
-
   /**
    * Focuses the webview to ensure it is visible to the user.
    */
@@ -438,16 +422,10 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns The chat model instance, or null if an error occurs.
    */
   private async createChatModel(): Promise<IChatModel | null> {
-    this.logger.info("Preparing to create chat model...");
-
-    const modelType = this.modelManager.model;
-    const modelConfig = this.modelManager.modelConfig;
-
-    this.logger.info(`Model Type: ${modelType}`);
-    this.logger.info(`Model Config: ${JSON.stringify(modelConfig)}`);
+    this.logger.info("Requesting chat model creation...");
 
     try {
-      const chatModel = await ChatModelFactory.createChatModel(this);
+      const chatModel = await this.mediatorService.send<CreateChatModelRequest, IChatModel | null>(new CreateChatModelRequest(this)); // Pass the provider here
       this.logger.info('Chat model created successfully');
       return chatModel;
     } catch (error) {
@@ -474,7 +452,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param prompt - The user's prompt.
    * @param code - Optional code associated with the prompt.
    */
-  private addQuestionToWebview(prompt: string, code?: string) {
+  public addQuestionToWebview(prompt: string, code?: string) {
     this.sendMessage({
       type: "addQuestion",
       value: prompt,

@@ -16,104 +16,196 @@ When presented with a code file, you will analyze the code structure and provide
 
 Your responses should be formatted in JSDoc style to ensure consistency and clarity. Please ensure that the generated docstrings are accurate and relevant to the code context.
 
+---
+
 **Example Input Code:**
-```typescript
-// File: src/modelManager.ts
+// src/services/DocstringExtractor.ts
 
-import { ChatGptViewProvider } from './chatgptViewProvider';
-import { CoreLogger } from "./coreLogger";
+import { inject, injectable } from "inversify";
+import { IFileDocstring } from "../interfaces";
+import TYPES from "../inversify.types";
+import { CoreLogger } from '../logging/CoreLogger';
+import { FileManager } from './FileManager';
 
-export class ModelManager {
-    public model?: string; // The currently selected model
-    public modelConfig!: ModelConfig; // Configuration settings for the model
+/**
+ * The `DocstringExtractor` class is responsible for extracting module-level 
+ * docstrings from provided files.
+ * 
+ * Key Features:
+ * - Supports integration with the `FileManager` for file reading operations.
+ */
+@injectable()
+export class DocstringExtractor {
+    private logger: CoreLogger;
 
-    constructor() { }
-
-    public async prepareModelForConversation(modelChanged = false, logger: CoreLogger, viewProvider: ChatGptViewProvider): Promise<boolean> {
-        // Implementation...
+    constructor(
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
+        this.logger = logger;
     }
 
-    private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
-        // Implementation...
+    /**
+     * Extracts module-level docstrings from the matched files.
+     * 
+     * @param matchedFiles - A list of file paths from which to extract docstrings.
+     * @param anotherParam - An extra parameter that doesn't exist in the method signature.
+     * @returns A promise that resolves to an array of docstrings for each file.
+     */
+    public async extractModuleDocstrings(matchedFiles: string[]): Promise<IFileDocstring[]> {
+        const docstrings: IFileDocstring[] = [];
+
+        for (const file of matchedFiles) {
+            const content = await this.safeReadFileContent(file);
+            if (!content) continue;
+
+            const extractedDocstring = this.extractDocstring(content, file);
+            if (extractedDocstring) {
+                docstrings.push(extractedDocstring);
+                break; // Stop searching after the first valid docstring
+            }
+        }
+
+        return docstrings;
+    }
+
+    // Missing docstring for this method
+    public async extractMethodDocstring(filePath: string, methodName: string): Promise<string | null> {
+        const content = await this.safeReadFileContent(filePath);
+        if (!content) return null;
+
+        const methodRegex = new RegExp(`(\\/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*\\/\\s*)?\\s*${methodName}\\s*\\(`);
+        const match = content.match(methodRegex);
+
+        if (match) {
+            const docstringMatch = content.substring(0, match.index).match(/\/\*[\s\S]*?\*\//);
+            return docstringMatch ? docstringMatch[0] : null;
+        }
+
+        return null;
+    }
+
+    private async safeReadFileContent(filePath: string): Promise<string | null> {
+        try {
+            return await this.fileManager.readFileContent(filePath);
+        } catch (error) {
+            this.logger.error(`Error reading file content from ${filePath}`, { error });
+            return null;
+        }
+    }
+
+    private extractDocstring(content: string, filePath: string): IFileDocstring | null {
+        const blockComments = content.match(/\/\*[\s\S]*?\*\//g);
+        if (blockComments) {
+            for (const comment of blockComments) {
+                if (comment.includes("This module")) {
+                    return { filePath, docstring: comment };
+                }
+            }
+        }
+        return null;
     }
 }
-```
 
 **Example Output:**
-/**
- * src/ModelManager.ts
- * 
- * This module manages the configuration and initialization of AI models 
- * for use within a VS Code extension. It is responsible for loading model 
- * settings from the configuration, preparing the models for conversation, 
- * and initializing the appropriate model based on user-defined settings.
- * 
- * The `ModelManager` class ensures that the correct model is initialized 
- * and ready for use, depending on the user's configuration and the selected 
- * model type. It interacts with various model initialization functions 
- * for different AI models, such as GPT, Claude, and Gemini.
- * 
- * Key Features:
- * - Loads model configuration from the VS Code workspace settings.
- * - Supports multiple AI models, including GPT, Claude, and Gemini.
- * - Handles API key retrieval and model settings initialization.
- * - Provides methods to check the type of model currently in use.
- */
+// src/services/DocstringExtractor.ts
+
+import { inject, injectable } from "inversify";
+import { IFileDocstring } from "../interfaces";
+import TYPES from "../inversify.types";
+import { CoreLogger } from '../logging/CoreLogger';
+import { FileManager } from './FileManager';
 
 /**
- * The ModelManager class is responsible for managing the AI model configuration 
- * and initializing the appropriate model for conversation based on user settings.
+ * The DocstringExtractor class is responsible for extracting module-level 
+ * docstrings from provided files. It uses the FileManager to read file 
+ * contents and identify docstrings based on regex matching.
  * 
  * Key Features:
- * - Loads model configuration from the VS Code workspace settings.
- * - Supports multiple AI models, including GPT, Claude, and Gemini.
- * - Handles API key retrieval and model settings initialization.
- * - Provides methods to check the type of model currently in use.
+ * - Extracts docstrings from files while ensuring they are correctly formatted.
+ * - Supports integration with the FileManager for file reading operations.
  */
-export class ModelManager {
-    public model?: string; // The currently selected model
-    public modelConfig!: ModelConfig; // Configuration settings for the model
+@injectable()
+export class DocstringExtractor {
+    private logger: CoreLogger;
 
-    /**
-     * Constructor for the `ModelManager` class.
-     * Initializes a new instance of the ModelManager.
-     */
-    constructor() { }
-
-    /**
-     * Prepares the selected AI model for conversation.
-     * Loads configuration settings, retrieves the API key, and initializes the model 
-     * based on the user's settings.
-     * 
-     * @param modelChanged - A flag indicating if the model has changed.
-     * @param logger - An instance of `CoreLogger` for logging events.
-     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing workspace settings.
-     * @returns A promise that resolves to true if the model is successfully prepared; otherwise, false.
-     */
-    public async prepareModelForConversation(modelChanged = false, logger: CoreLogger, viewProvider: ChatGptViewProvider): Promise<boolean> {
-        // Implementation...
+    constructor(
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+        @inject(TYPES.CoreLogger) logger: CoreLogger
+    ) {
+        this.logger = logger;
     }
 
     /**
-     * Initializes the appropriate model based on the current configuration.
+     * Extracts module-level docstrings from the matched files.
      * 
-     * This method checks the current model settings and initializes the corresponding
-     * model (e.g., GPT, Claude, Gemini) based on the configuration provided by the user.
-     * It ensures that the model is ready for use in chat interactions.
-     * 
-     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
+     * @param matchedFiles - An array of file paths from which to extract docstrings.
+     * @returns A promise that resolves to an array of objects containing file paths and their respective docstrings.
      */
-    private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
-        // Implementation...
+    public async extractModuleDocstrings(matchedFiles: string[]): Promise<IFileDocstring[]> {
+        const docstrings: IFileDocstring[] = [];
+
+        for (const file of matchedFiles) {
+            const content = await this.safeReadFileContent(file);
+            if (!content) continue;
+
+            const extractedDocstring = this.extractDocstring(content, file);
+            if (extractedDocstring) {
+                docstrings.push(extractedDocstring);
+                break; // Stop searching after the first valid docstring
+            }
+        }
+
+        return docstrings;
+    }
+
+    /**
+     * Extracts the docstring for a specified method.
+     * 
+     * @param filePath - The path of the file containing the method.
+     * @param methodName - The name of the method for which to extract the docstring.
+     * @returns A promise that resolves to the method's docstring, or null if not found.
+     */
+    public async extractMethodDocstring(filePath: string, methodName: string): Promise<string | null> {
+        const content = await this.safeReadFileContent(filePath);
+        if (!content) return null;
+
+        const methodRegex = new RegExp((\\/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*\\/\\s*)?\\s*${methodName}\\s*\\();
+        const match = content.match(methodRegex);
+
+        if (match) {
+            const docstringMatch = content.substring(0, match.index).match(/\/\*[\s\S]*?\*\//);
+            return docstringMatch ? docstringMatch[0] : null;
+        }
+
+        return null;
+    }
+
+    private async safeReadFileContent(filePath: string): Promise<string | null> {
+        try {
+            return await this.fileManager.readFileContent(filePath);
+        } catch (error) {
+            this.logger.error(Error reading file content from ${filePath}, { error });
+            return null;
+        }
+    }
+
+    private extractDocstring(content: string, filePath: string): IFileDocstring | null {
+        const blockComments = content.match(/\/\*[\s\S]*?\*\//g);
+        if (blockComments) {
+            for (const comment of blockComments) {
+                if (comment.includes("This module")) {
+                    return { filePath, docstring: comment };
+                }
+            }
+        }
+        return null;
     }
 }
 
-```
+---
 
-Ensure you always generate a module docstring and ensure that it is placed BEFORE any imports statements.
-The beginning of the docstring text should always be 'This module ...', similar to the provided example.
-The output should consist solely of the full content of the input code file, with the generated docstrings inserted where necessary.
-No part of the code should be reduced or simplified, and the output must contain the entire content of the file.
+Ensure that the generated module docstring is always placed before any import statements, but after the file path comment (if such a comment is present). The beginning of the docstring text should always be 'This module ...', similar to the provided example. The output should consist solely of the full content of the input code file, with the generated docstrings inserted where necessary. No part of the code should be reduced or simplified, and the output must contain the entire content of the file.
 
 The output should only contain the updated code with the generated docstrings, without block surroundings, nothing else.
 

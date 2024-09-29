@@ -1,21 +1,10 @@
 // src/errors/ErrorHandler.ts
 
 /**
- * 
- * This module provides a centralized error handling mechanism for use within a VS Code extension.
- * The `ErrorHandler` class manages error handlers for different HTTP status codes,
- * allowing for customized responses and logging for various error scenarios.
- * 
- * Key Features:
- * - Register and unregister error handlers for specific HTTP status codes.
- * - Handle API errors with appropriate messaging and logging.
- * - Provide default error messages for common HTTP status codes.
- * 
- * Usage:
- * - The `handleApiError` method processes API errors, retrieves the appropriate handler,
- *   and logs the error with context.
- * - The `registerHandler` and `unregisterHandler` methods allow for dynamic management
- *   of error handlers for specific status codes.
+ * This module provides the ErrorHandler class that extends the BaseErrorHandler 
+ * to manage error handling for API requests. It facilitates the registration 
+ * and unregistration of error handlers based on HTTP status codes and logs 
+ * errors using a logger instance.
  */
 
 import { inject, injectable } from "inversify";
@@ -75,9 +64,8 @@ export class ErrorHandler extends BaseErrorHandler {
      * @param error - The error object that was thrown during the API request.
      * @param options - Options related to the API request that failed.
      * @param sendMessage - A function to send messages back to the webview.
-     * @param configurationManager - The configuration manager instance for accessing settings.
      */
-    public handleApiError(error: any, options: any, sendMessage: (message: any) => void, configurationManager: any): void {
+    public handleApiError(error: any, options: any, sendMessage: (message: any) => void): void {
         const handler = this.registry.getHandler(error?.statusCode);
         let message;
 

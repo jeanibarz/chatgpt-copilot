@@ -1,5 +1,10 @@
 // src/services/NodeManager.ts
 
+/**
+ * This module manages the tree structure of nodes, facilitating the creation, 
+ * registration, and retrieval of nodes, as well as loading associated symbols.
+ */
+
 import { ITreeNode, InclusionState } from '../interfaces';
 import { CoreLogger } from '../logging/CoreLogger';
 import {
@@ -8,6 +13,7 @@ import {
 import { Utility } from "../Utility";
 import { SymbolService } from './SymbolService';
 import { TreeNodeFactory } from './TreeNodeFactory';
+
 export class NodeManager {
     private logger = CoreLogger.getInstance();
     private nodePathMap: Map<string, ITreeNode> = new Map();
@@ -22,6 +28,7 @@ export class NodeManager {
 
     /**
      * Finds a node by its path.
+     * 
      * @param path - The path of the node.
      * @param includeIntermediary - Whether to include intermediary nodes.
      * @returns The TreeNode or undefined.
@@ -36,6 +43,7 @@ export class NodeManager {
 
     /**
      * Registers a node in the nodePathMap.
+     * 
      * @param fullPath - The full path of the node.
      * @param node - The TreeNode to register.
      */
@@ -45,6 +53,7 @@ export class NodeManager {
 
     /**
      * Creates a file node.
+     * 
      * @param name - The name of the file.
      * @param fullPath - The full path of the file.
      * @returns The created TreeNode or null.
@@ -79,6 +88,7 @@ export class NodeManager {
 
     /**
      * Loads symbols for a file node.
+     * 
      * @param fileNode - The file node.
      */
     public async loadFileSymbols(fileNode: ITreeNode): Promise<void> {
@@ -120,6 +130,7 @@ export class NodeManager {
 
     /**
      * Determines the inclusion state based on child nodes.
+     * 
      * @param children - The child nodes.
      * @returns The InclusionState.
      */
@@ -137,6 +148,7 @@ export class NodeManager {
 
     /**
      * Counts the inclusion states of child nodes.
+     * 
      * @param children - The child nodes.
      * @returns An object with counts of included and not included nodes.
      */
@@ -164,6 +176,7 @@ export class NodeManager {
 
     /**
      * Retrieves a node by its path.
+     * 
      * @param fullPath - The full path of the node.
      * @returns The TreeNode or undefined.
      */

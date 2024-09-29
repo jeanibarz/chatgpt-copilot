@@ -1,6 +1,6 @@
+// src/commands/GenerateDocstringsCommand.ts
+
 /**
- * src/commands/GenerateDocstringsCommand.ts
- * 
  * This module provides functionality for generating and inserting 
  * docstrings into code files within a VS Code extension. It handles 
  * the command execution for generating docstrings, managing temporary 

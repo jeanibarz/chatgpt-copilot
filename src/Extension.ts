@@ -456,11 +456,17 @@ function registerUtilityCommands(
     await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateDocstrings, {});
   });
 
+  // Command to generate mermaid diagrams
+  const generateMermaidDiagramCommand = vscode.commands.registerCommand('chatgpt-copilot.generateMermaidDiagram', async () => {
+    await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateMermaidDiagram, {});
+  });
+
   context.subscriptions.push(
     resetThread,
     exportConversation,
     clearSession,
     generateDocstringsCommand,
+    generateMermaidDiagramCommand,
   );
 }
 

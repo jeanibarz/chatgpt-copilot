@@ -1,5 +1,11 @@
 // src/services/InclusionStateManager.ts
 
+/**
+ * This module manages the inclusion states of nodes within a tree structure. 
+ * It provides functionality to update the inclusion state of a node and its 
+ * descendants based on specified criteria.
+ */
+
 import { ITreeNode, InclusionState } from '../interfaces';
 import { CoreLogger } from '../logging/CoreLogger';
 
@@ -8,6 +14,7 @@ export class InclusionStateManager {
 
     /**
      * Updates the inclusion state of a node and its descendants.
+     * 
      * @param node - The node to update.
      * @param inclusionState - The new inclusion state.
      */
@@ -27,6 +34,7 @@ export class InclusionStateManager {
 
     /**
      * Recursively sets the inclusion state for a node and its children.
+     * 
      * @param node - The node to update.
      * @param inclusionState - The new inclusion state.
      */
@@ -43,6 +51,7 @@ export class InclusionStateManager {
 
     /**
      * Updates the inclusion states of parent nodes based on their children's states.
+     * 
      * @param currentNode - The current node.
      */
     private updateParentInclusionStates(currentNode: ITreeNode): void {
@@ -57,6 +66,7 @@ export class InclusionStateManager {
 
     /**
      * Determines the inclusion state based on child nodes.
+     * 
      * @param children - The child nodes.
      * @returns The InclusionState.
      */

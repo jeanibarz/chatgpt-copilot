@@ -1,26 +1,9 @@
 // src/services/ConfigurationManager.ts
 
 /**
- * This module provides a configuration management system for use within a VS Code extension.
- * It handles loading and managing application settings and configurations, particularly 
- * related to the model and response settings for the extension.
- * 
- * The `ConfigurationManager` class is responsible for loading the configuration from the 
- * underlying configuration files and making it accessible to other components of the extension. 
- * It utilizes a logger to log configuration loading events and errors, ensuring that the 
- * state of the configuration can be monitored effectively.
- * 
- * Key Features:
- * - Loads configuration settings from the VS Code configuration.
- * - Integrates with the `ModelManager` to manage model-related settings.
- * - Provides methods to access workspace configuration and specific settings.
- * - Logs configuration loading events for better observability.
- * 
- * Usage:
- * - The `loadConfiguration` method initializes various configuration flags and settings 
- *   based on the loaded values.
- * - The `getWorkspaceConfiguration` method retrieves the workspace configuration 
- *   object for the "chatgpt" extension.
+ * This module handles loading and managing configuration settings 
+ * for the extension. It initializes configuration values and provides 
+ * access to them for other components within the application.
  */
 
 import * as vscode from 'vscode';

@@ -2,6 +2,7 @@
  * Enum representing the different command types for the ChatGPT extension.
  */
 
+
 export enum ChatGPTCommandType {
     AddFreeTextQuestion = "addFreeTextQuestion",
     EditCode = "editCode",
@@ -15,5 +16,6 @@ export enum ChatGPTCommandType {
     ListConversations = "listConversations",
     ShowConversation = "showConversation",
     StopGenerating = "stopGenerating",
-    GenerateDocstrings = "generateDocstrings"
+    GenerateDocstrings = "generateDocstrings",
+    GenerateMermaidDiagram = "generateMermaidDiagram",
 }

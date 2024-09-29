@@ -1,5 +1,6 @@
+// src/TreeDataProvider.ts
+
 /**
- * src/TreeDataProvider.ts
  * 
  * This module provides a tree data provider for the VS Code extension, 
  * managing files and symbols in a hierarchical structure. It allows for 
@@ -97,6 +98,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Retrieves the children of a tree node.
+     * 
      * @param element - The parent node.
      * @returns An array of child TreeNodes.
      */
@@ -168,9 +170,9 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         return treeItem;
     }
 
-
     /**
      * Determines the tooltip text based on inclusion state.
+     * 
      * @param state - The InclusionState.
      * @returns The tooltip string.
      */
@@ -189,6 +191,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Determines the context value based on node type.
+     * 
      * @param type - The NodeType.
      * @returns The context value string.
      */
@@ -207,6 +210,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Finds a node by its path.
+     * 
      * @param path - The path of the node.
      * @param includeIntermediary - Whether to include intermediary nodes.
      * @returns The TreeNode or undefined.
@@ -217,6 +221,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Retrieves matched files.
+     * 
      * @returns An array of matched file paths.
      */
     public retrieveMatchedFiles(): string[] {
@@ -228,6 +233,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Retrieves matched folders.
+     * 
      * @returns An array of matched folder paths.
      */
     public retrieveMatchedFolders(): string[] {
@@ -269,6 +275,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Renders the tree in the specified format.
+     * 
      * @param format - The render format.
      * @returns A string representing the tree.
      */
@@ -354,7 +361,7 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
      * Updates a node's inclusion state and propagates the change to all
      * children and parent nodes.
      *
-     * @param path - The path of the node to update.
+     * @param node - The node to update.
      * @param inclusionState - The new inclusion state.
      */
     public updateNodeInclusionState(
@@ -466,13 +473,11 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         }
     }
 
-
     /**
      * Processes directory entries to create TreeNodes for matched folders and files.
      * 
      * @param entries - The directory entries to process.
      * @param parentPath - The path of the parent directory.
-     * @param matchedFilesSet - A Set of file paths that are matched for inclusion checking.
      * @returns A promise that resolves to an array of TreeNode objects.
      */
     private async processDirectoryEntries(
@@ -508,7 +513,6 @@ export class MyTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         }
         return children;
     }
-
 
     /**
      * Traverses symbols and adds nested symbols to the output.

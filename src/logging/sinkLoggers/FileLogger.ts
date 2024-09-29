@@ -1,11 +1,9 @@
+// src/logging/sinkLoggers/FileLogger.ts
+
 /**
- * This module provides a logging mechanism that writes log messages to a specified file.
- * The `FileLogger` class is responsible for appending messages to the log file, 
- * enabling persistent logging of events or errors that occur during the application's execution.
- * 
- * Key Features:
- * - Appends log messages to a specified file.
- * - Maintains a record of events or errors across application sessions.
+ * This module provides the `FileLogger` class for logging messages to a specified file.
+ * It implements the `ISinkLogger` interface and allows for easy logging to a file with 
+ * each entry on a new line.
  */
 
 import * as fs from "fs";

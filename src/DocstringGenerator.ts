@@ -1,4 +1,4 @@
-// rc/DocstringGenerator.ts
+// src/DocstringGenerator.ts
 
 /**
  * This module provides functionality for generating and formatting docstrings 

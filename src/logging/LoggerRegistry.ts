@@ -1,15 +1,9 @@
+// src/logging/LoggerRegistry.ts
+
 /**
- * src/LoggerRegistry.ts
- * 
- * This module provides a centralized registry for managing loggers within a VS Code extension.
- * The `LoggerRegistry` class ensures that loggers are uniquely identified by their names and 
- * channel names, preventing the creation of duplicate loggers.
- * 
- * Key Features:
- * - Adds and removes loggers from the registry by name or channel name.
- * - Prevents duplicate loggers from being created, ensuring each logger has a unique identity.
- * - Allows retrieval of loggers by name or channel name for easy access.
- * - Provides methods to clear all loggers from the registry or retrieve all registered loggers.
+ * This module manages a collection of loggers within the VS Code extension. 
+ * It ensures that each logger is uniquely identified and prevents the 
+ * creation of duplicate loggers.
  */
 
 import { CoreLogger } from "./CoreLogger";

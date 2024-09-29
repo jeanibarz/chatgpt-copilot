@@ -46,7 +46,7 @@ export class DocstringsResponseGenerator {
      * @param chatModel - An instance of `IChatModel` for interacting with the AI model.
      */
     constructor(private provider: ChatGptViewProvider, private chatModel: IChatModel) {
-        this.logger = CoreLogger.getInstance({ loggerName: "DocstringsResponseGenerator" });
+        this.logger = CoreLogger.getInstance({ loggerName: "DocstringsGenerator" });
     }
 
     private createGraph() {

@@ -1,6 +1,6 @@
+// src/decorators/ContextDecorationProvider.ts
+
 /**
- * src/decorators/ContextDecorationProvider.ts
- * 
  * This module provides a file decoration provider for the VS Code extension,
  * allowing files and folders to display specific decorations based on their
  * context within the ChatGPT environment.
@@ -35,7 +35,6 @@ export class ContextDecorationProvider implements vscode.FileDecorationProvider 
             this.refresh();
         });
     }
-
 
     /**
      * Provides file decoration for a given URI.

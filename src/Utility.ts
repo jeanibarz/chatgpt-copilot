@@ -1,5 +1,6 @@
+// src/Utility.ts
+
 /**
- * src/Utility.ts
  * 
  * This module provides utility functions that are used throughout the application.
  * It includes methods for generating random IDs and creating delays, which can be 

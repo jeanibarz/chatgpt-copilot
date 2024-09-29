@@ -1,15 +1,8 @@
 // src/errors/BaseErrorHandler.ts
 
 /**
- * 
- * This module provides an abstract base class for error handlers within the application.
- * The `BaseErrorHandler` class serves as a foundation for creating specific error handlers,
- * offering shared functionality and a common interface for handling various errors.
- * 
- * Key Features:
- * - Implements a common interface for handling errors.
- * - Provides logging capabilities for error handling.
- * - Requires subclasses to implement specific error handling logic.
+ * This module provides an abstract base class for error handling in the application.
+ * It defines a structure for logging errors using a logger instance.
  */
 
 import { inject, injectable } from "inversify";

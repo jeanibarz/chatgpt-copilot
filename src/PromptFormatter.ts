@@ -1,5 +1,6 @@
+// src/PromptFormatter.ts
+
 /**
- * src/PromptFormatter.ts
  * 
  * This module defines the `PromptFormatter` class, which is responsible for 
  * formatting various types of prompts used in interactions with AI models. 

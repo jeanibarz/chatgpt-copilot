@@ -1,23 +1,9 @@
+// src/config/Configuration.ts
+
 /**
- * src/config/Configuration.ts
- * 
- * The `configuration.ts` module manages application configuration settings 
- * for the ChatGPT VS Code extension. It provides functionalities to load 
- * default prompts, retrieve configuration values, and handle user input 
- * for sensitive information such as API keys and credentials paths.
- * 
- * Key Features:
- * - Loads a default system prompt from a Markdown file.
- * - Retrieves configuration values with optional defaults and required checks.
- * - Listens for configuration changes and triggers callbacks.
- * - Manages the retrieval of the OpenAI API Key from various sources, 
- *   including workspace settings, global state, and environment variables.
- * - Prompts the user for necessary credentials paths, ensuring that the 
- *   application can authenticate with Google Cloud services.
- * 
- * This module utilizes the `CoreLogger` for logging errors and information,
- * ensuring that issues can be tracked and resolved effectively during 
- * the application's execution.
+ * This module handles the configuration settings for the ChatGPT extension.
+ * It manages loading prompts, retrieving configuration values, and handling
+ * OpenAI API key management.
  */
 
 import { readFileSync } from 'fs';
@@ -30,21 +16,38 @@ const logger = CoreLogger.getInstance();
 
 export let defaultSystemPromptForFreeQuestion: string = '';
 export let defaultSystemPromptForGenerateDocstring: string = '';
+export let defaultSystemPromptForGenerateMermaidDiagram: string = '';
 export let defaultUserPromptForContextSelection: string = '';
 export let defaultSystemPromptForContextSelection: string = '';
 
+/**
+ * Initializes the configuration module with the provided extension context.
+ * Loads the necessary prompts for the extension's functionality.
+ * 
+ * @param context - The context of the VS Code extension.
+ */
 export function initialize(context: vscode.ExtensionContext) {
     extensionContext = context;
     loadPrompts();
 }
 
+/**
+ * Loads the default prompts from the specified markdown files into the respective variables.
+ */
 function loadPrompts() {
     defaultSystemPromptForFreeQuestion = loadPrompt('freeQuestionDefaultSystemPrompt.md');
     defaultSystemPromptForGenerateDocstring = loadPrompt('generateUpdateDocstringsPrompt.md');
+    defaultSystemPromptForGenerateMermaidDiagram = loadPrompt('generateMermaidDiagramPrompt.md');
     defaultUserPromptForContextSelection = loadPrompt('contextSelectionExpertDefaultUserPrompt.md');
     defaultSystemPromptForContextSelection = loadPrompt('contextSelectionExpertDefaultSystemPrompt.md');
 }
 
+/**
+ * Loads a prompt from a specified file.
+ * 
+ * @param filename - The name of the file containing the prompt.
+ * @returns The content of the prompt as a string.
+ */
 function loadPrompt(filename: string): string {
     const promptPath = extensionContext.asAbsolutePath(path.join('config', 'prompts', filename));
     try {
@@ -126,6 +129,12 @@ export async function getApiKey(): Promise<string | undefined> {
     return apiKey;
 }
 
+/**
+ * Prompts the user to enter their OpenAI API Key.
+ * Provides options to store the key in session or open settings.
+ * 
+ * @returns A Promise that resolves to the user's input API Key or undefined if canceled.
+ */
 async function promptForApiKey(): Promise<string | undefined> {
     const choice = await vscode.window.showErrorMessage(
         'Please add your API Key to use OpenAI official APIs. Storing the API Key in Settings is discouraged due to security reasons.',
@@ -143,6 +152,11 @@ async function promptForApiKey(): Promise<string | undefined> {
     return undefined;
 }
 
+/**
+ * Prompts the user to input their OpenAI API Key to store in the session.
+ * 
+ * @returns A Promise that resolves to the entered API Key or undefined if canceled.
+ */
 async function getApiKeyFromUser(): Promise<string | undefined> {
     const value = await vscode.window.showInputBox({
         title: 'Store OpenAI API Key in session',
@@ -182,6 +196,12 @@ export async function getJsonCredentialsPath(): Promise<string> {
     return jsonCredentialsPath;
 }
 
+/**
+ * Prompts the user to enter the path to their Google Cloud JSON credentials file.
+ * 
+ * @returns A Promise that resolves to the entered path.
+ * @throws An error if the user does not provide a valid path.
+ */
 async function promptForJsonCredentialsPath(): Promise<string> {
     const input = await vscode.window.showInputBox({
         title: 'Enter Google Cloud JSON Credentials Path',

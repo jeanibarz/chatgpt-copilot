@@ -1,5 +1,12 @@
 // src/tree/FilteredTreeDataProvider.ts
 
+/**
+ * This module provides a filtered tree data provider for Visual Studio Code, 
+ * allowing for the display and interaction with a tree structure of files and 
+ * directories based on specified filters. It manages line counts for files 
+ * and updates the tree view dynamically.
+ */
+
 import { Semaphore } from 'async-mutex';
 import { inject, injectable, LazyServiceIdentifier } from "inversify";
 import * as path from 'path';
@@ -95,6 +102,10 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         }
     }
 
+    /**
+     * Retrieves all folders that match the filtered view.
+     * @returns An array of folder paths that match the filter.
+     */
     private async getAllFilteredFolders(): Promise<string[]> {
         if (!this.workspaceRoot) {
             return [];
@@ -108,6 +119,11 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         return Array.from(folderSet);
     }
 
+    /**
+     * Collects filtered folders from the specified directory path.
+     * @param dirPath - The current directory to scan.
+     * @param folderSet - The set to store matching folders.
+     */
     private async collectFilteredFolders(dirPath: string, folderSet: Set<string>): Promise<void> {
         if (!this.workspaceRoot) {
             return;
@@ -132,6 +148,11 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         }
     }
 
+    /**
+     * Calculates the total line count for a specified folder.
+     * @param folderPath - The path of the folder to calculate line counts for.
+     * @returns The total line count for all files within the folder.
+     */
     private async calculateFolderLineCount(folderPath: string): Promise<number> {
         let totalLineCount = 0;
 
@@ -161,7 +182,6 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
 
         return totalLineCount;
     }
-
 
     private loadCachedLineCounts(): void {
         const fileLineCounts = this.context.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.fileLineCounts', {});
@@ -197,10 +217,20 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         this.normalizedMatchedFolders = new Set(matchedFolders.map(f => path.normalize(f)));
     }
 
+    /**
+     * Returns the tree item for the specified element.
+     * @param element - The element to retrieve the tree item for.
+     * @returns The tree item corresponding to the specified element.
+     */
     public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
         return element;
     }
 
+    /**
+     * Retrieves the children of the specified tree item or the root if none is specified.
+     * @param element - The parent tree item to get children for.
+     * @returns A promise that resolves to an array of tree items.
+     */
     public async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         await this.treeSemaphore.acquire();
 
@@ -246,7 +276,11 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         }
     }
 
-
+    /**
+     * Reads the contents of a directory and retrieves its entries.
+     * @param dirPath - The path of the directory to read.
+     * @returns A promise that resolves to an array of directory entries.
+     */
     private async readDirectory(dirPath: string): Promise<[string, vscode.FileType][]> {
         try {
             const entries = await vscode.workspace.fs.readDirectory(vscode.Uri.file(dirPath));
@@ -258,6 +292,11 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         }
     }
 
+    /**
+     * Determines if a file should be included based on the current filters.
+     * @param filePath - The path of the file to check.
+     * @returns True if the file should be included, otherwise false.
+     */
     private shouldBeIncluded(filePath: string): boolean {
         const normalizedFilePath = path.normalize(filePath);
 
@@ -290,8 +329,12 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         return false;
     }
 
-
-
+    /**
+     * Creates a tree item for a specified file or directory.
+     * @param filePath - The path of the file or directory.
+     * @param fileType - The type of the file (file or directory).
+     * @returns The created tree item.
+     */
     private createTreeItem(filePath: string, fileType: vscode.FileType): vscode.TreeItem {
         const label = path.basename(filePath);
         const uri = vscode.Uri.file(filePath);
@@ -353,52 +396,6 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     }
 
     /**
-     * Updates the line counts of all ancestor folders when a file's line count is fetched.
-     * @param filePath - The path of the file.
-     * @param lineCount - The number of lines in the file.
-     */
-    private updateFolderLineCounts(filePath: string, lineCount: number): void {
-        if (!this.workspaceRoot) {
-            this.logger.warn(`Cannot update folder line counts as workspaceRoot is undefined for file: ${filePath}`);
-            return;
-        }
-
-        let currentDir = path.dirname(filePath);
-        while (currentDir.startsWith(this.workspaceRoot)) {
-            const normalizedDir = path.normalize(currentDir);
-            const currentCount = this.cachedFolderLineCounts.get(normalizedDir) || 0;
-            this.cachedFolderLineCounts.set(normalizedDir, currentCount + lineCount);
-            this.logger.debug(`Updated folder: ${normalizedDir} with +${lineCount} lines. Total: ${this.cachedFolderLineCounts.get(normalizedDir)}`);
-            const parentDir = path.dirname(currentDir);
-            if (parentDir === currentDir) break; // Reached the root
-            currentDir = parentDir;
-        }
-    }
-
-    /**
-     * Subtracts the line counts from all ancestor folders when a file is removed.
-     * @param filePath - The path of the file.
-     * @param lineCount - The number of lines in the file.
-     */
-    private subtractFolderLineCounts(filePath: string, lineCount: number): void {
-        if (!this.workspaceRoot) {
-            this.logger.warn(`Cannot subtract folder line counts as workspaceRoot is undefined for file: ${filePath}`);
-            return;
-        }
-
-        let currentDir = path.dirname(filePath);
-        while (currentDir.startsWith(this.workspaceRoot)) {
-            const normalizedDir = path.normalize(currentDir);
-            const currentCount = this.cachedFolderLineCounts.get(normalizedDir) || 0;
-            this.cachedFolderLineCounts.set(normalizedDir, currentCount - lineCount);
-            this.logger.debug(`Subtracted ${lineCount} lines from folder: ${normalizedDir}. New Total: ${this.cachedFolderLineCounts.get(normalizedDir)}`);
-            const parentDir = path.dirname(currentDir);
-            if (parentDir === currentDir) break; // Reached the root
-            currentDir = parentDir;
-        }
-    }
-
-    /**
      * Retrieves all files that match the filtered view, using caching.
      * @returns An array of file paths that match the filter.
      */
@@ -421,7 +418,6 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         this.cachedFilteredFiles = result;
         return result;
     }
-
 
     /**
      * Helper method to recursively collect files that pass the filter.
@@ -457,6 +453,9 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         }
     }
 
+    /**
+     * Refreshes the tree data provider, invalidating caches and reloading data.
+     */
     async refresh(): Promise<void> {
         this.logger.debug('Refresh initiated.');
         await this.treeSemaphore.acquire();
@@ -491,7 +490,7 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
      * Renders the tree in the specified format.
      * @param format - The render format.
      * @returns A string representing the tree.
-    */
+     */
     public async renderTree(format: RenderMethod): Promise<string> {
         await this.treeSemaphore.acquire();
 

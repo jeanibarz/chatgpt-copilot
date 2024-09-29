@@ -1,7 +1,6 @@
 // src/TreeRenderer.ts
 
 /**
- * 
  * This module provides functionality for rendering project trees in various formats 
  * within a VS Code extension. It handles the visualization of project files and 
  * directories, allowing users to view the structure of their projects in both ASCII 
@@ -28,21 +27,23 @@ export class TreeRenderer {
 
     /**
      * Renders the tree starting from the given item in the specified format.
-     * @param item - The `vscode.TreeItem` to start rendering from. If undefined, starts from the root.
+     * 
      * @param format - The render format.
-     * @returns A string representing the tree.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
+     * @param item - The `vscode.TreeItem` to start rendering from. If undefined, starts from the root.
+     * @returns A promise that resolves to a string representing the tree.
      */
-    async renderTree(format: RenderMethod, treeDataProvider: FilteredTreeDataProvider): Promise<string> {
+    async renderTree(format: RenderMethod, treeDataProvider: FilteredTreeDataProvider, item?: vscode.TreeItem): Promise<string> {
         switch (format) {
             case RenderMethod.Ascii:
-                return await this.renderTreeAscii(undefined, treeDataProvider);
+                return await this.renderTreeAscii(item, treeDataProvider);
             case RenderMethod.FullPath:
-                return await this.renderTreeFullPath(undefined, treeDataProvider);
+                return await this.renderTreeFullPath(item, treeDataProvider);
             case RenderMethod.FullPathDetails:
-                return await this.renderTreeFullPathDetails(undefined, treeDataProvider);
+                return await this.renderTreeFullPathDetails(item, treeDataProvider);
             default:
                 this.logger.warn(`Unrecognized format "${format}". Defaulting to ASCII.`);
-                return await this.renderTreeAscii(undefined, treeDataProvider);
+                return await this.renderTreeAscii(item, treeDataProvider);
         }
     }
 
@@ -50,7 +51,8 @@ export class TreeRenderer {
      * Renders the tree in ASCII format starting from the given item.
      *
      * @param item - The `vscode.TreeItem` to start rendering from. If undefined, starts from the root.
-     * @returns A string representing the ASCII tree.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
+     * @returns A promise that resolves to a string representing the ASCII tree.
      */
     private async renderTreeAscii(item: vscode.TreeItem | undefined, treeDataProvider: FilteredTreeDataProvider): Promise<string> {
         const rootElements = await treeDataProvider.getChildren(item);
@@ -65,9 +67,11 @@ export class TreeRenderer {
 
     /**
      * Recursively renders a node in ASCII format.
+     * 
      * @param element - The `vscode.TreeItem`.
      * @param prefix - The prefix string for formatting.
      * @param lines - The array of lines to append to.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
      */
     private async renderNodeAscii(element: vscode.TreeItem, prefix: string, lines: string[], treeDataProvider: FilteredTreeDataProvider): Promise<void> {
         const label = element.label || '';
@@ -86,8 +90,10 @@ export class TreeRenderer {
 
     /**
      * Renders the tree with full paths starting from the given item.
+     * 
      * @param item - The `vscode.TreeItem` to start rendering from. If undefined, starts from the root.
-     * @returns A string representing the tree.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
+     * @returns A promise that resolves to a string representing the tree.
      */
     private async renderTreeFullPath(item: vscode.TreeItem | undefined, treeDataProvider: FilteredTreeDataProvider): Promise<string> {
         const rootElements = await treeDataProvider.getChildren(item);
@@ -102,9 +108,11 @@ export class TreeRenderer {
 
     /**
      * Recursively renders a node with full paths.
+     * 
      * @param element - The `vscode.TreeItem`.
      * @param prefix - The prefix string for formatting.
      * @param lines - The array of lines to append to.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
      */
     private async renderNodeFullPath(element: vscode.TreeItem, prefix: string, lines: string[], treeDataProvider: FilteredTreeDataProvider): Promise<void> {
         const path = element.resourceUri ? element.resourceUri.fsPath : element.label || '';
@@ -125,6 +133,7 @@ export class TreeRenderer {
      * Renders detailed paths of the tree asynchronously with specific indentation, starting from the given item.
      *
      * @param item - The `vscode.TreeItem` to start rendering from. If undefined, starts from the root.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
      * @returns A promise that resolves to a string containing detailed paths.
      */
     private async renderTreeFullPathDetails(item: vscode.TreeItem | undefined, treeDataProvider: FilteredTreeDataProvider): Promise<string> {
@@ -140,9 +149,11 @@ export class TreeRenderer {
 
     /**
      * Collects details of a node and its children asynchronously.
+     * 
      * @param element - The `vscode.TreeItem` to collect details from.
      * @param indentation - The current indentation string.
      * @param result - The array to store the results.
+     * @param treeDataProvider - The `FilteredTreeDataProvider` instance to retrieve tree items.
      */
     private async collectNodeDetails(
         element: vscode.TreeItem,

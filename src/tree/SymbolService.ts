@@ -1,8 +1,13 @@
 // src/services/SymbolService.ts
 
+/**
+ * This module provides functionality for managing and retrieving symbols from files 
+ * in a Visual Studio Code environment. It includes methods for checking the presence 
+ * of symbols, retrieving symbols, flattening nested symbols, and managing a symbol cache.
+ */
+
 import * as vscode from 'vscode';
 import { CoreLogger } from '../logging/CoreLogger';
-
 
 export class SymbolService {
     private logger = CoreLogger.getInstance();
@@ -10,6 +15,7 @@ export class SymbolService {
 
     /**
      * Checks if a file has symbols.
+     * 
      * @param filePath - The file path.
      * @returns True if the file has symbols; otherwise, false.
      */
@@ -20,6 +26,7 @@ export class SymbolService {
 
     /**
      * Retrieves symbols for a file.
+     * 
      * @param filePath - The file path.
      * @returns An array of DocumentSymbol or undefined.
      */
@@ -49,6 +56,7 @@ export class SymbolService {
 
     /**
      * Flattens nested symbols into a flat array.
+     * 
      * @param symbols - The nested DocumentSymbols.
      * @returns A flat array of DocumentSymbols.
      */

@@ -1,33 +1,26 @@
+// src/controllers/SessionManager.ts
+
 /**
- * src/controllers/SessionManager.ts
- * 
- * This module manages session-related tasks for the ChatGPT view provider 
- * within a VS Code extension. It includes functionalities to clear the session 
- * state, abort ongoing requests, and reset API models to ensure a fresh 
- * environment for new interactions.
- * 
- * The `SessionManager` class is responsible for handling session management 
- * tasks, providing methods to reset the session state and manage ongoing 
- * command executions.
- * 
- * Key Features:
- * - Clears the current session state and resets API models.
- * - Aborts ongoing generation requests when clearing the session.
+ * This module manages user sessions for the ChatGPT application. 
+ * It handles the session state and interacts with the ChatGptViewProvider 
+ * to perform session-related tasks.
  */
 
+import { injectable } from 'inversify';
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
 
+@injectable()
 export class SessionManager {
-    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing session state
+    private provider?: ChatGptViewProvider; // The ChatGptViewProvider instance for managing session state
 
     /**
-     * Constructor for the `SessionManager` class.
-     * Initializes a new instance of the SessionManager with the provided view provider.
+     * Sets the provider after initialization to avoid circular dependencies.
      * 
      * @param provider - An instance of `ChatGptViewProvider` for managing session-related tasks.
+     * @returns void
      */
-    constructor(provider: ChatGptViewProvider) {
+    public setProvider(provider: ChatGptViewProvider): void {
         this.provider = provider;
     }
 
@@ -39,8 +32,13 @@ export class SessionManager {
      * or when the current session needs to be aborted for any reason.
      * 
      * @returns void
+     * @throws Error if the provider is not set in SessionManager.
      */
     public clearSession(): void {
+        if (!this.provider) {
+            throw new Error("Provider not set in SessionManager");
+        }
+
         // Abort ongoing generation if any
         this.provider.commandHandler.executeCommand(ChatGPTCommandType.StopGenerating, {});
 

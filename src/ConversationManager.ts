@@ -1,3 +1,5 @@
+// src/ConversationManager.ts
+
 /**
  * This module manages the conversation context for the ChatGPT view provider 
  * within a VS Code extension. The `ConversationManager` class is responsible 
@@ -10,19 +12,20 @@
  * - Provides logging for conversation preparation and errors.
  */
 
+import { injectable } from 'inversify';
 import { Utility } from './Utility';
 import { ChatGptViewProvider } from './view/ChatGptViewProvider';
 
+@injectable()
 export class ConversationManager {
-    private provider: ChatGptViewProvider; // The ChatGptViewProvider instance for managing conversations
+    private provider?: ChatGptViewProvider; // The ChatGptViewProvider instance for managing conversations
 
     /**
-     * Constructor for the `ConversationManager` class.
-     * Initializes a new instance with the provided ChatGptViewProvider.
+     * Sets the provider after initialization to avoid circular dependencies.
      * 
-     * @param provider - An instance of `ChatGptViewProvider` for managing conversation interactions.
+     * @param provider - An instance of `ChatGptViewProvider` for managing session-related tasks.
      */
-    constructor(provider: ChatGptViewProvider) {
+    public setProvider(provider: ChatGptViewProvider): void {
         this.provider = provider;
     }
 
@@ -37,6 +40,10 @@ export class ConversationManager {
      * @returns A Promise which resolves to a boolean indicating success or failure.
      */
     public async prepareConversation(modelChanged = false): Promise<boolean> {
+        if (!this.provider) {
+            throw new Error("Provider not set in ConversationManager");
+        }
+
         this.provider.logger.info("Preparing conversation", { modelChanged });
 
         try {

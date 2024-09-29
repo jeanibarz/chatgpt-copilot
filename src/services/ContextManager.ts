@@ -94,6 +94,7 @@ ${userQuestion}
     * Generates the PROJECT OVERVIEW section using the detailed rendering method.
     * This overview includes the inclusion status of all files, folders, and symbols.
     * 
+    * @param renderMethod - The method used to render the project overview.
     * @returns A promise that resolves to a formatted string representing the project overview.
     */
     public async generateProjectOverview(renderMethod: RenderMethod): Promise<string> {

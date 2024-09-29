@@ -1,5 +1,11 @@
 // src/services/EventHandler.ts
 
+/**
+ * This module handles events related to file changes and triggers necessary 
+ * callbacks. It integrates with the ExplicitFilesManager to monitor file 
+ * changes and utilizes a logger for event logging.
+ */
+
 import { inject } from 'inversify';
 import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
@@ -18,7 +24,9 @@ export class EventHandler {
     }
 
     /**
-     * Initializes event subscriptions.
+     * Initializes event subscriptions for monitoring file changes.
+     * It sets up a debounced refresh mechanism that triggers the provided 
+     * callback when file changes are detected.
      */
     initialize(): void {
         const debouncedRefresh = Utility.debounce(() => {
