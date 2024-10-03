@@ -1,13 +1,17 @@
 // src/commands/ClearBrowserCommand.ts
 
+import { injectable } from "inversify";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { CoreLogger } from "../logging/CoreLogger";
 
+@injectable()
 export class ClearBrowserCommand implements ICommand {
-  public type = ChatGPTCommandType.ClearBrowser;
+  public readonly type = ChatGPTCommandType.ClearBrowser;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
-    provider.logger.info('Browser cleared');
+  public async execute(data: any): Promise<void> {
+    this.logger.info('Browser cleared');
+    // Further logic for clearing the browser can go here, if needed.
   }
 }

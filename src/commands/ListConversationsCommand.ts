@@ -1,13 +1,16 @@
 // src/commands/ListConversationsCommand.ts
 
+import { injectable } from "inversify";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { CoreLogger } from "../logging/CoreLogger";
 
+@injectable()
 export class ListConversationsCommand implements ICommand {
-  public type = ChatGPTCommandType.ListConversations;
+  public readonly type = ChatGPTCommandType.ListConversations;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
-    provider.logger.info('List conversations attempted');
+  public async execute(data: any): Promise<void> {
+    this.logger.info('List conversations attempted');
   }
 }

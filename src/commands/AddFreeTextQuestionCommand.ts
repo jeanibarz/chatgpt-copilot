@@ -1,13 +1,20 @@
 // src/commands/AddFreeTestQuestionCommand.ts
 
+import { injectable } from "inversify";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { Utility } from "../Utility";
 
+@injectable()
 export class AddFreeTextQuestionCommand implements ICommand {
-  public type = ChatGPTCommandType.AddFreeTextQuestion;
+  public readonly type = ChatGPTCommandType.AddFreeTextQuestion;
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
+  constructor() { }
+
+  public async execute(data: any): Promise<void> {
+    // Retrieve the provider using the mediator service
+    const provider = await Utility.getProvider();
+
     const question = data.value;
     if (!provider.configurationManager.conversationHistoryEnabled) {
       provider.chatHistoryManager.clearHistory();

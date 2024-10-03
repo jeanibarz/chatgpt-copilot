@@ -8,8 +8,8 @@ import { BaseModelNormalizer } from "./BaseModelNormalizer";
  */
 
 export class OpenAINormalizer extends BaseModelNormalizer {
-    constructor(logger: ILogger) {
-        super(logger); // Call the superclass constructor
+    constructor() {
+        super(); // Call the superclass constructor
     }
 
     /**

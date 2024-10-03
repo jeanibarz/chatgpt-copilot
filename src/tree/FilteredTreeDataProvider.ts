@@ -11,7 +11,9 @@ import { Semaphore } from 'async-mutex';
 import { inject, injectable, LazyServiceIdentifier } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { extensionContext } from "../config/Configuration";
 import { RenderMethod } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ExplicitFilesManager } from "../services";
 import { Utility } from "../Utility";
@@ -37,10 +39,9 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     private lineCountSemaphore = new Semaphore(10); // Limit to 10 concurrent line counts
 
     constructor(
-        @inject("workspaceRoot") private workspaceRoot: string | undefined,
-        @inject(new LazyServiceIdentifier(() => ExplicitFilesManager)) public explicitFilesManager: ExplicitFilesManager,
-        @inject(new LazyServiceIdentifier(() => TreeRenderer)) private treeRenderer: TreeRenderer,
-        @inject(new LazyServiceIdentifier(() => vscode.ExtensionContext)) private context: vscode.ExtensionContext,
+        @inject(TYPES.WorkspaceRoot) private workspaceRoot: string | undefined,
+        @inject(new LazyServiceIdentifier(() => TYPES.ExplicitFilesManager)) public explicitFilesManager: ExplicitFilesManager,
+        @inject(new LazyServiceIdentifier(() => TYPES.TreeRenderer)) private treeRenderer: TreeRenderer,
     ) {
         this.workspaceRoot = workspaceRoot ? path.resolve(workspaceRoot) : undefined;
         if (!this.workspaceRoot) {
@@ -184,10 +185,10 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     }
 
     private loadCachedLineCounts(): void {
-        const fileLineCounts = this.context.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.fileLineCounts', {});
+        const fileLineCounts = extensionContext.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.fileLineCounts', {});
         this.cachedLineCounts = new Map(Object.entries(fileLineCounts));
 
-        const folderLineCounts = this.context.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.folderLineCounts', {});
+        const folderLineCounts = extensionContext.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.folderLineCounts', {});
         this.cachedFolderLineCounts = new Map(Object.entries(folderLineCounts));
 
         this.logger.debug('Loaded cached line counts from workspace state.');
@@ -198,13 +199,13 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
         this.cachedLineCounts.forEach((count, filePath) => {
             fileLineCounts[filePath] = count;
         });
-        this.context.workspaceState.update('filteredFileExplorer.fileLineCounts', fileLineCounts);
+        extensionContext.workspaceState.update('filteredFileExplorer.fileLineCounts', fileLineCounts);
 
         const folderLineCounts: { [key: string]: number; } = {};
         this.cachedFolderLineCounts.forEach((count, folderPath) => {
             folderLineCounts[folderPath] = count;
         });
-        this.context.workspaceState.update('filteredFileExplorer.folderLineCounts', folderLineCounts);
+        extensionContext.workspaceState.update('filteredFileExplorer.folderLineCounts', folderLineCounts);
 
         this.logger.debug('Saved cached line counts to workspace state.');
     }

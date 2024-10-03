@@ -14,9 +14,12 @@
 
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { CoreMessage } from 'ai';
+import { inject, injectable } from "inversify";
 import { IChatModel } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
+import { Utility } from "../Utility";
+import { ChatGptViewProvider } from "../view";
 
 /**
  * Define the state annotations for the StateGraph.
@@ -40,16 +43,13 @@ const MyGraphState = Annotation.Root({
  * - Logs relevant information during the response generation process.
  * - Integrates with chat models to produce AI-generated responses based on user input.
  */
+@injectable()
 export class BasicResponseGenerator {
-    private logger = CoreLogger.getInstance();
+    private logger = CoreLogger.getInstance({ loggerName: "BasicResponseGenerator" });
 
-    /**
-     * Constructs a new instance of the BasicResponseGenerator.
-     * 
-     * @param provider - An instance of `ChatGptViewProvider` for accessing chat-related settings.
-     * @param chatModel - An instance of `IChatModel` representing the chat model to be used.
-     */
-    constructor(private provider: ChatGptViewProvider, private chatModel: IChatModel) { }
+    constructor(
+        @inject(TYPES.IChatModel) private chatModel: IChatModel
+    ) { }
 
     /**
      * Creates a new state graph for managing the response generation process.
@@ -82,25 +82,23 @@ export class BasicResponseGenerator {
      */
     async generate(question: string, updateResponse: (message: string) => void): Promise<void> {
         try {
-            this.logger.info(`chatgpt.model: ${this.provider.modelManager.model} chatgpt.question: ${question}`);
+            // Retrieve the provider using the mediator service
+            const provider = await Utility.getProvider();
 
-            // Invoke the graph with the current messages
+            this.logger.info(`chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
+
+            // Invoke the graph with the current messages and necessary state
             const inputs = {
                 generateAnswerNodeLogger: CoreLogger.getInstance({ loggerName: "GenerateAnswerNode" }),
-                retrievedContents: "",
-                retrievedFilePaths: new Set(),
-                previousMessages: this.provider.chatHistoryManager.getHistory(),
+                previousMessages: provider.chatHistoryManager.getHistory(),
                 userQuestion: question,
-                provider: this.provider,
+                provider,
                 chatModel: this.chatModel,
                 updateResponse: updateResponse,
-                retryCount: 0,
-                shouldReroute: false,
-                selectedFiles: [],
             };
             await this.createGraph().invoke(inputs);
         } catch (error) {
-            this.logger.info(`chatgpt.model: ${this.provider.modelManager.model} response: ${error}, stack: ${error.stack}`);
+            this.logger.logError(error, 'chatgpt.model: Error in response generation');
             throw error;
         }
     }
@@ -114,22 +112,18 @@ export class BasicResponseGenerator {
      * @param state - The current state of the graph containing necessary context for response generation.
      * @returns An object containing the generated answer and updated previous messages.
      */
-    async generateAnswerNode(state: typeof MyGraphState.State) {
+    private async generateAnswerNode(state: typeof MyGraphState.State) {
         const { generateAnswerNodeLogger, previousMessages, userQuestion, provider, chatModel, updateResponse } = state;
 
         generateAnswerNodeLogger.info('Invoking model with messages:', previousMessages);
 
         try {
             // Use the utility function to create a formatted user prompt
-            const userPrompt = `
-### USER QUESTION: ${userQuestion}`;
-
+            const userPrompt = `### USER QUESTION: ${userQuestion}`;
             generateAnswerNodeLogger.info(userPrompt);
 
             // Make a copy of the previousMessages array
-            const messagesCopy = [...previousMessages]; // or previousMessages.slice()
-
-            // Append a new message to the copied array
+            const messagesCopy = [...previousMessages];
             messagesCopy.push({ role: "user", content: userPrompt });
 
             const chunks = [];

@@ -45,10 +45,11 @@ import fetch, {
 } from 'node-fetch';
 import { initialize } from './config/Configuration';
 import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
+import { configureContainer, container } from "./inversify.config";
+import TYPES from "./inversify.types";
 import { CoreLogger } from "./logging/CoreLogger";
 import { FilteredTreeDataProvider } from './tree/FilteredTreeDataProvider';
 import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
-import { createChatGptViewProvider } from "./view/ChatGptViewProviderFactory";
 
 if (!globalThis.fetch) {
   globalThis.fetch = fetch;
@@ -115,6 +116,9 @@ export async function activate(context: vscode.ExtensionContext) {
     throw Error('No workspace root');
   }
 
+  // Pass the context to the container configuration
+  configureContainer(context, workspaceRoot);
+
   const logger = CoreLogger.getInstance();
 
   // Instantiate the Configuration, which load prompts
@@ -125,7 +129,14 @@ export async function activate(context: vscode.ExtensionContext) {
     context.globalState.get("chatgpt-adhoc-prompt") || "";
 
   // Instantiate the ChatGptViewProvider
-  const provider = await createChatGptViewProvider(context, workspaceRoot, logger);
+  const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
+  if (!provider) {
+    throw Error("provider not instantiated ");
+  }
+
+  provider.commandHandler.registerAllCommands();
+  await provider.configurationManager.loadConfiguration();
+  provider.initializeConfiguration();
 
   // Register the webview provider
   const view = vscode.window.registerWebviewViewProvider(
@@ -421,7 +432,7 @@ function registerUtilityCommands(
   const resetThread = vscode.commands.registerCommand(
     "chatgpt-copilot.clearConversation",
     async () => {
-      provider.sendMessage({ type: "clearConversation" });
+      await provider.sendMessage({ type: "clearConversation" });
     },
   );
 
@@ -429,14 +440,14 @@ function registerUtilityCommands(
   const exportConversation = vscode.commands.registerCommand(
     "chatgpt-copilot.exportConversation",
     async () => {
-      provider.sendMessage({ type: "exportConversation" });
+      await provider.sendMessage({ type: "exportConversation" });
     },
   );
 
   // Command to clear the session tokens
   const clearSession = vscode.commands.registerCommand(
     "chatgpt-copilot.clearSession",
-    () => {
+    async () => {
       context.globalState.update("chatgpt-session-token", null);
       context.globalState.update("chatgpt-clearance-token", null);
       context.globalState.update("chatgpt-user-agent", null);
@@ -447,7 +458,7 @@ function registerUtilityCommands(
       context.globalState.update("chatgpt.systemPrompt", null);
       context.globalState.update("chatgpt.gpt3.top_p", null);
       provider.sessionManager.clearSession();
-      provider.sendMessage({ type: "clearConversation" });
+      await provider.sendMessage({ type: "clearConversation" });
     },
   );
 
@@ -461,12 +472,27 @@ function registerUtilityCommands(
     await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateMermaidDiagram, {});
   });
 
+  // Command to generate mermaid diagrams for all files in a folder
+  const generateMermaidDiagramsInFolderCommand = vscode.commands.registerCommand(
+    'chatgpt-copilot.generateMermaidDiagramsInFolder',
+    async (target: vscode.Uri, selectedFiles: vscode.Uri[]) => {
+      // If there are multiple files selected, use the array of selected files
+      const targets = selectedFiles && selectedFiles.length > 0 ? selectedFiles : [target];
+
+      await provider.commandHandler.executeCommand(
+        ChatGPTCommandType.GenerateMermaidDiagramsInFolder,
+        targets
+      );
+    }
+  );
+
   context.subscriptions.push(
     resetThread,
     exportConversation,
     clearSession,
     generateDocstringsCommand,
     generateMermaidDiagramCommand,
+    generateMermaidDiagramsInFolderCommand
   );
 }
 

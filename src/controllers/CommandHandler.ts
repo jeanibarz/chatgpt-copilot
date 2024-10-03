@@ -7,27 +7,28 @@
  * user interactions.
  */
 
-import { injectable } from "inversify";
-import { AddFreeTextQuestionCommand } from '../commands/AddFreeTextQuestionCommand';
-import { ClearBrowserCommand } from '../commands/ClearBrowserCommand';
-import { ClearConversationCommand } from '../commands/ClearConversationCommand';
-import { ClearGpt3Command } from '../commands/ClearGpt3Command';
-import { EditCodeCommand } from '../commands/EditCodeCommand';
-import { GenerateDocstringsCommand } from '../commands/GenerateDocstringsCommand';
+import { inject, injectable } from "inversify";
+import { AddFreeTextQuestionCommand } from "../commands/AddFreeTextQuestionCommand";
+import { ClearBrowserCommand } from "../commands/ClearBrowserCommand";
+import { ClearConversationCommand } from "../commands/ClearConversationCommand";
+import { ClearGpt3Command } from "../commands/ClearGpt3Command";
+import { EditCodeCommand } from "../commands/EditCodeCommand";
+import { GenerateDocstringsCommand } from "../commands/GenerateDocstringsCommand";
 import { GenerateMermaidDiagramCommand } from "../commands/GenerateMermaidDiagramCommand";
-import { ListConversationsCommand } from '../commands/ListConversationsCommand';
-import { LoginCommand } from '../commands/LoginCommand';
-import { OpenNewCommand } from '../commands/OpenNewCommand';
-import { OpenSettingsCommand } from '../commands/OpenSettingsCommand';
-import { OpenSettingsPromptCommand } from '../commands/OpenSettingsPromptCommand';
-import { ShowConversationCommand } from '../commands/ShowConversationCommand';
-import { StopGeneratingCommand } from '../commands/StopGeneratingCommand';
+import { GenerateMermaidDiagramsInFolderCommand } from "../commands/GenerateMermaidDiagramsInFolderCommand";
+import { ListConversationsCommand } from "../commands/ListConversationsCommand";
+import { LoginCommand } from "../commands/LoginCommand";
+import { OpenNewCommand } from "../commands/OpenNewCommand";
+import { OpenSettingsCommand } from "../commands/OpenSettingsCommand";
+import { OpenSettingsPromptCommand } from "../commands/OpenSettingsPromptCommand";
+import { ShowConversationCommand } from "../commands/ShowConversationCommand";
+import { ConversationManager } from "../ConversationManager";
+import { DocstringGenerator } from "../DocstringGenerator";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
-
-const logger = CoreLogger.getInstance();
+import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
 
 /**
  * The `CommandHandler` class manages the execution of various commands 
@@ -37,47 +38,43 @@ const logger = CoreLogger.getInstance();
  */
 @injectable()
 export class CommandHandler {
-  private commandMap: Map<ChatGPTCommandType, ICommand>; // Map to store command instances
-  private provider?: ChatGptViewProvider;
+  private logger: CoreLogger = CoreLogger.getInstance();
+  private commandMap: Map<ChatGPTCommandType, ICommand>;
 
   /**
    * Constructor for the `CommandHandler` class.
    * Initializes a new instance and registers all available commands.
    * 
-   * @param provider - An instance of `ChatGptViewProvider` for managing interactions.
+   * @param logger - An instance of `CoreLogger` for logging events.
+   * @param commands - The list of command instances to register.
    */
-  constructor() {
+  constructor(
+    @inject(TYPES.ConversationManager) private conversationManager: ConversationManager,
+    @inject(TYPES.DocstringGenerator) private docstringGenerator: DocstringGenerator,
+    @inject(TYPES.MermaidDiagramGenerator) private mermaidDiagramGenerator: MermaidDiagramGenerator,
+  ) {
     this.commandMap = new Map();
-    this.registerCommands();
   }
 
   /**
-   * Set the provider after the command handler has been instantiated.
-   * 
-   * @param provider - The ChatGptViewProvider instance.
+   * Manually registers all commands with the command map.
    */
-  public setProvider(provider: ChatGptViewProvider): void {
-    this.provider = provider;
-  }
-
-  /**
-   * Registers all command instances with their corresponding command types.
-   */
-  private registerCommands(): void {
+  public registerAllCommands(): void {
+    // Manually instantiate and register all commands
     this.registerCommand(new AddFreeTextQuestionCommand());
-    this.registerCommand(new EditCodeCommand());
-    this.registerCommand(new OpenNewCommand());
-    this.registerCommand(new ClearConversationCommand());
     this.registerCommand(new ClearBrowserCommand());
+    this.registerCommand(new ClearConversationCommand(this.conversationManager));
     this.registerCommand(new ClearGpt3Command());
+    this.registerCommand(new EditCodeCommand());
+    this.registerCommand(new GenerateDocstringsCommand(this.docstringGenerator));
+    this.registerCommand(new GenerateMermaidDiagramCommand(this.mermaidDiagramGenerator));
+    this.registerCommand(new GenerateMermaidDiagramsInFolderCommand(this.mermaidDiagramGenerator));
+    this.registerCommand(new ListConversationsCommand());
     this.registerCommand(new LoginCommand());
+    this.registerCommand(new OpenNewCommand());
     this.registerCommand(new OpenSettingsCommand());
     this.registerCommand(new OpenSettingsPromptCommand());
-    this.registerCommand(new ListConversationsCommand());
     this.registerCommand(new ShowConversationCommand());
-    this.registerCommand(new StopGeneratingCommand());
-    this.registerCommand(new GenerateDocstringsCommand());
-    this.registerCommand(new GenerateMermaidDiagramCommand());
   }
 
   /**
@@ -96,16 +93,15 @@ export class CommandHandler {
    * @param data - The data associated with the command execution.
    */
   public async executeCommand(commandType: ChatGPTCommandType, data: any): Promise<void> {
-    if (!this.provider) {
-      logger.error(`Provider is not available, can't execute command ${commandType}`);
-      return;
-    }
-
     const command = this.commandMap.get(commandType);
     if (command) {
-      await command.execute(data, this.provider);
+      try {
+        await command.execute(data);
+      } catch (error) {
+        this.logger.error(`Failed to execute command ${commandType}: ${(error as Error).message}`);
+      }
     } else {
-      logger.warn(`No handler found for command type: ${commandType}`);
+      this.logger.warn(`No handler found for command type: ${commandType}`);
     }
   }
 }

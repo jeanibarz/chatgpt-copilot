@@ -8,10 +8,10 @@
 
 import * as vscode from 'vscode';
 
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import { getConfig, getRequiredConfig } from "../config/Configuration";
-import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { Utility } from "../Utility";
 import { ModelManager } from "./ModelManager";
 
 /**
@@ -32,7 +32,6 @@ interface IConfigurationManager {
 @injectable()
 export class ConfigurationManager implements IConfigurationManager {
     private logger = CoreLogger.getInstance(); // Logger instance for logging configuration events
-    public modelManager: ModelManager; // Instance of ModelManager to manage models
 
     // Configuration flags and settings
     public subscribeToResponse: boolean = false; // Flag to determine if responses should be subscribed to
@@ -40,39 +39,30 @@ export class ConfigurationManager implements IConfigurationManager {
     public conversationHistoryEnabled: boolean = true; // Flag to enable conversation history
     public apiBaseUrl?: string; // Base URL for API calls
 
-    /**
-     * Constructor for the `ConfigurationManager` class.
-     * Initializes the logger and model manager, and loads the configuration.
-     * 
-     * @param modelManager - An instance of `ModelManager` to manage models.
-     */
-    constructor(
-        @inject(TYPES.ModelManager) modelManager: ModelManager
-    ) {
-        this.modelManager = modelManager;
-        this.loadConfiguration(); // Load configuration upon instantiation
-    }
+    constructor() { }
 
     /**
      * Loads the configuration settings from the VS Code configuration files.
      * Initializes various configuration flags and settings based on the loaded values.
      */
-    public loadConfiguration(): void {
+    public async loadConfiguration(): Promise<void> {
+        const modelManager: ModelManager = (await Utility.getProvider()).modelManager;
+
         // Load the model configuration and response settings
-        this.modelManager.model = getRequiredConfig<string>("gpt3.model");
+        modelManager.model = getRequiredConfig<string>("gpt3.model");
         this.subscribeToResponse = getConfig<boolean>("response.showNotification", false);
         this.autoScroll = !!getConfig<boolean>("response.autoScroll", false);
         this.conversationHistoryEnabled = getConfig<boolean>("conversationHistoryEnabled", true);
 
         // Check for custom model configuration
-        if (this.modelManager.model === "custom") {
-            this.modelManager.model = getRequiredConfig<string>("gpt3.customModel");
+        if (modelManager.model === "custom") {
+            modelManager.model = getRequiredConfig<string>("gpt3.customModel");
         }
         this.apiBaseUrl = getRequiredConfig<string>("gpt3.apiBaseUrl");
 
         // Ensure Azure model names are valid
         if (this.apiBaseUrl?.includes("azure")) {
-            this.modelManager.model = this.modelManager.model?.replace(".", "");
+            modelManager.model = modelManager.model?.replace(".", "");
         }
 
         // Log that the configuration has been successfully loaded

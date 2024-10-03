@@ -60,6 +60,7 @@ classDiagram
 
 ### Additional Notes:
 - Ensure the generated diagram accurately reflects all public and private class members, including parameters and return types for methods.
+- Ensure there is no special characters, such as '(', ')', '[', ']', '{', '}' within the name of the diagram elements, otherwise the mermaid diagram will be invalid.
 - No additional text or comments should be included in the output—just the Mermaid diagram wrapped in a Markdown code block.
 
 Input Code:

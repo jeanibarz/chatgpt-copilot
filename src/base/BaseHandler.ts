@@ -6,9 +6,8 @@
  * for handling data and logging errors.
  */
 
-import { inject } from "inversify";
+import { injectable } from "inversify";
 import { IHandler } from "../interfaces/IHandler";
-import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 
 /**
@@ -20,20 +19,9 @@ import { CoreLogger } from "../logging/CoreLogger";
  * - Provides a logger instance for logging errors and events.
  * - Requires subclasses to implement the execute method for processing data.
  */
+@injectable()
 export abstract class BaseHandler<T> implements IHandler<T> {
-    protected logger: CoreLogger; // Logger instance for logging events
-
-    /**
-     * Constructor for the `BaseHandler` class.
-     * Initializes the handler with a logger instance for logging events.
-     * 
-     * @param logger - An instance of ILogger for logging purposes.
-     */
-    constructor(
-        @inject(TYPES.CoreLogger) logger: CoreLogger
-    ) {
-        this.logger = logger;
-    }
+    protected logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Executes the handler's logic with the provided data.

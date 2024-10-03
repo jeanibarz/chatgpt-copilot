@@ -1,26 +1,11 @@
 // src/view/WebviewMessageHandler.ts
 
-/**
- * 
- * This module handles the communication between the webview and the extension within a VS Code environment.
- * It manages incoming messages from the webview and allows for sending responses back to the webview.
- * 
- * The `WebviewMessageHandler` class is responsible for processing messages received from the webview,
- * executing the appropriate commands based on the message type, and sending responses back to the webview.
- * 
- * Key Features:
- * - Listens for messages from the webview and processes them accordingly.
- * - Supports sending messages and data back to the webview.
- * - Handles different types of messages, enabling extensible command processing.
- */
-
 import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
 import { CommandHandler } from "../controllers";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from "./ChatGptViewProvider";
 
 /**
  * The `WebviewMessageHandler` class manages the message communication 
@@ -29,8 +14,7 @@ import { ChatGptViewProvider } from "./ChatGptViewProvider";
  */
 @injectable()
 export class WebviewMessageHandler {
-    private logger: CoreLogger; // Logger instance for logging events
-    private commandHandler: CommandHandler; // Command handler for executing commands
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Constructor for the `WebviewMessageHandler` class.
@@ -40,21 +24,16 @@ export class WebviewMessageHandler {
      * @param commandHandler - An instance of `CommandHandler` for executing commands.
      */
     constructor(
-        @inject(TYPES.CoreLogger) logger: CoreLogger,
-        @inject(TYPES.CommandHandler) commandHandler: CommandHandler
-    ) {
-        this.logger = logger;
-        this.commandHandler = commandHandler;
-    }
+        @inject(TYPES.CommandHandler) private commandHandler: CommandHandler
+    ) { }
 
     /**
      * Sets up the message listener for the webview.
      * This method should be called to start listening for messages.
      * 
      * @param webviewView - The webview instance to listen for messages from.
-     * @param chatGptViewProvider - The ChatGptViewProvider instance for additional context.
      */
-    public handleMessages(webviewView: vscode.WebviewView, chatGptViewProvider: ChatGptViewProvider) {
+    public handleMessages(webviewView: vscode.WebviewView): void {
         webviewView.webview.onDidReceiveMessage(async (data: {
             type: ChatGPTCommandType; // The type of command to execute
             value: any; // The value associated with the command
@@ -63,7 +42,8 @@ export class WebviewMessageHandler {
             this.logger.info(`Message received of type: ${data.type}`);
 
             try {
-                await this.commandHandler.executeCommand(data.type, data); // Execute the command
+                // Execute the command based on the type received from the webview
+                await this.commandHandler.executeCommand(data.type, data);
             } catch (error) {
                 this.logger.logError(error, `Error handling command ${data.type}`); // Log any errors
             }

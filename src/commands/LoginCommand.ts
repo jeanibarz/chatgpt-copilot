@@ -1,17 +1,33 @@
 // src/commands/LoginCommand.ts
 
+import { injectable } from "inversify";
+import { ConversationManager } from "../ConversationManager";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { container } from "../inversify.config";
+import TYPES from "../inversify.types";
+import { CoreLogger } from '../logging/CoreLogger';
 
+@injectable()
 export class LoginCommand implements ICommand {
-  public type = ChatGPTCommandType.Login;
+  public readonly type = ChatGPTCommandType.Login;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
-    const success = await provider.conversationManager.prepareConversation();
-    if (success) {
-      provider.sendMessage({ type: 'loginSuccessful', showConversations: false });
-      provider.logger.info('Logged in successfully');
+  constructor() { }
+
+  public async execute(data: any): Promise<void> {
+    try {
+      // Send a request to prepare the conversation
+      const success = await container.get<ConversationManager>(TYPES.ConversationManager).prepareConversation();
+
+      if (success) {
+        this.logger.info('Logged in and conversation prepared successfully');
+        // Further actions on successful preparation, such as updating the UI or sending a message
+      } else {
+        this.logger.warn('Failed to prepare the conversation during login');
+      }
+    } catch (error) {
+      this.logger.error(`Failed to prepare conversation during login: ${(error as Error).message}`);
     }
   }
 }

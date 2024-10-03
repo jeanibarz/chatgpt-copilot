@@ -16,6 +16,12 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { container } from "./inversify.config";
+import TYPES from "./inversify.types";
+import { CoreLogger } from "./logging/CoreLogger";
+import { ChatGptViewProvider } from "./view";
+
+const logger = CoreLogger.getInstance();
 
 export class Utility {
     /**
@@ -173,6 +179,66 @@ export class Utility {
             return stat.type === vscode.FileType.Directory;
         } catch (error) {
             return false; // If stat fails, it's not a directory
+        }
+    }
+
+    /**
+     * Displays an error message in the VS Code window.
+     * 
+     * @param message - The error message to display.
+     */
+    public static showError(message: string) {
+        vscode.window.showErrorMessage(message);
+    }
+
+    /**
+     * Retrieves the ChatGptViewProvider instance.
+     * 
+     * @returns A promise that resolves to the ChatGptViewProvider instance.
+     * @throws Error if the provider is not found.
+     */
+    public static async getProvider(): Promise<ChatGptViewProvider> {
+        const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
+        if (!provider) {
+            throw new Error("Provider not found");
+        }
+        return provider;
+    }
+
+    public static async stopGenerationRequest(): Promise<void> {
+        const provider = await this.getProvider();
+
+        try {
+            // Abort the ongoing generation if there is an active abort controller
+            if (provider.abortController) {
+                provider.abortController.abort();
+                logger.info("Generation stopped successfully");
+            } else {
+                logger.warn("No generation process to stop");
+            }
+
+            // Update the view state to reflect the stopped generation
+            provider.inProgress = false;
+            await provider.sendMessage({
+                type: "showInProgress",
+                inProgress: provider.inProgress
+            });
+
+            // Optionally finalize and send a response update to the view
+            const responseInMarkdown = !provider.modelManager.isCodexModel;
+            await provider.sendMessage({
+                type: "addResponse",
+                value: provider.response,
+                done: true,
+                id: provider.currentMessageId,
+                autoScroll: provider.configurationManager.autoScroll,
+                responseInMarkdown,
+            });
+
+            provider.response = '';  // Reset the response after stopping
+
+        } catch (error) {
+            logger.error(`Failed to stop generation: ${(error as Error).message}`);
         }
     }
 }

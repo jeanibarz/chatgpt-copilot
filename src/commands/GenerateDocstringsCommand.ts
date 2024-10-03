@@ -22,31 +22,29 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { inject, injectable } from "inversify";
 import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
+import { DocstringGenerator } from '../DocstringGenerator';
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import TYPES from "../inversify.types";
+import { CoreLogger } from "../logging/CoreLogger";
+import { Utility } from "../Utility";
 
+@injectable()
 export class GenerateDocstringsCommand implements ICommand {
-  public type = ChatGPTCommandType.GenerateDocstrings;
+  public readonly type = ChatGPTCommandType.GenerateDocstrings;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  /**
-   * Executes the command to generate and insert docstrings into the 
-   * active editor's content.
-   * 
-   * This method checks for an active editor, retrieves the current 
-   * text, generates the docstring, and applies it to the document. 
-   * It also manages temporary files for content comparison and handles 
-   * any errors that may occur during the process.
-   * 
-   * @param data - The data associated with the command execution.
-   * @param provider - An instance of `ChatGptViewProvider` for accessing 
-   * the docstring generation functionality.
-   */
-  public async execute(data: any, provider: ChatGptViewProvider) {
+  constructor(
+    @inject(TYPES.DocstringGenerator) private docstringGenerator: DocstringGenerator,
+  ) { }
+
+
+  public async execute(data: any) {
     const activeEditor = vscode.window.activeTextEditor;
     if (!activeEditor) {
-      this.showError('No active editor found.');
+      Utility.showError('No active editor found.');
       return;
     }
 
@@ -54,37 +52,28 @@ export class GenerateDocstringsCommand implements ICommand {
     const originalFileUri = activeEditor.document.uri;
     const tempFilePath = this.createTempFile(preSaveContent);
 
-    const text = await provider.getActiveEditorText();
+    const text = activeEditor.document.getText();
     if (!text) {
-      this.showError('No text found in the active editor.');
+      Utility.showError('No text found in the active editor.');
       return;
     }
 
-    const docstringContent = await this.generateDocstring(text, provider);
+    const docstringContent = await this.generateDocstring(text);
     const editSuccess = await this.applyDocstring(activeEditor, docstringContent);
 
     if (!editSuccess) {
-      this.showError('Failed to update the document with the new docstring.');
+      Utility.showError('Failed to update the document with the new docstring.');
       return;
     }
 
     const didSave = await activeEditor.document.save();
     if (!didSave) {
-      this.showError('File could not be saved.');
+      Utility.showError('File could not be saved.');
       return;
     }
 
     await this.showDiff(originalFileUri, tempFilePath);
     this.cleanupTempFile(tempFilePath);
-  }
-
-  /**
-   * Displays an error message in the VS Code window.
-   * 
-   * @param message - The error message to display.
-   */
-  private showError(message: string) {
-    vscode.window.showErrorMessage(message);
   }
 
   /**
@@ -103,22 +92,20 @@ export class GenerateDocstringsCommand implements ICommand {
   }
 
   /**
-   * Generates a docstring based on the provided text using the 
-   * `ChatGptViewProvider`.
+   * Generates a docstring based on the provided text.
    * 
    * This method constructs a prompt for the docstring generator and 
    * returns the generated docstring.
    * 
    * @param text - The text for which the docstring is to be generated.
-   * @param provider - An instance of `ChatGptViewProvider` for accessing 
    * the docstring generation functionality.
    * @returns A promise that resolves to the generated docstring.
    */
-  private async generateDocstring(text: string, provider: ChatGptViewProvider): Promise<string> {
+  private async generateDocstring(text: string): Promise<string> {
     const docstringPrompt = defaultSystemPromptForGenerateDocstring;
-    provider.logger.info(`docstringPrompt: ${docstringPrompt}`);
+    this.logger.info(`docstringPrompt: ${docstringPrompt}`);
     const prompt = `${docstringPrompt}\n\n${text}\n\n`;
-    return await provider.docstringGenerator.generateDocstring(prompt);
+    return await this.docstringGenerator.generateDocstring(prompt);
   }
 
   /**

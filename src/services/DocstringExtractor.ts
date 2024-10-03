@@ -18,14 +18,11 @@ import { FileManager } from './FileManager';
 
 @injectable()
 export class DocstringExtractor {
-    private logger: CoreLogger;
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     constructor(
         @inject(TYPES.FileManager) private fileManager: FileManager,
-        @inject(TYPES.CoreLogger) logger: CoreLogger
-    ) {
-        this.logger = logger;
-    }
+    ) { }
 
     /**
      * Extracts module-level docstrings from the matched files.
@@ -72,6 +69,12 @@ export class DocstringExtractor {
         return null;
     }
 
+    /**
+     * Safely reads the content of a file.
+     * 
+     * @param filePath - The path to the file to be read.
+     * @returns A promise that resolves to the file's content as a string, or null if an error occurs.
+     */
     private async safeReadFileContent(filePath: string): Promise<string | null> {
         try {
             return await this.fileManager.readFileContent(filePath);
@@ -81,6 +84,13 @@ export class DocstringExtractor {
         }
     }
 
+    /**
+     * Extracts a docstring from the provided content if it contains a module-level comment.
+     * 
+     * @param content - The content of the file to search for docstrings.
+     * @param filePath - The path of the file being processed.
+     * @returns An object containing the file path and the extracted docstring, or null if none is found.
+     */
     private extractDocstring(content: string, filePath: string): IFileDocstring | null {
         const blockComments = content.match(/\/\*[\s\S]*?\*\//g);
         if (blockComments) {

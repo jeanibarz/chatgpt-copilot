@@ -21,9 +21,7 @@ import { FilteredTreeDataProvider } from "./FilteredTreeDataProvider";
 
 @injectable()
 export class TreeRenderer {
-    private logger = CoreLogger.getInstance();
-
-    constructor() { }
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Renders the tree starting from the given item in the specified format.

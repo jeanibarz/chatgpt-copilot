@@ -15,16 +15,19 @@
  */
 
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
-import { CoreMessage, generateObject } from 'ai';
+import { CoreMessage } from 'ai';
+import { inject, injectable } from "inversify";
 import { z } from 'zod';
 import { defaultSystemPromptForContextSelection, defaultUserPromptForContextSelection } from "../config/Configuration";
 import { IChatModel, IFileDocstring, ISelectedFile, RenderMethod } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { PromptFormatter } from "../PromptFormatter";
+import { Utility } from "../Utility";
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
 
 // Configuration for maximum retries
-const MAX_RETRIES = 0; // This can be made configurable
+const MAX_RETRIES = 0;
 
 /**
  * Define the state annotations for the StateGraph.
@@ -63,17 +66,13 @@ const MyGraphState = Annotation.Root({
  * - Generates responses using an AI model while keeping track of conversation history.
  * - Assesses whether additional files should be included to improve response quality.
  */
+@injectable()
 export class KnowledgeEnhancedResponseGenerator {
     private logger = CoreLogger.getInstance();
 
-    /**
-     * Constructor for the `KnowledgeEnhancedResponseGenerator` class.
-     * Initializes a new instance with the specified provider and chat model.
-     * 
-     * @param provider - An instance of `ChatGptViewProvider` for accessing view-related settings.
-     * @param chatModel - An instance of `IChatModel` representing the AI model for generating responses.
-     */
-    constructor(private provider: ChatGptViewProvider, private chatModel: IChatModel) { }
+    constructor(
+        @inject(TYPES.IChatModel) private chatModel: IChatModel
+    ) { }
 
     /**
      * Creates a state graph for managing the various nodes involved in generating a response.
@@ -83,7 +82,6 @@ export class KnowledgeEnhancedResponseGenerator {
      * @returns A compiled state graph instance.
      */
     private createGraph() {
-        // Create a new state graph with the MessagesAnnotation
         const graph = new StateGraph(MyGraphState)
             .addNode("selectRelevantFiles", this.selectRelevantFilesNode)
             .addNode("retrieveFileContentsNode", this.retrieveFileContentsNode)
@@ -112,10 +110,13 @@ export class KnowledgeEnhancedResponseGenerator {
      */
     async generate(question: string, updateResponse: (message: string) => void): Promise<void> {
         try {
-            this.logger.info(`chatgpt.model: ${this.provider.modelManager.model} chatgpt.question: ${question}`);
+            // Retrieve the provider using the mediator service
+            const provider = await Utility.getProvider();
+
+            this.logger.info(`chatgpt.model: ${provider.modelManager.model} chatgpt.question: ${question}`);
 
             // Check if context files are available
-            const availableFiles = await this.provider.contextManager.treeDataProvider.getAllFilteredFiles();
+            const availableFiles = await provider.contextManager.treeDataProvider.getAllFilteredFiles();
             const hasContextFiles = availableFiles.length > 0;
 
             // Invoke the graph with the current messages
@@ -124,12 +125,12 @@ export class KnowledgeEnhancedResponseGenerator {
                 selectRelevantFilesLogger: CoreLogger.getInstance({ loggerName: "Context / Select relevant files" }),
                 generateAnswerNodeLogger: CoreLogger.getInstance({ loggerName: "GenerateAnswerNode" }),
                 retrieveFileContentLogger: CoreLogger.getInstance({ loggerName: "Context / Retrieve file contents" }),
-                assessResponseNodeLogger: CoreLogger.getInstance({ loggerName: "Context / Retrieve file contents" }),
+                assessResponseNodeLogger: CoreLogger.getInstance({ loggerName: "Context / Assess response" }),
                 retrievedContents: "",
                 retrievedFilePaths: new Set(),
-                previousMessages: this.provider.chatHistoryManager.getHistory(),
+                previousMessages: provider.chatHistoryManager.getHistory(),
                 userQuestion: question,
-                provider: this.provider,
+                provider: provider,
                 chatModel: this.chatModel,
                 updateResponse: updateResponse,
                 retryCount: 0,
@@ -140,7 +141,7 @@ export class KnowledgeEnhancedResponseGenerator {
             };
             await this.createGraph().invoke(inputs);
         } catch (error) {
-            this.logger.info(`chatgpt.model: ${this.provider.modelManager.model} response: ${error}, stack: ${error.stack}`);
+            this.logger.logError(error, 'Error generating a response');
             throw error;
         }
     }
@@ -153,7 +154,7 @@ export class KnowledgeEnhancedResponseGenerator {
      * @param state - The current state containing necessary context and information.
      * @returns A promise that resolves with the generated answer and updated previous messages.
      */
-    async generateAnswerNode(state: typeof MyGraphState.State) {
+    private async generateAnswerNode(state: typeof MyGraphState.State) {
         const { generateAnswerNodeLogger, previousMessages, retrievedContents, userQuestion, provider, chatModel, updateResponse } = state;
 
         generateAnswerNodeLogger.info('Invoking model with messages:', previousMessages);
@@ -184,7 +185,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             generateAnswerNodeLogger.info(userPrompt);
 
             // Make a copy of the previousMessages array
-            const messagesCopy = [...previousMessages]; // or previousMessages.slice()
+            const messagesCopy = [...previousMessages];
 
             // Append a new message to the copied array
             messagesCopy.push({ role: "user", content: userPrompt });
@@ -218,7 +219,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
 
             return {
                 answer: response,
-                previousMessages: updatedPreviousMessages, // Update the state
+                previousMessages: updatedPreviousMessages,
             };
         } catch (error) {
             generateAnswerNodeLogger.error('Model invocation error:', error);
@@ -256,7 +257,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             selectedFiles: z.array(FileSchema),
         });
 
-        selectRelevantFilesLogger.info("Filesschema constructed");
+        selectRelevantFilesLogger.info("Constructing schema for file selection");
 
         try {
             // Construct the prompt using the system prompt
@@ -273,12 +274,12 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
                 .replace('${conversationHistory}', conversationHistory)
                 .replace('${userQuestion}', userQuestion);
 
-            // Call OpenAI API to get the relevant files
+            // Call the model using `generateObject`
             const messages = [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ];
-            selectRelevantFilesLogger.info("Messages instantiated", { messages });
+            selectRelevantFilesLogger.info("Messages created", { messages });
 
             const { object } = await chatModel.generateObject({
                 mode: "json",
@@ -286,7 +287,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
                 messages: messages
             });
 
-            selectRelevantFilesLogger.info('Completion done', { object });
+            selectRelevantFilesLogger.info('File selection completion', { object });
 
             const validatedSelectedFiles = object.selectedFiles.filter(file =>
                 availableFiles.some(availableFile => availableFile === file.filePath)
@@ -369,7 +370,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
      * @returns A promise that resolves with an object indicating whether to reroute the flow.
      */
     async assessResponseNode(state: typeof MyGraphState.State) {
-        const { assessResponseNodeLogger, previousMessages, userQuestion, provider, selectedFiles, docstrings, retryCount, updateResponse } = state;
+        const { assessResponseNodeLogger, previousMessages, userQuestion, provider, selectedFiles, docstrings, retryCount, chatModel, updateResponse } = state;
 
         // Compute the set of file paths already included
         const alreadySelectedFilePaths = new Set(selectedFiles.map(f => f.filePath));
@@ -419,8 +420,7 @@ If no additional files are needed, respond with an empty array.`;
                 selectedFiles: z.array(FileSchema),
             });
 
-            const { object } = await generateObject({
-                model: provider.apiChat,
+            const { object } = await chatModel.generateObject({
                 messages: messages,
                 mode: "json",
                 schema: FilesSchema,

@@ -7,7 +7,6 @@
 
 import * as vscode from "vscode";
 
-import { injectable } from "inversify";
 import { LoggerRegistry } from "./LoggerRegistry";
 import { FileLogger } from "./sinkLoggers/FileLogger";
 import { OutputChannelLogger } from "./sinkLoggers/OutputChannelLogger";
@@ -44,7 +43,6 @@ interface CoreLoggerOptions {
  * This class also interacts with a `LoggerRegistry` to manage named loggers and prevent 
  * duplicate logger creation.
  */
-@injectable()
 export class CoreLogger {
     private loggerName: string; // The name of the logger
     private static registry: LoggerRegistry = new LoggerRegistry(); // Logger registry for managing loggers

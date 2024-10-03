@@ -34,7 +34,7 @@ import { Utility } from "../Utility";
  */
 @injectable()
 export class FileManager {
-    private logger = CoreLogger.getInstance();
+    private logger: CoreLogger = CoreLogger.getInstance();
     private workspaceRoot: string;
 
     /**

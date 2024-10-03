@@ -7,6 +7,7 @@
 
 import { CoreMessage } from "ai";
 import { CoreLogger } from "../logging/CoreLogger";
+import { injectable } from "inversify";
 
 const logger = CoreLogger.getInstance();
 
@@ -27,6 +28,7 @@ export enum MessageRole {
  * - Provides functionality to clear the entire chat history.
  * - Enables retrieval of the entire chat history or just the last message.
  */
+@injectable()
 export class ChatHistoryManager {
     private history: CoreMessage[] = []; // Array to store chat messages
 
@@ -75,14 +77,5 @@ export class ChatHistoryManager {
      */
     public getFormattedHistory(): string {
         return this.history.map(msg => `${msg.role}: ${msg.content}`).join('\n');
-    }
-
-    /**
-     * Returns an array of messages formatted as strings.
-     * 
-     * @returns An array of strings representing the chat messages.
-     */
-    public getHistoryMessages(): string[] {
-        return this.history.map(msg => `${msg.role}: ${msg.content}`);
     }
 }

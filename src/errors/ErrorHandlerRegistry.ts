@@ -6,7 +6,7 @@
  * handlers to facilitate customized error responses.
  */
 
-import { ILogger } from "../interfaces/ILogger";
+import { CoreLogger } from "../logging/CoreLogger";
 
 /**
  * The `ErrorHandlerRegistry` class manages a collection of error handlers
@@ -14,18 +14,8 @@ import { ILogger } from "../interfaces/ILogger";
  * retrieval of handlers to facilitate customized error responses.
  */
 export class ErrorHandlerRegistry {
+    private logger: CoreLogger = CoreLogger.getInstance();
     private handlers: Map<number, (error: any) => string> = new Map();  // Map to store error handlers by status code
-    private logger: ILogger; // Logger instance for logging events
-
-    /**
-     * Constructor for the `ErrorHandlerRegistry` class.
-     * Initializes the registry with a logger instance for logging events.
-     * 
-     * @param logger - An instance of `ILogger` for logging events.
-     */
-    constructor(logger: ILogger) {
-        this.logger = logger;
-    }
 
     /**
      * Registers a new error handler for a specific HTTP status code.

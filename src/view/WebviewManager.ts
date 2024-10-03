@@ -18,9 +18,13 @@
  */
 
 import * as fs from "fs";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
+import { WebviewMessageHandler } from ".";
+import { extensionContext } from "../config/Configuration";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { Utility } from "../Utility";
 
 /**
  * The `WebviewManager` class manages the setup and communication of webviews 
@@ -31,25 +35,34 @@ import { CoreLogger } from "../logging/CoreLogger";
 export class WebviewManager {
   private logger = CoreLogger.getInstance(); // Logger instance for logging events
   private webviewView?: vscode.WebviewView; // The webview view instance
+  private messageHandler: WebviewMessageHandler;
+
+  constructor(
+    @inject(TYPES.WebviewMessageHandler) messageHandler: WebviewMessageHandler,
+  ) {
+    this.messageHandler = messageHandler;
+  }
 
   /**
    * Sets up the webview with HTML content and webview options.
    * 
    * @param webviewView - The webview view to be set up.
-   * @param extensionUri - The URI of the extension for resource paths.
    * @param nonce - A nonce value for security purposes.
    * @throws Will throw an error if the HTML generation fails.
    */
-  public initializeWebView(webviewView: vscode.WebviewView, extensionUri: vscode.Uri, nonce: string) {
+  public initializeWebView(
+    webviewView: vscode.WebviewView,
+    nonce: string
+  ) {
     this.webviewView = webviewView;
     this.logger.info("Webview set");
     this.webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [extensionUri],
+      localResourceRoots: [extensionContext.extensionUri],
     };
 
     try {
-      this.webviewView.webview.html = this.generateWebviewHtml(extensionUri, nonce);
+      this.webviewView.webview.html = this.generateWebviewHtml(nonce);
       this.logger.info("Webview HTML set");
     } catch (error) {
       // Type guard to check if error is an instance of Error
@@ -60,6 +73,13 @@ export class WebviewManager {
       }
       throw error;
     }
+  }
+
+  public setupWebview(webviewView: vscode.WebviewView) {
+    this.webviewView = webviewView;
+    this.initializeWebView(webviewView, Utility.getRandomId());
+    this.messageHandler.handleMessages(webviewView);
+    // TODO: find a way to provide viewProvider or remove it from required args
   }
 
   /** 
@@ -78,20 +98,19 @@ export class WebviewManager {
   /**
    * Generates the HTML content for the webview.
    * 
-   * @param extensionUri - The URI of the extension for resource paths.
    * @param nonce - A nonce value for security purposes.
    * @returns The generated HTML content for the webview.
    * @throws Will throw an error if the webview is not set.
    */
-  private generateWebviewHtml(extensionUri: vscode.Uri, nonce: string): string {
+  private generateWebviewHtml(nonce: string): string {
     if (!this.webviewView) {
       throw new Error("Cannot generate HTML without a valid webview.");
     }
 
-    const webviewHtmlPath = vscode.Uri.joinPath(extensionUri, "media", "webview.html");
+    const webviewHtmlPath = vscode.Uri.joinPath(extensionContext.extensionUri, "media", "webview.html");
     let html = fs.readFileSync(webviewHtmlPath.fsPath, "utf8");
 
-    const resourceUris = this.generateResourceUris(extensionUri);
+    const resourceUris = this.generateResourceUris();
     html = this.replacePlaceholders(html, resourceUris, nonce);
     return html;
   }
@@ -99,10 +118,10 @@ export class WebviewManager {
   /**
    * Generates URIs for various resources used in the webview.
    * 
-   * @param extensionUri - The URI of the extension for resource paths.
    * @returns An object containing URIs for scripts and stylesheets.
    */
-  private generateResourceUris(extensionUri: vscode.Uri) {
+  private generateResourceUris() {
+    const extensionUri = extensionContext.extensionUri;
     const webview = this.webviewView!.webview;
     return {
       scriptUri: webview.asWebviewUri(

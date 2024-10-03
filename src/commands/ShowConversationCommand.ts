@@ -1,26 +1,23 @@
 // src/commands/ShowConversationCommand.ts
 
+import { injectable } from "inversify";
 import * as vscode from 'vscode';
-
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { CoreLogger } from '../logging/CoreLogger';
 
+@injectable()
 export class ShowConversationCommand implements ICommand {
-  public type = ChatGPTCommandType.ShowConversation;
+  public readonly type = ChatGPTCommandType.ShowConversation;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
-    // Focus the webview if not already focused
+  public async execute(data: any): Promise<void> {
     try {
-      if (provider.webView == null) {
-        // If the webview is not initialized, execute the command to focus it
-        await vscode.commands.executeCommand("chatgpt-copilot.view.focus");
-      } else {
-        // If the webview is already available, show it
-        provider.webView?.show?.(true);
-      }
+      // Focus the webview or show it if it's already initialized
+      await vscode.commands.executeCommand("chatgpt-copilot.view.focus");
+      this.logger.info('ChatGPT conversation view focused or shown.');
     } catch (error) {
-      provider.logger.logError(error, "Failed to focus or show the ChatGPT view", true);
+      this.logger.error(`Failed to focus or show the ChatGPT view: ${(error as Error).message}`);
     }
   }
 }

@@ -19,7 +19,7 @@ import { Utility } from "../Utility";
  */
 @injectable()
 export class ExplicitFilesManager {
-    private logger = CoreLogger.getInstance();
+    private logger: CoreLogger = CoreLogger.getInstance();
     private workspaceFolders: Array<string> = [];
     private explicitFiles: Set<string> = new Set<string>();
     private explicitFolders: Set<string> = new Set<string>();

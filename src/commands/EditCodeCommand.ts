@@ -1,18 +1,20 @@
 // src/commands/EditCodeCommand.ts
 
+import { injectable } from "inversify";
 import * as vscode from 'vscode';
-
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { CoreLogger } from "../logging/CoreLogger";
 
+@injectable()
 export class EditCodeCommand implements ICommand {
-  public type = ChatGPTCommandType.EditCode;
+  public readonly type = ChatGPTCommandType.EditCode;
+  private logger: CoreLogger = CoreLogger.getInstance();
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
+  public async execute(data: any): Promise<void> {
     const code = data.value;
     const escapedString = code.replace(/\$/g, '\\$');
     vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
-    provider.logger.info('Code inserted');
+    this.logger.info('Code inserted');
   }
 }

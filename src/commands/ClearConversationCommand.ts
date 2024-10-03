@@ -1,15 +1,20 @@
 // src/commands/ClearConversationCommand.ts
 
+import { inject, injectable } from "inversify";
+import { ConversationManager } from "../ConversationManager";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import TYPES from "../inversify.types";
 
+@injectable()
 export class ClearConversationCommand implements ICommand {
-  public type = ChatGPTCommandType.ClearConversation;
+  public readonly type = ChatGPTCommandType.ClearConversation;
 
-  public async execute(data: any, provider: ChatGptViewProvider) {
-    provider.conversationId = undefined;
-    provider.chatHistoryManager.clearHistory();
-    provider.logger.info('Conversation cleared');
+  constructor(
+    @inject(TYPES.ConversationManager) private conversationManager: ConversationManager,
+  ) { }
+
+  public async execute(data: any): Promise<void> {
+    this.conversationManager.clearConversation();
   }
 }

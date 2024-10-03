@@ -18,7 +18,6 @@
  */
 
 import { BaseHandler } from "../../base/BaseHandler";
-import { ILogger } from "../../interfaces/ILogger";
 import { BaseModelNormalizer } from "../normalizers/BaseModelNormalizer";
 
 export class ModelNormalizerRegistry extends BaseHandler<string> {
@@ -32,8 +31,8 @@ export class ModelNormalizerRegistry extends BaseHandler<string> {
      * 
      * @param logger - An instance of `ILogger` for logging events.
      */
-    constructor(logger: ILogger) {
-        super(logger); // Pass the logger to the base class
+    constructor() {
+        super(); // Pass the logger to the base class
     }
 
     /**
@@ -82,6 +81,7 @@ export class ModelNormalizerRegistry extends BaseHandler<string> {
      */
     public async execute(modelType: string): Promise<void> {
         try {
+            console.log('bou !!!');
             // Normalization logic here, if needed
         } catch (error) {
             this.handleError(error);

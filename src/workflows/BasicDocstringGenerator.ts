@@ -12,9 +12,12 @@
  */
 
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
+import { inject, injectable } from "inversify";
+import { ModelConfig } from "../config/ModelConfig";
 import { IChatModel } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
+import { ModelManager } from "../services";
 
 /**
  * Define the state annotations for the StateGraph.
@@ -25,7 +28,7 @@ const MyGraphState = Annotation.Root({
     userPrompt: Annotation<string>,
     generatedDocstrings: Annotation<string>,
     formattedDocstrings: Annotation<string>,
-    provider: Annotation<ChatGptViewProvider>,
+    modelConfig: Annotation<ModelConfig>,
     chatModel: Annotation<IChatModel>,
     updateResponse: Annotation<(message: string) => void>,
 });
@@ -35,19 +38,14 @@ const MyGraphState = Annotation.Root({
  * and formatting processes. It interacts with an AI model to generate docstrings based on the
  * provided code prompt and then formats the output.
  */
+@injectable()
 export class DocstringsResponseGenerator {
-    private logger: CoreLogger;
+    private logger = CoreLogger.getInstance({ loggerName: "BasicDocstringGenerator" });
 
-    /**
-     * Constructor for the `DocstringsResponseGenerator` class.
-     * Initializes a new instance of the generator with the provided view provider and chat model.
-     *
-     * @param provider - An instance of `ChatGptViewProvider` for accessing view-related settings.
-     * @param chatModel - An instance of `IChatModel` for interacting with the AI model.
-     */
-    constructor(private provider: ChatGptViewProvider, private chatModel: IChatModel) {
-        this.logger = CoreLogger.getInstance({ loggerName: "DocstringsGenerator" });
-    }
+    constructor(
+        @inject(TYPES.ModelManager) private modelManager: ModelManager,
+        @inject(TYPES.IChatModel) private chatModel: IChatModel
+    ) { }
 
     private createGraph() {
         const graph = new StateGraph(MyGraphState)
@@ -74,7 +72,7 @@ export class DocstringsResponseGenerator {
                 generateDocstringsLogger: CoreLogger.getInstance({ loggerName: "GenerateDocstringsNode" }),
                 formatDocstringsLogger: CoreLogger.getInstance({ loggerName: "FormatDocstringsNode" }),
                 userPrompt: prompt,
-                provider: this.provider,
+                modelConfig: this.modelManager.modelConfig,
                 chatModel: this.chatModel,
                 updateResponse: updateResponse,
             };
@@ -96,7 +94,7 @@ export class DocstringsResponseGenerator {
      * @returns An object containing the generated docstrings.
      */
     async generateDocstringsNode(state: typeof MyGraphState.State) {
-        const { provider, generateDocstringsLogger, userPrompt, chatModel, updateResponse } = state;
+        const { modelConfig, generateDocstringsLogger, userPrompt, chatModel, updateResponse } = state;
 
         generateDocstringsLogger.info("Generating docstrings with prompt:", userPrompt);
 
@@ -104,16 +102,18 @@ export class DocstringsResponseGenerator {
             // Send the prompt to the model and get the response
             const chunks = [];
             const result = await chatModel.streamText({
-                system: provider.modelManager.modelConfig.systemPrompt,
+                system: modelConfig.systemPrompt,
                 prompt: userPrompt,
-                maxTokens: provider.modelManager.modelConfig.maxTokens,
-                topP: provider.modelManager.modelConfig.topP,
-                temperature: provider.modelManager.modelConfig.temperature,
-                abortSignal: provider.abortController ? provider.abortController.signal : undefined,
+                maxTokens: modelConfig.maxTokens,
+                topP: modelConfig.topP,
+                temperature: modelConfig.temperature,
+                // abortSignal: provider.abortController ? provider.abortController.signal : undefined,
+                abortSignal: undefined,
             });
 
             // Process the streamed response
             for await (const textPart of result.textStream) {
+                updateResponse(textPart);
                 chunks.push(textPart);
             }
 

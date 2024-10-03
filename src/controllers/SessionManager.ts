@@ -2,51 +2,51 @@
 
 /**
  * This module manages user sessions for the ChatGPT application. 
- * It handles the session state and interacts with the ChatGptViewProvider 
+ * It handles the session state and interacts with the ConversationManager 
  * to perform session-related tasks.
  */
 
-import { injectable } from 'inversify';
-import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { inject, injectable } from 'inversify';
+import { ConversationManager } from '../ConversationManager';
+import TYPES from '../inversify.types';
+import { CoreLogger } from '../logging/CoreLogger';
+import { Utility } from "../Utility";
 
+/**
+ * The SessionManager class is responsible for managing user sessions,
+ * including clearing session data and interacting with other services
+ * like ConversationManager to handle session-related operations.
+ * 
+ * Key Features:
+ * - Clears ongoing sessions and resets the conversation state.
+ * - Send requests for stopping processes.
+ */
 @injectable()
 export class SessionManager {
-    private provider?: ChatGptViewProvider; // The ChatGptViewProvider instance for managing session state
+    private logger: CoreLogger = CoreLogger.getInstance();
 
-    /**
-     * Sets the provider after initialization to avoid circular dependencies.
-     * 
-     * @param provider - An instance of `ChatGptViewProvider` for managing session-related tasks.
-     * @returns void
-     */
-    public setProvider(provider: ChatGptViewProvider): void {
-        this.provider = provider;
-    }
+    constructor(
+        @inject(TYPES.ConversationManager) private conversationManager: ConversationManager,
+    ) { }
 
     /**
      * Clears the current session by resetting relevant states.
-     * This stops the ongoing generation and resets the API models.
+     * This stops the ongoing generation and resets the conversation state.
      * 
      * This method is typically called when the user wants to start a new session 
      * or when the current session needs to be aborted for any reason.
      * 
-     * @returns void
-     * @throws Error if the provider is not set in SessionManager.
+     * @returns A promise that resolves to void.
      */
-    public clearSession(): void {
-        if (!this.provider) {
-            throw new Error("Provider not set in SessionManager");
+    public async clearSession(): Promise<void> {
+        try {
+            await Utility.stopGenerationRequest();
+            this.conversationManager.clearConversation();
+            this.logger.info("Session cleared successfully");
+        } catch (error) {
+            this.logger.error("Failed to clear session", { error });
         }
-
-        // Abort ongoing generation if any
-        this.provider.commandHandler.executeCommand(ChatGPTCommandType.StopGenerating, {});
-
-        // Reset API models and conversation state
-        this.provider.apiChat = undefined;
-        this.provider.apiCompletion = undefined;
-        this.provider.conversationId = undefined;
-
-        this.provider.logger.info("Session cleared");
     }
+
+
 }

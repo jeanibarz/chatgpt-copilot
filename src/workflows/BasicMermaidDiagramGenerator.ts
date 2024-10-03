@@ -1,7 +1,10 @@
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
+import { inject, injectable } from "inversify";
 import { IChatModel } from "../interfaces";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
+import { Utility } from "../Utility";
+import { ChatGptViewProvider } from "../view";
 
 /**
  * Define the state annotations for the StateGraph.
@@ -17,12 +20,13 @@ const MyGraphState = Annotation.Root({
     updateResponse: Annotation<(message: string) => void>,
 });
 
+@injectable()
 export class MermaidDiagramResponseGenerator {
-    private logger: CoreLogger;
+    private logger = CoreLogger.getInstance({ loggerName: "MermaidDiagramGenerator" });
 
-    constructor(private provider: ChatGptViewProvider, private chatModel: IChatModel) {
-        this.logger = CoreLogger.getInstance({ loggerName: "MermaidDiagramGenerator" });
-    }
+    constructor(
+        @inject(TYPES.IChatModel) private chatModel: IChatModel
+    ) { }
 
     private createGraph() {
         const graph = new StateGraph(MyGraphState)
@@ -43,13 +47,16 @@ export class MermaidDiagramResponseGenerator {
      */
     async generate(prompt: string, updateResponse: (message: string) => void): Promise<string> {
         try {
+            // Retrieve the provider using the mediator service
+            const provider = await Utility.getProvider();
+
             this.logger.info("Starting Mermaid diagram generation...");
 
             const inputs = {
                 generateMermaidDiagramLogger: CoreLogger.getInstance({ loggerName: "GenerateMermaidDiagramNode" }),
                 formatMermaidDiagramLogger: CoreLogger.getInstance({ loggerName: "FormatMermaidDiagramNode" }),
                 userPrompt: prompt,
-                provider: this.provider,
+                provider: provider,
                 chatModel: this.chatModel,
                 updateResponse: updateResponse,
             };
@@ -70,7 +77,7 @@ export class MermaidDiagramResponseGenerator {
      * @param state - The current state of the graph containing necessary information for Mermaid diagram generation.
      * @returns An object containing the generated diagram.
      */
-    async generateMermaidDiagramNode(state: typeof MyGraphState.State) {
+    private async generateMermaidDiagramNode(state: typeof MyGraphState.State) {
         const { provider, generateMermaidDiagramLogger, userPrompt, chatModel, updateResponse } = state;
 
         generateMermaidDiagramLogger.info("Generating Mermaid diagram with prompt:", userPrompt);
@@ -111,7 +118,7 @@ export class MermaidDiagramResponseGenerator {
      * @param state - The current state of the graph containing the generated Mermaid diagram.
      * @returns An object containing the formatted diagram.
      */
-    async formatMermaidDiagramNode(state: typeof MyGraphState.State) {
+    private async formatMermaidDiagramNode(state: typeof MyGraphState.State) {
         const { formatMermaidDiagramLogger, generatedMermaidDiagram } = state;
 
         formatMermaidDiagramLogger.info("Formatting Mermaid diagram...");

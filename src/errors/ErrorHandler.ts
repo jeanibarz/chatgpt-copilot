@@ -7,10 +7,8 @@
  * errors using a logger instance.
  */
 
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import * as vscode from "vscode";
-import TYPES from "../inversify.types";
-import { CoreLogger } from "../logging/CoreLogger";
 import { Utility } from "../Utility";
 import { BaseErrorHandler } from "./BaseErrorHandler";
 import { ErrorHandlerRegistry } from "./ErrorHandlerRegistry";
@@ -30,11 +28,9 @@ export class ErrorHandler extends BaseErrorHandler {
      * 
      * @param logger - An instance of `CoreLogger` for logging events.
      */
-    constructor(
-        @inject(TYPES.CoreLogger) logger: CoreLogger
-    ) {
-        super(logger);
-        this.registry = new ErrorHandlerRegistry(logger);
+    constructor() {
+        super();
+        this.registry = new ErrorHandlerRegistry();
     }
 
     /**

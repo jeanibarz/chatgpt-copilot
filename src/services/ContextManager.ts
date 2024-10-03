@@ -12,12 +12,12 @@
  */
 
 import { inject, injectable, LazyServiceIdentifer } from "inversify";
+import { ExtensionContext } from "vscode";
 import { RenderMethod } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from '../logging/CoreLogger';
 import { FilteredTreeDataProvider } from "../tree/FilteredTreeDataProvider";
 import { ContextRetriever } from './ContextRetriever';
-import { FileManager } from "./FileManager";
 
 /**
  * The `ContextManager` class is responsible for managing the retrieval and preparation of file context 
@@ -30,7 +30,7 @@ import { FileManager } from "./FileManager";
  */
 @injectable()
 export class ContextManager {
-    private logger: CoreLogger;
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Constructor for the `ContextManager` class.
@@ -45,12 +45,8 @@ export class ContextManager {
     constructor(
         @inject(new LazyServiceIdentifer(() => TYPES.ContextRetriever)) private contextRetriever: ContextRetriever,
         @inject(new LazyServiceIdentifer(() => TYPES.FilteredTreeDataProvider)) public treeDataProvider: FilteredTreeDataProvider,
-        @inject(TYPES.CoreLogger) logger: CoreLogger,
-        @inject(TYPES.FileManager) private fileManager: FileManager,
-        @inject(TYPES.ExtensionContext) private extensionContext: vscode.ExtensionContext,
-    ) {
-        this.logger = logger;
-    }
+        @inject(TYPES.ExtensionContext) private extensionContext: ExtensionContext,
+    ) { }
 
     /**
      * Constructs the complete prompt for the AI assistant.

@@ -1,84 +1,70 @@
 // src/controllers/ResponseHandler.ts
 
 /**
- * This module handles responses for chat interactions, integrating with the 
- * MediatorService to manage updates and interactions with the chat model.
+ * This module handles responses for chat interactions, 
+ * to manage updates and interactions with the chat model.
  */
 
 import { inject, injectable } from "inversify";
 import * as vscode from 'vscode';
-import { IChatModel } from '../interfaces/IChatModel';
+import { ErrorHandler } from "../errors/ErrorHandler";
 import TYPES from "../inversify.types";
-import { AddChatHistoryMessageRequest } from "../requests/AddChatHistoryMessageRequest";
-import { HandleApiErrorRequest } from "../requests/HandleApiErrorRequest";
-import { SendApiRequest } from "../requests/SendApiRequest";
-import { SendMessageRequest } from "../requests/SendMessageRequest";
+import { ChatModelFactory } from "../models/llm_models";
 import { MessageRole } from "../services/ChatHistoryManager";
-import { MediatorService } from "../services/MediatorService";
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { ConfigurationManager } from '../services/ConfigurationManager';
+import { ModelManager } from '../services/ModelManager';
+import { Utility } from "../Utility";
 
+/**
+ * The `ResponseHandler` class is responsible for managing chat responses.
+ * Handle updates and interactions 
+ * with the chat model and manages response updates and error handling.
+ */
 @injectable()
 export class ResponseHandler {
-    private provider?: ChatGptViewProvider;
-    private mediatorService: MediatorService;
+    private response: string = '';
+    private currentMessageId?: string;
 
     /**
      * Constructor for the `ResponseHandler` class.
      * Initializes a new instance of ResponseHandler with the mediator service.
      * 
-     * @param mediatorService - An instance of MediatorService for handling mediator requests.
+     * @param errorHandler - ErrorHandler to handle any errors during the process.
+     * @param modelManager - An instance of ModelManager to manage the model interactions.
+     * @param configurationManager - Configuration manager to handle the configuration settings.
      */
     constructor(
-        @inject(TYPES.MediatorService) mediatorService: MediatorService
-    ) {
-        this.mediatorService = mediatorService;
-    }
-
-    /**
-     * Set the provider after the handler has been instantiated.
-     * 
-     * @param provider - The ChatGptViewProvider instance.
-     */
-    public setProvider(provider: ChatGptViewProvider): void {
-        this.provider = provider;
-    }
+        @inject(TYPES.ErrorHandler) private errorHandler: ErrorHandler,
+        @inject(TYPES.ModelManager) private modelManager: ModelManager,
+        @inject(TYPES.ConfigurationManager) private configurationManager: ConfigurationManager
+    ) { }
 
     /**
      * Handles the chat response by sending the message to the model and updating the response.
      * 
-     * @param model - The chat model to send the message to.
      * @param prompt - The prompt to send.
      * @param additionalContext - Additional context for the prompt.
      * @param options - Options related to the API call, including command and previous answer.
      * @returns A promise that resolves when the chat response has been handled.
      */
     public async handleChatResponse(
-        model: IChatModel,
         prompt: string,
         additionalContext: string,
         options: { command: string; previousAnswer?: string; }
     ) {
-        if (!this.provider) {
-            throw new Error("Provider is not set in ResponseHandler.");
-        }
-        const responseInMarkdown = this.provider.modelManager.isCodexModel;
+        const responseInMarkdown = this.modelManager.isCodexModel;
         const updateResponse = (message: string) => {
-            this.provider!.response += message;
+            this.response += message;
             this.sendResponseUpdate();
         };
 
         try {
+            const model = await ChatModelFactory.createChatModel();
             await model.generate(prompt, additionalContext, updateResponse, 'advanced');
-            await this.mediatorService.send(new AddChatHistoryMessageRequest(MessageRole.User, prompt));
+            (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.User, prompt);
             await this.finalizeResponse(options);
         } catch (error) {
-            this.provider.logger.logError(error, "Error in handleChatResponse", true);
-            await this.mediatorService.send(new HandleApiErrorRequest(
-                error,
-                options,
-                (message: any) => this.mediatorService.send(new SendMessageRequest(message)),
-                this.provider.configurationManager
-            ));
+            await this.errorHandler.handleApiError(error, options, (message: any) => this.sendResponseUpdate.bind(this)(message));
         }
     }
 
@@ -89,23 +75,19 @@ export class ResponseHandler {
      * @returns A promise that resolves when the response has been finalized.
      */
     private async finalizeResponse(options: { command: string; previousAnswer?: string; }) {
-        if (!this.provider) {
-            throw new Error("Provider is not set in ResponseHandler.");
-        }
-
         if (options.previousAnswer != null) {
-            this.provider.response = options.previousAnswer + this.provider.response; // Combine with previous answer
+            this.response = options.previousAnswer + this.response; // Combine with previous answer
         }
 
         // Mediate adding assistant message to chat history
-        await this.mediatorService.send(new AddChatHistoryMessageRequest(MessageRole.Assistant, this.provider.response));
+        (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.Assistant, this.response);
 
         if (this.isResponseIncomplete()) {
             await this.promptToContinue(options);
         }
 
         this.sendResponseUpdate(true); // Send final response indicating completion
-        this.provider.response = '';
+        this.response = '';
     }
 
     /**
@@ -114,21 +96,16 @@ export class ResponseHandler {
      * @param done - Indicates if the response is complete.
      */
     private async sendResponseUpdate(done: boolean = false) {
-        if (!this.provider) {
-            throw new Error("Provider is not set in ResponseHandler.");
-        }
-
         const message = {
             type: "addResponse",
-            value: this.provider.response,
+            value: this.response,
             done,
-            id: this.provider.currentMessageId,
-            autoScroll: this.provider.configurationManager.autoScroll,
-            responseInMarkdown: !this.provider.modelManager.isCodexModel,
+            id: this.currentMessageId,
+            autoScroll: this.configurationManager.autoScroll,
+            responseInMarkdown: !this.modelManager.isCodexModel,
         };
 
-        // Mediate sending the message
-        await this.mediatorService.send(new SendMessageRequest(message));
+        await (await Utility.getProvider()).sendMessage(message);
     }
 
     /**
@@ -137,11 +114,7 @@ export class ResponseHandler {
      * @returns True if the response is incomplete; otherwise, false.
      */
     private isResponseIncomplete(): boolean {
-        if (!this.provider) {
-            throw new Error("Provider is not set in ResponseHandler.");
-        }
-
-        return this.provider.response.split("```").length % 2 === 0;
+        return this.response.split("```").length % 2 === 0;
     }
 
     /**
@@ -151,10 +124,6 @@ export class ResponseHandler {
      * @returns A promise that resolves when the user has made a choice.
      */
     private async promptToContinue(options: { command: string; }) {
-        if (!this.provider) {
-            throw new Error("Provider is not set in ResponseHandler.");
-        }
-
         const choice = await vscode.window.showInformationMessage(
             "It looks like the response was incomplete. Would you like to continue?",
             "Continue",
@@ -162,12 +131,11 @@ export class ResponseHandler {
         );
 
         if (choice === "Continue") {
-            // Mediate sending another API request to continue
-            await this.mediatorService.send(new SendApiRequest("Continue", {
+            await (await Utility.getProvider()).sendApiRequest("Continue", {
                 command: options.command,
                 code: undefined,
-                previousAnswer: this.provider.response,
-            }));
+                previousAnswer: this.response,
+            });
         }
     }
 }

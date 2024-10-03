@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { CoreLogger } from "../logging/CoreLogger";
 
-let extensionContext: vscode.ExtensionContext;
+export let extensionContext: vscode.ExtensionContext;
 const logger = CoreLogger.getInstance();
 
 export let defaultSystemPromptForFreeQuestion: string = '';
@@ -215,4 +215,22 @@ async function promptForJsonCredentialsPath(): Promise<string> {
     }
 
     return input;
+}
+
+/**
+ * Retrieves the Mermaid output folder from global state.
+ * 
+ * @returns The path to the Mermaid output folder or undefined if not set.
+ */
+export function getMermaidOutputFolder(): string | undefined {
+    return extensionContext.globalState.get<string>('mermaidOutputFolder');
+}
+
+/**
+ * Sets the Mermaid output folder in global state.
+ * 
+ * @param folderPath - The path to set as the Mermaid output folder.
+ */
+export async function setMermaidOutputFolder(folderPath: string): Promise<void> {
+    await extensionContext.globalState.update('mermaidOutputFolder', folderPath);
 }

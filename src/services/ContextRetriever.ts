@@ -16,15 +16,13 @@ import { FileManager } from './FileManager';
 
 @injectable()
 export class ContextRetriever {
-    private logger = CoreLogger.getInstance();
+    private logger: CoreLogger = CoreLogger.getInstance();
     private regexConfigs: { inclusionRegex: string; exclusionRegex?: string; };
     private fileContentFormatter: FileContentFormatter;
 
     constructor(
         @inject(TYPES.FileManager) private fileManager: FileManager,
-        @inject(TYPES.CoreLogger) logger: CoreLogger
     ) {
-        this.logger = logger;
         this.regexConfigs = this.getRegexConfigs();
         this.fileContentFormatter = new FileContentFormatter();
     }

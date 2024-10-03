@@ -1,16 +1,8 @@
 // src/inversify.types.ts
 
 const TYPES = {
-    MediatorService: Symbol.for('MediatorService'),
-
     // View Providers
     ChatGptViewProvider: Symbol.for("ChatGptViewProvider"),
-
-    // Handlers
-    SendMessageHandler: Symbol.for('SendMessageHandler'),
-    AddChatHistoryMessageHandler: Symbol.for('AddChatHistoryMessageHandler'),
-    SendApiRequestHandler: Symbol.for('SendApiRequestHandler'),
-    HandleApiErrorHandler: Symbol.for('HandleApiErrorHandler'),
 
     // Managers and Controllers
     CommandHandler: Symbol.for('CommandHandler'),
@@ -31,9 +23,8 @@ const TYPES = {
     WebviewManager: Symbol.for('WebviewManager'),
     Utility: Symbol.for('Utility'),
     ChatModelFactory: Symbol.for('ChatModelFactory'),
-
-    // Logging
-    CoreLogger: Symbol.for('CoreLogger'),
+    OpenAIModelFactory: Symbol.for('OpenAIModelFactory'),
+    MessageProcessor: Symbol.for('MessageProcessor'),
 
     // EventHandlers
     EventHandler: Symbol.for('EventHandler'),
@@ -49,9 +40,13 @@ const TYPES = {
     // Extension Context and Provider Factories
     ExtensionContext: Symbol.for('ExtensionContext'),
     GetChatGptViewProvider: Symbol.for('GetChatGptViewProvider'),
+    WorkspaceRoot: Symbol.for('WorkspaceRoot'),
 
     // Webview Handlers
     WebviewMessageHandler: Symbol.for('WebviewMessageHandler'),
+
+    IChatModel: Symbol.for('IChatModel'),
+    OpenAIModel: Symbol.for('OpenAIModel'),
 };
 
 export default TYPES;

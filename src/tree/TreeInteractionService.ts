@@ -34,8 +34,7 @@ import { FilteredTreeDataProvider } from "./FilteredTreeDataProvider";
  */
 @injectable()
 export class TreeInteractionService {
-    private fileManager: FileManager;
-    private logger: CoreLogger;
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Constructor for the `TreeInteractionService` class.
@@ -47,11 +46,8 @@ export class TreeInteractionService {
      */
     constructor(
         @inject(TYPES.FilteredTreeDataProvider) private treeDataProvider: FilteredTreeDataProvider,
-        @inject(TYPES.CoreLogger) logger: CoreLogger,
-        @inject(TYPES.FileManager) fileManager: FileManager) {
-        this.logger = logger;
-        this.fileManager = fileManager;
-    }
+        @inject(TYPES.FileManager) private fileManager: FileManager,
+    ) { }
 
     /**
      * Processes inclusion or exclusion commands for tree nodes.

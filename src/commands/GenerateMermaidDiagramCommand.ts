@@ -18,13 +18,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { inject, injectable } from 'inversify';
 import { defaultSystemPromptForGenerateMermaidDiagram } from "../config/Configuration";
-import { ICommand } from '../interfaces/ICommand';
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { ICommand } from '../interfaces/ICommand';
+import TYPES from "../inversify.types";
+import { CoreLogger } from "../logging/CoreLogger";
+import { MermaidDiagramGenerator } from '../MermaidDiagramGenerator';
+import { Utility } from "../Utility";
 
+@injectable()
 export class GenerateMermaidDiagramCommand implements ICommand {
-    public type = ChatGPTCommandType.GenerateMermaidDiagram;
+    public readonly type = ChatGPTCommandType.GenerateMermaidDiagram;
+    private logger: CoreLogger = CoreLogger.getInstance();
+
+    constructor(
+        @inject(TYPES.MermaidDiagramGenerator) private mermaidDiagramGenerator: MermaidDiagramGenerator,
+    ) { }
 
     /**
      * Executes the command to generate and save a Mermaid class diagram into 
@@ -38,10 +48,10 @@ export class GenerateMermaidDiagramCommand implements ICommand {
      * @param provider - An instance of `ChatGptViewProvider` for accessing 
      * the diagram generation functionality.
      */
-    public async execute(data: any, provider: ChatGptViewProvider) {
+    public async execute(data: any) {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) {
-            this.showError('No active editor found.');
+            Utility.showError('No active editor found.');
             return;
         }
 
@@ -50,64 +60,35 @@ export class GenerateMermaidDiagramCommand implements ICommand {
             : activeEditor.document.getText(activeEditor.selection);
 
         if (!selectedText) {
-            this.showError('No text selected in the active editor.');
+            Utility.showError('No text selected in the active editor.');
             return;
         }
 
         try {
-            const diagramContent = await this.generateDiagram(selectedText, provider);
+            const diagramContent = await this.generateDiagram(selectedText);
             const saveSuccess = await this.saveDiagramToFile(activeEditor.document.uri, diagramContent);
 
             if (saveSuccess) {
                 vscode.window.showInformationMessage('Mermaid class diagram generated successfully.');
             } else {
-                this.showError('Failed to save the diagram.');
+                Utility.showError('Failed to save the diagram.');
             }
         } catch (error) {
-            this.showError(`An error occurred: ${(error as Error).message}`);
+            Utility.showError(`An error occurred: ${(error as Error).message}`);
         }
     }
 
-    /**
-     * Displays an error message in the VS Code window.
-     * 
-     * @param message - The error message to display.
-     */
-    private showError(message: string) {
-        vscode.window.showErrorMessage(message);
-    }
-
-    /**
-     * Generates a Mermaid class diagram based on the provided text using the 
-     * `MermaidDiagramGenerator`.
-     * 
-     * This method constructs a prompt for the diagram generator and 
-     * returns the generated diagram.
-     * 
-     * @param text - The text for which the diagram is to be generated.
-     * @param provider - An instance of `ChatGptViewProvider` for accessing 
-     * the diagram generation functionality.
-     * @returns A promise that resolves to the generated Mermaid diagram.
-     */
-    private async generateDiagram(text: string, provider: ChatGptViewProvider): Promise<string> {
+    private async generateDiagram(text: string): Promise<string> {
         const diagramPrompt = defaultSystemPromptForGenerateMermaidDiagram;
-        provider.logger.info(`diagramPrompt: ${diagramPrompt}`);
+        this.logger.info(`diagramPrompt: ${diagramPrompt}`);
         const prompt = `${diagramPrompt}\n\n${text}\n\n`;
-        return await provider.mermaidDiagramGenerator.generateDiagram(prompt);
+        return await this.mermaidDiagramGenerator.generateDiagram(prompt);
     }
 
-    /**
-     * Saves the generated Mermaid diagram to a file within the `/class_diagrams/` 
-     * subfolder of the root workspace. The filename is based on the active file's name.
-     * 
-     * @param activeFileUri - The URI of the active file.
-     * @param diagramContent - The Mermaid diagram content to save.
-     * @returns A promise that resolves to true if the file was saved successfully; otherwise, false.
-     */
     private async saveDiagramToFile(activeFileUri: vscode.Uri, diagramContent: string): Promise<boolean> {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
-            this.showError('No workspace folder is open.');
+            Utility.showError('No workspace folder is open.');
             return false;
         }
 
@@ -129,10 +110,12 @@ export class GenerateMermaidDiagramCommand implements ICommand {
 
         try {
             fs.writeFileSync(diagramFilePath, formattedDiagram, 'utf-8');
-            this.showInfo(`Diagram saved to ${path.relative(rootPath, diagramFilePath)}`);
+            vscode.window.showInformationMessage(`Diagram saved to ${path.relative(rootPath, diagramFilePath)}`);
             return true;
         } catch (error) {
-            this.loggerError(`Failed to save diagram: ${(error as Error).message}`);
+            const message = `Failed to save diagram: ${(error as Error).message}`;
+            vscode.window.showErrorMessage(message);
+            this.logger.error(message);
             return false;
         }
     }
@@ -150,28 +133,5 @@ export class GenerateMermaidDiagramCommand implements ICommand {
             return `\`\`\`mermaid\n${trimmedDiagram}\n\`\`\``;
         }
         return trimmedDiagram;
-    }
-
-    /**
-     * Logs an error message and displays it to the user.
-     * 
-     * @param message - The error message to log and display.
-     */
-    private loggerError(message: string) {
-        // Assuming provider has a logger
-        // If not, adjust accordingly
-        // Example:
-        // provider.logger.error(message);
-        vscode.window.showErrorMessage(message);
-        console.error(message);
-    }
-
-    /**
-     * Displays an informational message to the user.
-     * 
-     * @param message - The information message to display.
-     */
-    private showInfo(message: string) {
-        vscode.window.showInformationMessage(message);
     }
 }

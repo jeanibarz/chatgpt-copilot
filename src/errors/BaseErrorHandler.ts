@@ -5,25 +5,12 @@
  * It defines a structure for logging errors using a logger instance.
  */
 
-import { inject, injectable } from "inversify";
-import TYPES from "../inversify.types";
+import { injectable } from "inversify";
 import { CoreLogger } from "../logging/CoreLogger";
 
 @injectable()
 export abstract class BaseErrorHandler {
-    protected logger: CoreLogger; // Logger instance for logging error events
-
-    /**
-     * Constructor for the `BaseErrorHandler` class.
-     * Initializes the error handler with a logger instance for logging error events.
-     * 
-     * @param logger - An instance of ILogger for logging purposes.
-     */
-    constructor(
-        @inject(TYPES.CoreLogger) logger: CoreLogger
-    ) {
-        this.logger = logger;
-    }
+    protected logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Handles an error by logging it using the logger instance.

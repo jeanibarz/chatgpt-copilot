@@ -1,6 +1,6 @@
+// src/models/llm_models/ChatModelFactory.ts
+
 /**
- * src/models/llm_models/ChatModelFactory.ts
- * 
  * This module defines the `ChatModelFactory` class, which is responsible 
  * for creating instances of chat models and managing their normalizers. 
  * It provides functionality to initialize normalizers, create chat models 
@@ -12,11 +12,14 @@
  * - Ensures that the model factory is properly initialized before use.
  */
 
-import { error } from "console";
-import { GeminiModel, OpenAIModel } from ".";
+import { inject, injectable } from "inversify";
+import { GeminiModel, OpenAIModelFactory } from ".";
+import { getConfig } from "../../config/Configuration";
 import { IChatModel } from '../../interfaces/IChatModel';
+import { container } from "../../inversify.config";
+import TYPES from "../../inversify.types";
 import { CoreLogger } from "../../logging/CoreLogger";
-import { ChatGptViewProvider } from '../../view/ChatGptViewProvider';
+import { ModelManager } from "../../services/ModelManager";
 import { AnthropicNormalizer } from "../normalizers/AnthropicNormalizer";
 import { BaseModelNormalizer } from "../normalizers/BaseModelNormalizer";
 import { GeminiNormalizer } from "../normalizers/GeminiNormalizer";
@@ -25,18 +28,17 @@ import { AnthropicChatModel } from './AnthropicChatModel';
 import { ModelNormalizerRegistry } from "./ModelNormalizerRegistry";
 import { OpenAIModelInitializer } from "./OpenAIModelInitializer";
 
-/**
- * The `ChatModelFactory` class is responsible for creating instances of chat models
- * and managing model normalizers. It provides methods to initialize normalizers,
- * create chat models based on configuration, and register custom normalizers.
- * 
- * Key Features:
- * - Creates and initializes chat models based on user configuration.
- * - Manages the lifecycle of model normalizers for different AI models.
- * - Ensures that only valid models are created based on the provided configuration.
- */
+@injectable()
 export class ChatModelFactory {
     private static normalizerRegistry: ModelNormalizerRegistry;
+    private static logger = CoreLogger.getInstance();
+    private static modelManager: ModelManager;
+
+    constructor(
+        @inject(TYPES.ModelManager) modelManager: ModelManager,
+    ) {
+        ChatModelFactory.modelManager = modelManager;
+    }
 
     /**
      * Initializes the normalizer registry and registers default normalizers.
@@ -46,78 +48,78 @@ export class ChatModelFactory {
      * that the normalizers are available for use.
      */
     static initialize() {
-        const logger = CoreLogger.getInstance();
-
-        // Initialize the normalizer registry if it's not already done
         if (!this.normalizerRegistry) {
-            this.normalizerRegistry = new ModelNormalizerRegistry(logger);
+            this.normalizerRegistry = new ModelNormalizerRegistry();
 
             // Register default normalizers
-            this.normalizerRegistry.register(new OpenAINormalizer(logger));
-            this.normalizerRegistry.register(new GeminiNormalizer(logger));
-            this.normalizerRegistry.register(new AnthropicNormalizer(logger));
+            this.normalizerRegistry.register(new OpenAINormalizer());
+            this.normalizerRegistry.register(new GeminiNormalizer());
+            this.normalizerRegistry.register(new AnthropicNormalizer());
         }
 
-        logger.info("ChatModelFactory initialized with normalizers.");
+        ChatModelFactory.logger.info("ChatModelFactory initialized with normalizers.");
     }
 
     /**
-     * Creates a chat model based on the provided view provider and configuration.
+     * Creates a chat model based on the provided configuration and modelManager.
      * 
-     * @param chatGptViewProvider - The provider for managing chat models.
-     * @param modelConfig - Configuration settings for the chat model.
      * @returns A promise that resolves to an instance of IChatModel.
      * @throws Error if the model type is unsupported or if initialization fails.
      */
-    static async createChatModel(chatGptViewProvider: ChatGptViewProvider): Promise<IChatModel> {
-        if (!chatGptViewProvider.configurationManager.modelManager.modelConfig) {
-            await chatGptViewProvider.configurationManager.modelManager.prepareModelForConversation(undefined, CoreLogger.getInstance(), chatGptViewProvider);
-        }
+    static async createChatModel(): Promise<IChatModel> {
+        ChatModelFactory.logger.info("Entering createChatModel");
 
-        const modelConfig = chatGptViewProvider.configurationManager.modelManager.modelConfig;
-        const logger = CoreLogger.getInstance();
-        logger.info("Entering createChatModel");
+        // let modelConfig = this.modelManager.modelConfig;
+        // if (!modelConfig) {
+        await this.modelManager.prepareModelForConversation(false);
+        let modelConfig = this.modelManager.modelConfig;
+        // }
 
         try {
-            const model = chatGptViewProvider.modelManager.model as string; // Get the model type from the provider's model manager
+            // const model = this.modelManager.model as string; // Get the model type
+            const model = getConfig('model');
+            const modelType = ChatModelFactory.normalizerRegistry.normalize(model);
 
-            // Normalize or map specific model names to their general types
-            const modelType = this.normalizerRegistry.normalize(model);
-
-            // Ensure the normalizer registry is initialized
-            if (!this.normalizerRegistry) {
+            if (!ChatModelFactory.normalizerRegistry) {
                 throw new Error("ModelNormalizerRegistry is not initialized. Call ChatModelFactory.initialize() first.");
             }
 
-            logger.info(`Entering createChatModel with modelType: ${modelType}`);
+            ChatModelFactory.logger.info(`Creating model with type: ${modelType}`);
 
             switch (modelType) {
                 case 'openai':
-                    logger.info("Creating OpenAI model...");
-                    const chatModel = await OpenAIModelInitializer.initialize(chatGptViewProvider.modelManager);
+                    ChatModelFactory.logger.info("Creating OpenAI model...");
+
+                    // InversifyJS will inject dependencies into OpenAIModel
+                    const chatModel = await OpenAIModelInitializer.initialize(this.modelManager);
                     if (!chatModel) {
                         const error_msg = 'Creation failed: model initialization failed';
-                        logger.error(error_msg);
-                        throw error(error_msg);
+                        ChatModelFactory.logger.error(error_msg);
+                        throw new Error(error_msg);
                     }
 
-                    const openAIModel = new OpenAIModel(chatModel, chatGptViewProvider);
-                    logger.info("OpenAI model created successfully");
+                    // Use the container to resolve OpenAIModel
+                    const openAIModelFactory = container.get<OpenAIModelFactory>(TYPES.OpenAIModelFactory);
+                    const openAIModel = openAIModelFactory.create(chatModel);
+                    ChatModelFactory.logger.info("OpenAI model created successfully");
                     return openAIModel;
+
                 case 'gemini':
-                    logger.info("Creating Gemini model...");
-                    const geminiModel = await new GeminiModel().initModel(chatGptViewProvider, modelConfig);
-                    logger.info("Gemini model created successfully");
+                    ChatModelFactory.logger.info("Creating Gemini model...");
+                    const geminiModel = await new GeminiModel().initModel(modelConfig);
+                    ChatModelFactory.logger.info("Gemini model created successfully");
                     return geminiModel;
+
                 case 'anthropic':
-                    logger.info("Creating Anthropic model...");
-                    return new AnthropicChatModel(chatGptViewProvider);
+                    ChatModelFactory.logger.info("Creating Anthropic model...");
+                    return new AnthropicChatModel();
+
                 default:
-                    logger.error(`Unsupported model type: ${modelType}`);
+                    ChatModelFactory.logger.error(`Unsupported model type: ${modelType}`);
                     throw new Error(`Unsupported model type: ${modelType}`);
             }
         } catch (error: any) {
-            logger.error("Failed to create chat model", { error: error.message, stack: error.stack });
+            ChatModelFactory.logger.error("Failed to create chat model", { error: error.message, stack: error.stack });
             throw error;
         }
     }

@@ -18,35 +18,25 @@
  * - Provides methods to check the type of model currently in use.
  */
 
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { defaultSystemPromptForFreeQuestion, getApiKey, getRequiredConfig } from "../config/Configuration";
 import { ModelConfig } from "../config/ModelConfig";
+import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { GeminiModel, OpenAIModel } from "../models/llm_models";
+import { ChatModelFactory, GeminiModel } from "../models/llm_models";
 import { initClaudeModel } from '../models/llm_models/Anthropic';
 import { initGptLegacyModel } from '../models/llm_models/OpenAI-legacy';
-import { ChatGptViewProvider } from '../view/ChatGptViewProvider';
+import { ConfigurationManager } from '../services/ConfigurationManager';
 
-/**
- * The ModelManager class is responsible for managing the AI model configuration 
- * and initializing the appropriate model for conversation based on user settings.
- * 
- * Key Features:
- * - Loads model configuration from the VS Code workspace settings.
- * - Supports multiple AI models, including GPT, Claude, and Gemini.
- * - Handles API key retrieval and model settings initialization.
- * - Provides methods to check the type of model currently in use.
- */
 @injectable()
 export class ModelManager {
+    private logger: CoreLogger = CoreLogger.getInstance();
     public model?: string; // The currently selected model
     public modelConfig!: ModelConfig; // Configuration settings for the model
 
-    /**
-     * Constructor for the `ModelManager` class.
-     * Initializes a new instance of the ModelManager.
-     */
-    constructor() { }
+    constructor(
+        @inject(TYPES.ConfigurationManager) private configurationManager: ConfigurationManager,
+    ) { }
 
     /**
      * Prepares the selected AI model for conversation.
@@ -54,71 +44,67 @@ export class ModelManager {
      * based on the user's settings.
      * 
      * @param modelChanged - A flag indicating if the model has changed.
-     * @param logger - An instance of `CoreLogger` for logging events.
-     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing workspace settings.
      * @returns A promise that resolves to true if the model is successfully prepared; otherwise, false.
      */
-    public async prepareModelForConversation(
-        modelChanged = false,
-        logger: CoreLogger,
-        viewProvider: ChatGptViewProvider,
-    ): Promise<boolean> {
-        logger.info("loading configuration from vscode workspace");
+    public async prepareModelForConversation(modelChanged = false): Promise<boolean> {
+        this.logger.info("loading configuration from vscode workspace");
 
-        const configuration = viewProvider.getWorkspaceConfiguration();
+        const configuration = this.configurationManager.getWorkspaceConfiguration();
 
         // Determine which model to use based on configuration
         const modelSource = getRequiredConfig<string>("gpt3.modelSource");
 
         if (this.model === "custom") {
-            logger.info("custom model, retrieving model name");
+            this.logger.info("custom model, retrieving model name");
             this.model = configuration.get("gpt3.customModel") as string;
         }
 
-        if (
-            (this.isGpt35Model && !viewProvider.apiChat) ||
-            (this.isClaude && !viewProvider.apiChat) ||
-            (this.isGemini && !viewProvider.apiChat) ||
-            (!this.isGpt35Model && !this.isClaude && !this.isGemini && !viewProvider.apiCompletion) ||
-            modelChanged
-        ) {
-            logger.info("getting API key");
+        // Check if a new model needs to be initialized based on configuration or if the model has changed
+        // if (
+        //     (this.isGpt35Model && !this.configurationManager.isApiChatInitialized()) ||
+        //     (this.isClaude && !this.configurationManager.isApiChatInitialized()) ||
+        //     (this.isGemini && !this.configurationManager.isApiChatInitialized()) ||
+        //     (!this.isGpt35Model && !this.isClaude && !this.isGemini && !this.configurationManager.isApiCompletionInitialized()) ||
+        //     modelChanged
+        // ) {
+        if (true) {
+            this.logger.info("getting API key");
             let apiKey = await getApiKey();
             if (!apiKey) {
-                logger.info("API key not found, prepare model for conversation returning false");
+                this.logger.info("API key not found, prepare model for conversation returning false");
                 return false; // Exit if API key is not obtained
             }
 
-            logger.info("retrieving model configuration values organization, maxTokens, temperature, and topP");
+            this.logger.info("retrieving model configuration values: organization, maxTokens, temperature, and topP");
             const organization = configuration.get("gpt3.organization") as string;
             const maxTokens = configuration.get("gpt3.maxTokens") as number;
             const temperature = configuration.get("gpt3.temperature") as number;
             const topP = configuration.get("gpt3.top_p") as number;
 
             let systemPrompt = configuration.get("systemPrompt") as string;
-            logger.info("retrieving system prompt");
+            this.logger.info("retrieving system prompt");
             if (!systemPrompt) {
-                logger.info("no systemPrompt found, using default system prompt");
+                this.logger.info("no systemPrompt found, using default system prompt");
                 systemPrompt = defaultSystemPromptForFreeQuestion;
             }
 
-            logger.info("retrieving api base url value");
+            this.logger.info("retrieving api base url value");
             let apiBaseUrl = configuration.get("gpt3.apiBaseUrl") as string;
             if (!apiBaseUrl && this.isGpt35Model) {
-                logger.info("no api base url value found, using default api base url");
+                this.logger.info("no api base url value found, using default api base url");
                 apiBaseUrl = "https://api.openai.com/v1";
             }
             if (!apiBaseUrl || apiBaseUrl === "https://api.openai.com/v1") {
                 if (this.isClaude) {
-                    logger.info("model is claude and api base url is default, replacing it with claude base url");
+                    this.logger.info("model is claude and api base url is default, replacing it with claude base url");
                     apiBaseUrl = "https://api.anthropic.com/v1";
                 } else if (this.isGemini) {
-                    logger.info("model is gemini and api base url is default, replacing it with gemini base url");
+                    this.logger.info("model is gemini and api base url is default, replacing it with gemini base url");
                     apiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
                 }
             }
 
-            logger.info("instantiating model config");
+            this.logger.info("instantiating model config");
             this.modelConfig = new ModelConfig({
                 apiKey,
                 apiBaseUrl,
@@ -130,8 +116,8 @@ export class ModelManager {
                 modelSource,
             });
 
-            logger.info("initializing model");
-            await this.initModels(viewProvider);
+            this.logger.info("initializing model");
+            // await this.initModels();
         }
 
         return true;
@@ -143,20 +129,17 @@ export class ModelManager {
      * This method checks the current model settings and initializes the corresponding
      * model (e.g., GPT, Claude, Gemini) based on the configuration provided by the user.
      * It ensures that the model is ready for use in chat interactions.
-     * 
-     * @param viewProvider - An instance of `ChatGptViewProvider` for accessing view-related settings.
      */
-    private async initModels(viewProvider: ChatGptViewProvider): Promise<void> {
+    private async initModels(): Promise<void> {
         if (this.isGpt35Model) {
-            const model = new OpenAIModel();
-            model.initModel(viewProvider, this.modelConfig);
+            const model = await ChatModelFactory.createChatModel();
         } else if (this.isClaude) {
-            await initClaudeModel(viewProvider, this.modelConfig);
+            await initClaudeModel(this.modelConfig);
         } else if (this.isGemini) {
             const model = new GeminiModel();
-            model.initModel(viewProvider, this.modelConfig);
+            model.initModel(this.modelConfig);
         } else {
-            initGptLegacyModel(viewProvider, this.modelConfig);
+            initGptLegacyModel(this.modelConfig);
         }
     }
 

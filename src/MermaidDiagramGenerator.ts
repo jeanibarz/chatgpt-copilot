@@ -12,11 +12,9 @@
  * - Integrates with a logger for event tracking and debugging.
  */
 
-import { inject, injectable } from "inversify";
-import TYPES from './inversify.types';
+import { injectable } from "inversify";
 import { CoreLogger } from './logging/CoreLogger';
-import { ChatModelFactory } from './models/llm_models/ChatModelFactory';
-import { ChatGptViewProvider } from './view/ChatGptViewProvider';
+import { ChatModelFactory } from "./models/llm_models";
 
 /**
  * The MermaidDiagramGenerator class is responsible for generating Mermaid 
@@ -30,27 +28,9 @@ import { ChatGptViewProvider } from './view/ChatGptViewProvider';
  */
 @injectable()
 export class MermaidDiagramGenerator {
-    private provider?: ChatGptViewProvider;
+    private logger: CoreLogger = CoreLogger.getInstance();
 
-    /**
-     * Constructor for the `MermaidDiagramGenerator` class.
-     * Initializes a new instance with the provided logger.
-     * 
-     * @param logger - An instance of `CoreLogger` for logging events.
-     */
-    constructor(
-        @inject(TYPES.CoreLogger) private logger: CoreLogger
-    ) { }
-
-    /**
-     * Sets the `ChatGptViewProvider` instance after the generator has been initialized.
-     * This allows the provider to be injected later if needed.
-     * 
-     * @param provider - The `ChatGptViewProvider` instance to interact with the AI model.
-     */
-    public setProvider(provider: ChatGptViewProvider): void {
-        this.provider = provider;
-    }
+    constructor() { }
 
     /**
      * Generates a Mermaid class diagram by interacting with the AI model.
@@ -61,14 +41,15 @@ export class MermaidDiagramGenerator {
      * @returns A promise that resolves with the generated Mermaid diagram.
      */
     public async generateDiagram(prompt: string): Promise<string> {
-        if (!this.provider) {
-            throw new Error("ChatGptViewProvider is not set.");
-        }
-
         this.logger.info("Generating Mermaid class diagram...");
 
-        // Prepare the AI model (e.g., OpenAI)
-        const chatModel = await ChatModelFactory.createChatModel(this.provider);
+        // Prepare the AI model
+        const chatModel = await ChatModelFactory.createChatModel();
+        this.logger.info('Chat model created successfully');
+
+        if (!chatModel) {
+            throw new Error("Failed to create chat model.");
+        }
 
         let response = '';
         const updateResponse = (message: string) => {

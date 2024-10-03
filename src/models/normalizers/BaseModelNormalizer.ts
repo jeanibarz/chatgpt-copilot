@@ -11,20 +11,12 @@
  * - Ensures that subclasses implement their own normalization logic.
  */
 
-import { ILogger } from "../../interfaces/ILogger";
+import { injectable } from "inversify";
+import { CoreLogger } from "../../logging/CoreLogger";
 
+@injectable()
 export abstract class BaseModelNormalizer {
-    protected logger: ILogger; // Logger instance for logging normalization events
-
-    /**
-     * Constructor for the `BaseModelNormalizer` class.
-     * Initializes the normalizer with a logger instance for logging normalization events.
-     * 
-     * @param logger - An instance of ILogger for logging purposes.
-     */
-    constructor(logger: ILogger) {
-        this.logger = logger;
-    }
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     /**
      * Normalizes the given model type to a standardized format.

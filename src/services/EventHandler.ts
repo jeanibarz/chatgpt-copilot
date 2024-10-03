@@ -12,21 +12,29 @@ import { CoreLogger } from '../logging/CoreLogger';
 import { Utility } from '../Utility';
 import { ExplicitFilesManager } from './ExplicitFilesManager';
 
+/**
+ * The EventHandler class is responsible for managing events related to file 
+ * changes. It utilizes the ExplicitFilesManager to monitor changes and 
+ * triggers callbacks when changes occur.
+ * 
+ * Key Features:
+ * - Monitors file changes using ExplicitFilesManager.
+ * - Utilizes a debounced mechanism to handle frequent file changes efficiently.
+ */
 export class EventHandler {
-    private logger = CoreLogger.getInstance();
+    private logger: CoreLogger = CoreLogger.getInstance();
 
     constructor(
         @inject(TYPES.ExplicitFilesManager) private explicitFilesManager: ExplicitFilesManager,
-        @inject(TYPES.CoreLogger) logger: CoreLogger,
         private onChangeCallback: () => void
-    ) {
-        this.logger = logger;
-    }
+    ) { }
 
     /**
      * Initializes event subscriptions for monitoring file changes.
      * It sets up a debounced refresh mechanism that triggers the provided 
      * callback when file changes are detected.
+     * 
+     * @returns {void} This method does not return a value.
      */
     initialize(): void {
         const debouncedRefresh = Utility.debounce(() => {

@@ -1,6 +1,5 @@
 // src/index.ts
 
-export { ChatHistoryManager } from './ChatHistoryManager';
 export { ConversationManager } from './ConversationManager';
 export { DocstringGenerator } from './DocstringGenerator';
 export { ICommand } from './ICommand';
