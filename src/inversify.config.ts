@@ -4,8 +4,8 @@ import { Container, interfaces } from "inversify";
 import * as vscode from 'vscode';
 import { CommandHandler, ResponseHandler, SessionManager } from "./controllers";
 import { ConversationManager } from "./ConversationManager";
-import { DocstringGenerator } from "./DocstringGenerator";
 import { ErrorHandler } from "./errors/ErrorHandler";
+import { IDocstringService } from "./interfaces";
 import TYPES from "./inversify.types";
 import { CoreLogger } from "./logging/CoreLogger";
 import { MermaidDiagramGenerator } from "./MermaidDiagramGenerator";
@@ -22,6 +22,7 @@ import {
     FileManager,
     ModelManager,
 } from "./services"; // Import all required services and managers
+import { DocstringService } from "./services/DocstringService";
 import { FilteredTreeDataProvider, TreeRenderer } from "./tree";
 import { ChatGptViewProvider, WebviewManager, WebviewMessageHandler } from "./view";
 
@@ -56,7 +57,6 @@ export function configureContainer(extensionContext: vscode.ExtensionContext, wo
         const messageHandler = context.container.get<WebviewMessageHandler>(TYPES.WebviewMessageHandler);
         const responseHandler = context.container.get<ResponseHandler>(TYPES.ResponseHandler);
         const errorHandler = context.container.get<ErrorHandler>(TYPES.ErrorHandler);
-        const docstringGenerator = context.container.get<DocstringGenerator>(TYPES.DocstringGenerator);
         const mermaidDiagramGenerator = context.container.get<MermaidDiagramGenerator>(TYPES.MermaidDiagramGenerator);
         const sessionManager = context.container.get<SessionManager>(TYPES.SessionManager);
         const conversationManager = context.container.get<ConversationManager>(TYPES.ConversationManager);
@@ -75,7 +75,6 @@ export function configureContainer(extensionContext: vscode.ExtensionContext, wo
             messageHandler,
             responseHandler,
             errorHandler,
-            docstringGenerator,
             mermaidDiagramGenerator,
             extensionContext,
             sessionManager,
@@ -84,7 +83,6 @@ export function configureContainer(extensionContext: vscode.ExtensionContext, wo
         );
     }).inSingletonScope();
 }
-
 
 // Bindings for services, handlers, and commands
 container.bind<ModelManager>(TYPES.ModelManager).to(ModelManager).inSingletonScope();
@@ -108,8 +106,8 @@ container.bind<DocstringExtractor>(TYPES.DocstringExtractor).to(DocstringExtract
 container.bind<FileManager>(TYPES.FileManager).to(FileManager).inSingletonScope();
 container.bind<WebviewMessageHandler>(TYPES.WebviewMessageHandler).to(WebviewMessageHandler).inSingletonScope();
 container.bind<ErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler).inSingletonScope();
-container.bind<DocstringGenerator>(TYPES.DocstringGenerator).to(DocstringGenerator).inSingletonScope();
 container.bind<MermaidDiagramGenerator>(TYPES.MermaidDiagramGenerator).to(MermaidDiagramGenerator).inSingletonScope();
+container.bind<IDocstringService>(TYPES.IDocstringService).to(DocstringService).inSingletonScope();
 
 container.bind<ChatModelFactory>(TYPES.ChatModelFactory).to(ChatModelFactory).inSingletonScope();;
 container.bind<OpenAIModelFactory>(TYPES.OpenAIModelFactory).to(OpenAIModelFactory).inSingletonScope();

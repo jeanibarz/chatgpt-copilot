@@ -23,7 +23,7 @@ import { OpenSettingsCommand } from "../commands/OpenSettingsCommand";
 import { OpenSettingsPromptCommand } from "../commands/OpenSettingsPromptCommand";
 import { ShowConversationCommand } from "../commands/ShowConversationCommand";
 import { ConversationManager } from "../ConversationManager";
-import { DocstringGenerator } from "../DocstringGenerator";
+import { IDocstringService } from "../interfaces";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
@@ -50,7 +50,7 @@ export class CommandHandler {
    */
   constructor(
     @inject(TYPES.ConversationManager) private conversationManager: ConversationManager,
-    @inject(TYPES.DocstringGenerator) private docstringGenerator: DocstringGenerator,
+    @inject(TYPES.IDocstringService) private docstringService: IDocstringService,
     @inject(TYPES.MermaidDiagramGenerator) private mermaidDiagramGenerator: MermaidDiagramGenerator,
   ) {
     this.commandMap = new Map();
@@ -61,12 +61,12 @@ export class CommandHandler {
    */
   public registerAllCommands(): void {
     // Manually instantiate and register all commands
+    this.registerCommand(new GenerateDocstringsCommand(this.docstringService));
     this.registerCommand(new AddFreeTextQuestionCommand());
     this.registerCommand(new ClearBrowserCommand());
     this.registerCommand(new ClearConversationCommand(this.conversationManager));
     this.registerCommand(new ClearGpt3Command());
     this.registerCommand(new EditCodeCommand());
-    this.registerCommand(new GenerateDocstringsCommand(this.docstringGenerator));
     this.registerCommand(new GenerateMermaidDiagramCommand(this.mermaidDiagramGenerator));
     this.registerCommand(new GenerateMermaidDiagramsInFolderCommand(this.mermaidDiagramGenerator));
     this.registerCommand(new ListConversationsCommand());

@@ -8,6 +8,7 @@ export * from './IAssistantResponse';
 export * from './IChatGPTMessage';
 export * from './IChatModel';
 export * from './ICommand';
+export * from './IDocstringService';
 export * from './IFileDocstring';
 export * from './IHandler';
 export * from './ILLMModel';

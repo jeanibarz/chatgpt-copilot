@@ -12,7 +12,7 @@
  * - Ensures that the model factory is properly initialized before use.
  */
 
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import { GeminiModel, OpenAIModelFactory } from ".";
 import { getConfig } from "../../config/Configuration";
 import { IChatModel } from '../../interfaces/IChatModel';
@@ -32,13 +32,6 @@ import { OpenAIModelInitializer } from "./OpenAIModelInitializer";
 export class ChatModelFactory {
     private static normalizerRegistry: ModelNormalizerRegistry;
     private static logger = CoreLogger.getInstance();
-    private static modelManager: ModelManager;
-
-    constructor(
-        @inject(TYPES.ModelManager) modelManager: ModelManager,
-    ) {
-        ChatModelFactory.modelManager = modelManager;
-    }
 
     /**
      * Initializes the normalizer registry and registers default normalizers.
@@ -69,11 +62,9 @@ export class ChatModelFactory {
     static async createChatModel(): Promise<IChatModel> {
         ChatModelFactory.logger.info("Entering createChatModel");
 
-        // let modelConfig = this.modelManager.modelConfig;
-        // if (!modelConfig) {
-        await this.modelManager.prepareModelForConversation(false);
-        let modelConfig = this.modelManager.modelConfig;
-        // }
+        const modelManager = container.get<ModelManager>(TYPES.ModelManager);
+
+        await modelManager.prepareModelForConversation(false);
 
         try {
             // const model = this.modelManager.model as string; // Get the model type
@@ -91,7 +82,7 @@ export class ChatModelFactory {
                     ChatModelFactory.logger.info("Creating OpenAI model...");
 
                     // InversifyJS will inject dependencies into OpenAIModel
-                    const chatModel = await OpenAIModelInitializer.initialize(this.modelManager);
+                    const chatModel = await OpenAIModelInitializer.initialize(modelManager);
                     if (!chatModel) {
                         const error_msg = 'Creation failed: model initialization failed';
                         ChatModelFactory.logger.error(error_msg);
@@ -106,7 +97,7 @@ export class ChatModelFactory {
 
                 case 'gemini':
                     ChatModelFactory.logger.info("Creating Gemini model...");
-                    const geminiModel = await new GeminiModel().initModel(modelConfig);
+                    const geminiModel = await new GeminiModel().initModel(modelManager.modelConfig);
                     ChatModelFactory.logger.info("Gemini model created successfully");
                     return geminiModel;
 

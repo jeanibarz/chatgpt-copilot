@@ -45,7 +45,6 @@ import * as vscode from "vscode";
 import { onConfigurationChanged } from "../config/Configuration";
 import { CommandHandler, ResponseHandler, SessionManager } from "../controllers";
 import { ConversationManager } from '../ConversationManager';
-import { DocstringGenerator } from '../DocstringGenerator';
 import { ErrorHandler } from "../errors/ErrorHandler";
 import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage } from "../interfaces";
 import TYPES from "../inversify.types";
@@ -101,7 +100,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param messageHandler - The handler for processing messages from the webview.
    * @param responseHandler - The handler for processing responses from the API.
    * @param errorHandler - The handler for managing errors.
-   * @param docstringGenerator - The generator for creating docstrings.
    * @param mermaidDiagramGenerator - The generator for creating Mermaid diagrams.
    * @param extensionContext - The context of the extension.
    * @param sessionManager - The manager for handling session-related operations.
@@ -120,7 +118,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     @inject(TYPES.WebviewMessageHandler) public messageHandler: WebviewMessageHandler,
     @inject(TYPES.ResponseHandler) public responseHandler: ResponseHandler,
     @inject(TYPES.ErrorHandler) public errorHandler: ErrorHandler,
-    @inject(TYPES.DocstringGenerator) public docstringGenerator: DocstringGenerator,
     @inject(TYPES.MermaidDiagramGenerator) public mermaidDiagramGenerator: MermaidDiagramGenerator,
     @inject(TYPES.ExtensionContext) public extensionContext: vscode.ExtensionContext,
     @inject(TYPES.SessionManager) public sessionManager: SessionManager,

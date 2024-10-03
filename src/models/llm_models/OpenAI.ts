@@ -20,8 +20,8 @@ import { inject, injectable } from "inversify";
 import { IChatModel } from "../../interfaces";
 import TYPES from '../../inversify.types';
 import { ModelManager } from "../../services";
+import { DocstringService } from "../../services/DocstringService";
 import { GenerateObjectCallOptions, StreamTextCallOptions, WorkflowType } from "../../types/coreTypes";
-import { DocstringsResponseGenerator } from "../../workflows/BasicDocstringGenerator";
 import { MermaidDiagramResponseGenerator } from "../../workflows/BasicMermaidDiagramGenerator";
 import { BasicResponseGenerator } from '../../workflows/BasicResponseGenerator';
 import { KnowledgeEnhancedResponseGenerator } from "../../workflows/KnowledgeEnhancedResponseGenerator";
@@ -94,7 +94,7 @@ export class OpenAIModel implements IChatModel {
         } else if (workflowType === 'advanced') {
             await new KnowledgeEnhancedResponseGenerator(this).generate(question, updateResponse);
         } else if (workflowType === 'basicDocstringGenerator') {
-            return await new DocstringsResponseGenerator(this.modelManager, this).generate(question, updateResponse);
+            return await new DocstringService(this.modelManager, this).generateDocstring(question, updateResponse);
         } else if (workflowType === 'mermaidDiagramGenerator') {
             return await new MermaidDiagramResponseGenerator(this).generate(question, updateResponse);
         } else {

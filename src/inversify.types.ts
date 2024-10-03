@@ -25,13 +25,13 @@ const TYPES = {
     ChatModelFactory: Symbol.for('ChatModelFactory'),
     OpenAIModelFactory: Symbol.for('OpenAIModelFactory'),
     MessageProcessor: Symbol.for('MessageProcessor'),
+    IDocstringService: Symbol.for('IDocstringService'),
 
     // EventHandlers
     EventHandler: Symbol.for('EventHandler'),
 
     // Code Generation
     DocstringExtractor: Symbol.for('DocstringExtractor'),
-    DocstringGenerator: Symbol.for('DocstringGenerator'),
     MermaidDiagramGenerator: Symbol.for('MermaidDiagramGenerator'),
 
     // File Management

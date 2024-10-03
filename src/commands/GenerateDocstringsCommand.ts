@@ -24,7 +24,7 @@ import * as vscode from 'vscode';
 
 import { inject, injectable } from "inversify";
 import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
-import { DocstringGenerator } from '../DocstringGenerator';
+import { IDocstringService } from "../interfaces";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
@@ -37,7 +37,7 @@ export class GenerateDocstringsCommand implements ICommand {
   private logger: CoreLogger = CoreLogger.getInstance();
 
   constructor(
-    @inject(TYPES.DocstringGenerator) private docstringGenerator: DocstringGenerator,
+    @inject(TYPES.IDocstringService) private docstringService: IDocstringService,
   ) { }
 
 
@@ -105,7 +105,7 @@ export class GenerateDocstringsCommand implements ICommand {
     const docstringPrompt = defaultSystemPromptForGenerateDocstring;
     this.logger.info(`docstringPrompt: ${docstringPrompt}`);
     const prompt = `${docstringPrompt}\n\n${text}\n\n`;
-    return await this.docstringGenerator.generateDocstring(prompt);
+    return await this.docstringService.generateDocstring(prompt);
   }
 
   /**

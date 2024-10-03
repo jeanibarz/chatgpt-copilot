@@ -21,6 +21,13 @@ export class ConversationManager {
     private logger: CoreLogger = CoreLogger.getInstance();
     private conversationId?: string;
 
+    /**
+     * Prepares the conversation context, initializing the AI model if necessary.
+     * 
+     * @param modelChanged - A boolean indicating if the AI model has changed.
+     * @param conversationId - An optional conversation ID to use for the session.
+     * @returns A promise that resolves to true if the conversation was prepared successfully, otherwise false.
+     */
     public async prepareConversation(modelChanged = false, conversationId?: string): Promise<boolean> {
         this.logger.info("Preparing conversation", { modelChanged });
 
@@ -41,11 +48,19 @@ export class ConversationManager {
         }
     }
 
+    /**
+     * Clears the current conversation context and ID.
+     */
     public clearConversation(): void {
         this.conversationId = undefined;
         this.logger.info("Conversation cleared");
     }
 
+    /**
+     * Retrieves the current conversation ID.
+     * 
+     * @returns The current conversation ID, or undefined if no ID is set.
+     */
     public getConversationId(): string | undefined {
         return this.conversationId;
     }
