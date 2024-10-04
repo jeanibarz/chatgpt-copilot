@@ -19,7 +19,6 @@
  */
 
 import { inject, injectable } from "inversify";
-import { defaultSystemPromptForFreeQuestion, getApiKey, getRequiredConfig } from "../config/Configuration";
 import { ModelConfig } from "../config/ModelConfig";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
@@ -27,11 +26,13 @@ import { ChatModelFactory, GeminiModel } from "../models/llm_models";
 import { initClaudeModel } from '../models/llm_models/Anthropic';
 import { initGptLegacyModel } from '../models/llm_models/OpenAI-legacy';
 import { ConfigurationManager } from '../services/ConfigurationManager';
+import { StateManager } from "../state/StateManager";
+import { getApiKey } from "./ApiKeyManager";
 
 @injectable()
 export class ModelManager {
     private logger: CoreLogger = CoreLogger.getInstance();
-    public model?: string; // The currently selected model
+    public model: string | undefined | null; // The currently selected model
     public modelConfig!: ModelConfig; // Configuration settings for the model
 
     constructor(
@@ -49,14 +50,11 @@ export class ModelManager {
     public async prepareModelForConversation(modelChanged = false): Promise<boolean> {
         this.logger.info("loading configuration from vscode workspace");
 
-        const configuration = this.configurationManager.getWorkspaceConfiguration();
-
-        // Determine which model to use based on configuration
-        const modelSource = getRequiredConfig<string>("gpt3.modelSource");
+        const stateManager = StateManager.getInstance();
 
         if (this.model === "custom") {
             this.logger.info("custom model, retrieving model name");
-            this.model = configuration.get("gpt3.customModel") as string;
+            this.model = stateManager.getCustomModelName();
         }
 
         // Check if a new model needs to be initialized based on configuration or if the model has changed
@@ -76,45 +74,26 @@ export class ModelManager {
             }
 
             this.logger.info("retrieving model configuration values: organization, maxTokens, temperature, and topP");
-            const organization = configuration.get("gpt3.organization") as string;
-            const maxTokens = configuration.get("gpt3.maxTokens") as number;
-            const temperature = configuration.get("gpt3.temperature") as number;
-            const topP = configuration.get("gpt3.top_p") as number;
 
-            let systemPrompt = configuration.get("systemPrompt") as string;
-            this.logger.info("retrieving system prompt");
-            if (!systemPrompt) {
-                this.logger.info("no systemPrompt found, using default system prompt");
-                systemPrompt = defaultSystemPromptForFreeQuestion;
-            }
+            // let systemPrompt = stateManager.getPrompt(PromptType.FreeQuestion)getSystemPrompt();
+            // this.logger.info("retrieving system prompt");
+            // if (!systemPrompt) {
+            //     this.logger.info("no systemPrompt found, using default system prompt");
+            //     systemPrompt = stateManager.getDefaultSystemPrompt();
+            // }
 
-            this.logger.info("retrieving api base url value");
-            let apiBaseUrl = configuration.get("gpt3.apiBaseUrl") as string;
-            if (!apiBaseUrl && this.isGpt35Model) {
-                this.logger.info("no api base url value found, using default api base url");
-                apiBaseUrl = "https://api.openai.com/v1";
-            }
-            if (!apiBaseUrl || apiBaseUrl === "https://api.openai.com/v1") {
-                if (this.isClaude) {
-                    this.logger.info("model is claude and api base url is default, replacing it with claude base url");
-                    apiBaseUrl = "https://api.anthropic.com/v1";
-                } else if (this.isGemini) {
-                    this.logger.info("model is gemini and api base url is default, replacing it with gemini base url");
-                    apiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-                }
-            }
+
 
             this.logger.info("instantiating model config");
-            this.modelConfig = new ModelConfig({
+            this.modelConfig = new ModelConfig(
                 apiKey,
-                apiBaseUrl,
-                maxTokens,
-                temperature,
-                topP,
-                organization,
-                systemPrompt,
-                modelSource,
-            });
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined
+            );
 
             this.logger.info("initializing model");
             // await this.initModels();

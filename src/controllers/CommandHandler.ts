@@ -14,8 +14,7 @@ import { ClearConversationCommand } from "../commands/ClearConversationCommand";
 import { ClearGpt3Command } from "../commands/ClearGpt3Command";
 import { EditCodeCommand } from "../commands/EditCodeCommand";
 import { GenerateDocstringsCommand } from "../commands/GenerateDocstringsCommand";
-import { GenerateMermaidDiagramCommand } from "../commands/GenerateMermaidDiagramCommand";
-import { GenerateMermaidDiagramsInFolderCommand } from "../commands/GenerateMermaidDiagramsInFolderCommand";
+import { GenerateMermaidDiagramsCommand } from "../commands/GenerateMermaidDiagramsCommand";
 import { ListConversationsCommand } from "../commands/ListConversationsCommand";
 import { LoginCommand } from "../commands/LoginCommand";
 import { OpenNewCommand } from "../commands/OpenNewCommand";
@@ -28,7 +27,7 @@ import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
+import { MermaidDiagramService } from "../services/MermaidDiagramService";
 
 /**
  * The `CommandHandler` class manages the execution of various commands 
@@ -51,7 +50,7 @@ export class CommandHandler {
   constructor(
     @inject(TYPES.ConversationManager) private conversationManager: ConversationManager,
     @inject(TYPES.IDocstringService) private docstringService: IDocstringService,
-    @inject(TYPES.MermaidDiagramGenerator) private mermaidDiagramGenerator: MermaidDiagramGenerator,
+    @inject(TYPES.IMermaidDiagramService) private mermaidDiagramService: MermaidDiagramService,
   ) {
     this.commandMap = new Map();
   }
@@ -67,8 +66,7 @@ export class CommandHandler {
     this.registerCommand(new ClearConversationCommand(this.conversationManager));
     this.registerCommand(new ClearGpt3Command());
     this.registerCommand(new EditCodeCommand());
-    this.registerCommand(new GenerateMermaidDiagramCommand(this.mermaidDiagramGenerator));
-    this.registerCommand(new GenerateMermaidDiagramsInFolderCommand(this.mermaidDiagramGenerator));
+    this.registerCommand(new GenerateMermaidDiagramsCommand(this.mermaidDiagramService));
     this.registerCommand(new ListConversationsCommand());
     this.registerCommand(new LoginCommand());
     this.registerCommand(new OpenNewCommand());

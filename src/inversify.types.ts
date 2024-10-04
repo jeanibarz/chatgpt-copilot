@@ -26,6 +26,7 @@ const TYPES = {
     OpenAIModelFactory: Symbol.for('OpenAIModelFactory'),
     MessageProcessor: Symbol.for('MessageProcessor'),
     IDocstringService: Symbol.for('IDocstringService'),
+    IMermaidDiagramService: Symbol.for('IMermaidDiagramService'),
 
     // EventHandlers
     EventHandler: Symbol.for('EventHandler'),

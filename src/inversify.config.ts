@@ -6,6 +6,7 @@ import { CommandHandler, ResponseHandler, SessionManager } from "./controllers";
 import { ConversationManager } from "./ConversationManager";
 import { ErrorHandler } from "./errors/ErrorHandler";
 import { IDocstringService } from "./interfaces";
+import { IMermaidDiagramService } from "./interfaces/IMermaidDiagramService";
 import TYPES from "./inversify.types";
 import { CoreLogger } from "./logging/CoreLogger";
 import { MermaidDiagramGenerator } from "./MermaidDiagramGenerator";
@@ -23,6 +24,7 @@ import {
     ModelManager,
 } from "./services"; // Import all required services and managers
 import { DocstringService } from "./services/DocstringService";
+import { MermaidDiagramService } from "./services/MermaidDiagramService";
 import { FilteredTreeDataProvider, TreeRenderer } from "./tree";
 import { ChatGptViewProvider, WebviewManager, WebviewMessageHandler } from "./view";
 
@@ -108,6 +110,7 @@ container.bind<WebviewMessageHandler>(TYPES.WebviewMessageHandler).to(WebviewMes
 container.bind<ErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler).inSingletonScope();
 container.bind<MermaidDiagramGenerator>(TYPES.MermaidDiagramGenerator).to(MermaidDiagramGenerator).inSingletonScope();
 container.bind<IDocstringService>(TYPES.IDocstringService).to(DocstringService).inSingletonScope();
+container.bind<IMermaidDiagramService>(TYPES.IMermaidDiagramService).to(MermaidDiagramService).inSingletonScope();
 
 container.bind<ChatModelFactory>(TYPES.ChatModelFactory).to(ChatModelFactory).inSingletonScope();;
 container.bind<OpenAIModelFactory>(TYPES.OpenAIModelFactory).to(OpenAIModelFactory).inSingletonScope();

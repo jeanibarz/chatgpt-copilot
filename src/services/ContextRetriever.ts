@@ -8,9 +8,9 @@
  */
 
 import { inject, injectable } from "inversify";
-import { getConfig } from '../config/Configuration';
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { StateManager } from "../state/StateManager";
 import { FileContentFormatter } from './FileContentFormatter';
 import { FileManager } from './FileManager';
 
@@ -28,9 +28,10 @@ export class ContextRetriever {
     }
 
     private getRegexConfigs() {
+
         return {
-            inclusionRegex: getConfig<string>("fileInclusionRegex") ?? ".*",
-            exclusionRegex: getConfig<string>("fileExclusionRegex")
+            inclusionRegex: StateManager.getInstance().getConfig<string>("fileInclusionRegex") ?? ".*",
+            exclusionRegex: StateManager.getInstance().getConfig<string>("fileExclusionRegex")
         };
     }
 

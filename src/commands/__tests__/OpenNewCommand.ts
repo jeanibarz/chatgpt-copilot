@@ -42,7 +42,7 @@ describe('OpenNewCommand', () => {
         (vscode.workspace.openTextDocument as jest.Mock).mockResolvedValue(mockDocument);
 
         // Call the execute method
-        await command.execute(data, mockProvider);
+        await command.execute(data);
 
         // Ensure openTextDocument is called with the correct parameters
         expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith({ content: data.value, language: data.language });

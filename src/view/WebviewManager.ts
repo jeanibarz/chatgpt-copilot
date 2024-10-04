@@ -21,9 +21,9 @@ import * as fs from "fs";
 import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
 import { WebviewMessageHandler } from ".";
-import { extensionContext } from "../config/Configuration";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 
 /**
@@ -54,6 +54,9 @@ export class WebviewManager {
     webviewView: vscode.WebviewView,
     nonce: string
   ) {
+    const stateManager = StateManager.getInstance();
+    const extensionContext = stateManager.getExtensionContext();
+
     this.webviewView = webviewView;
     this.logger.info("Webview set");
     this.webviewView.webview.options = {
@@ -107,6 +110,9 @@ export class WebviewManager {
       throw new Error("Cannot generate HTML without a valid webview.");
     }
 
+    const stateManager = StateManager.getInstance();
+    const extensionContext = stateManager.getExtensionContext();
+
     const webviewHtmlPath = vscode.Uri.joinPath(extensionContext.extensionUri, "media", "webview.html");
     let html = fs.readFileSync(webviewHtmlPath.fsPath, "utf8");
 
@@ -121,7 +127,7 @@ export class WebviewManager {
    * @returns An object containing URIs for scripts and stylesheets.
    */
   private generateResourceUris() {
-    const extensionUri = extensionContext.extensionUri;
+    const extensionUri = StateManager.getInstance().getExtensionContext().extensionUri;
     const webview = this.webviewView!.webview;
     return {
       scriptUri: webview.asWebviewUri(

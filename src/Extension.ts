@@ -43,11 +43,11 @@ import fetch, {
   Request,
   Response
 } from 'node-fetch';
-import { initialize } from './config/Configuration';
 import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
 import { configureContainer, container } from "./inversify.config";
 import TYPES from "./inversify.types";
 import { CoreLogger } from "./logging/CoreLogger";
+import { ConfigKeys, ExtensionConfigPrefix, StateManager } from "./state/StateManager";
 import { FilteredTreeDataProvider } from './tree/FilteredTreeDataProvider';
 import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
 
@@ -94,6 +94,8 @@ const specialCommands: ChatGptCommand[] = [
   ChatGptCommand.FreeText,
 ];
 
+const logger = CoreLogger.getInstance();
+
 /**
  * Activates the extension, setting up commands, providers, and event listeners.
  * This function is called when the extension is activated by the user.
@@ -108,6 +110,9 @@ const specialCommands: ChatGptCommand[] = [
  *                  and services.
  */
 export async function activate(context: vscode.ExtensionContext) {
+  StateManager.initialize(context);
+  const stateManager = StateManager.getInstance();
+
   const workspaceFolders = vscode.workspace.workspaceFolders;
   const workspaceRoot = (workspaceFolders && workspaceFolders.length > 0)
     ? workspaceFolders[0].uri.fsPath : null;
@@ -121,12 +126,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const logger = CoreLogger.getInstance();
 
-  // Instantiate the Configuration, which load prompts
-  initialize(context);
-
   // Retrieve the adhoc command prefix from global state
-  let adhocCommandPrefix: string =
-    context.globalState.get("chatgpt-adhoc-prompt") || "";
+  let adhocCommandPrefix = stateManager.getAdhocCommandPrefix();
 
   // Instantiate the ChatGptViewProvider
   const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
@@ -174,29 +175,14 @@ export async function activate(context: vscode.ExtensionContext) {
   function setContext() {
     menuCommands.forEach((command) => {
       const enabled = !!vscode.workspace
-        .getConfiguration("chatgpt.promptPrefix")
+        .getConfiguration(`${ExtensionConfigPrefix}.${ConfigKeys.PromptPrefix}`)
         .get<boolean>(`${command}-enabled`);
-      vscode.commands.executeCommand(
-        "setContext",
-        `${command}-enabled`,
-        enabled,
-      );
+      stateManager.setCommandEnabledState(command, enabled);
     });
 
     // Handle generateCode command separately
-    let generateCodeEnabled = !!vscode.workspace
-      .getConfiguration("chatgpt")
-      .get<boolean>("gpt3.generateCode-enabled");
-    const modelName = vscode.workspace
-      .getConfiguration("chatgpt")
-      .get("gpt3.model") as string;
-    generateCodeEnabled =
-      generateCodeEnabled && modelName.startsWith("code-");
-    vscode.commands.executeCommand(
-      "setContext",
-      "generateCode-enabled",
-      generateCodeEnabled,
-    );
+    const generateCodeEnabled = stateManager.isGenerateCodeEnabled();
+    stateManager.setCommandEnabledState('generateCode', generateCodeEnabled);
   }
 }
 
@@ -285,26 +271,20 @@ function registerCommands(
   commands.forEach((command) => {
     const disposable = vscode.commands.registerCommand(`chatgpt-copilot.${command}`, async () => {
       const prompt = vscode.workspace
-        .getConfiguration("chatgpt.promptPrefix")
+        .getConfiguration(`${ExtensionConfigPrefix}.${ConfigKeys.PromptPrefix}`)
         .get<string>(command);
 
       if (!prompt) {
+        logger.error(`Prompt for command "${command}" not found.`);
         vscode.window.showErrorMessage(`Prompt for command "${command}" not found.`);
         return;
       }
 
-      const editor = vscode.window.activeTextEditor;
-
-      if (!editor) {
-        vscode.window.showErrorMessage("No active editor found.");
-        return;
+      const editorData = getEditorAndSelection();
+      if (!editorData) {
+        return; // Early exit if editor or selection is invalid
       }
-
-      const selection = editor.document.getText(editor.selection);
-      if (!selection) {
-        vscode.window.showErrorMessage("No text selected.");
-        return;
-      }
+      const { editor, selection } = editorData;
 
       provider.sendApiRequest(prompt, {
         command,
@@ -326,24 +306,19 @@ function registerCommands(
 function registerSpecialCommands(
   context: vscode.ExtensionContext,
   provider: ChatGptViewProvider,
-  adhocCommandPrefix: string
+  adhocCommandPrefix: string | null | undefined = '',
 ) {
+  const stateManager = StateManager.getInstance();
+
   // Command to execute an ad-hoc request to the ChatGPT API
   const adhocCommand = vscode.commands.registerCommand(
     "chatgpt-copilot.adhoc",
     async () => {
-      const editor = vscode.window.activeTextEditor;
-
-      if (!editor) {
-        vscode.window.showErrorMessage("No active editor found.");
-        return;
+      const editorData = getEditorAndSelection();
+      if (!editorData) {
+        return; // Early exit if editor or selection is invalid
       }
-
-      const selection = editor.document.getText(editor.selection);
-      if (!selection) {
-        vscode.window.showErrorMessage("No text selected.");
-        return;
-      }
+      const { editor, selection } = editorData;
 
       let dismissed = false;
       await vscode.window
@@ -353,7 +328,7 @@ function registerSpecialCommands(
             "Prefix your code with your custom prompt. i.e. Explain this",
           ignoreFocusOut: true,
           placeHolder: "Ask anything...",
-          value: adhocCommandPrefix,
+          value: adhocCommandPrefix ?? '',
         })
         .then((value) => {
           if (value === undefined) {
@@ -362,13 +337,10 @@ function registerSpecialCommands(
           }
 
           adhocCommandPrefix = value.trim() || "";
-          context.globalState.update(
-            "chatgpt-adhoc-prompt",
-            adhocCommandPrefix,
-          );
+          stateManager.setAdhocCommandPrefix(adhocCommandPrefix);
         });
 
-      if (!dismissed && adhocCommandPrefix.length > 0) {
+      if (!dismissed && adhocCommandPrefix && adhocCommandPrefix.length > 0) {
         provider.sendApiRequest(adhocCommandPrefix, {
           command: "adhoc",
           code: selection,
@@ -381,18 +353,11 @@ function registerSpecialCommands(
   const generateCodeCommand = vscode.commands.registerCommand(
     "chatgpt-copilot.generateCode",
     () => {
-      const editor = vscode.window.activeTextEditor;
-
-      if (!editor) {
-        vscode.window.showErrorMessage("No active editor found.");
-        return;
+      const editorData = getEditorAndSelection();
+      if (!editorData) {
+        return; // Early exit if editor or selection is invalid
       }
-
-      const selection = editor.document.getText(editor.selection);
-      if (!selection) {
-        vscode.window.showErrorMessage("No text selected.");
-        return;
-      }
+      const { editor, selection } = editorData;
 
       provider.sendApiRequest(selection, {
         command: "generateCode",
@@ -448,15 +413,19 @@ function registerUtilityCommands(
   const clearSession = vscode.commands.registerCommand(
     "chatgpt-copilot.clearSession",
     async () => {
-      context.globalState.update("chatgpt-session-token", null);
-      context.globalState.update("chatgpt-clearance-token", null);
-      context.globalState.update("chatgpt-user-agent", null);
-      context.globalState.update("chatgpt-gpt3-apiKey", null);
-      context.globalState.update("chatgpt-gpt3.organization", null);
-      context.globalState.update("chatgpt-gpt3.maxTokens", null);
-      context.globalState.update("chatgpt-gpt3.temperature", null);
-      context.globalState.update("chatgpt.systemPrompt", null);
-      context.globalState.update("chatgpt.gpt3.top_p", null);
+      const stateManager = StateManager.getInstance();
+
+      await stateManager.setSessionToken(null);
+      await stateManager.setClearanceToken(null);
+      await stateManager.setUserAgent(null);
+      await stateManager.setApiKey(null);
+      await stateManager.setOrganization(null);
+      await stateManager.setMaxTokens(null);
+      await stateManager.setTemperature(null);
+      await stateManager.setSystemPrompt(null);
+      await stateManager.setTopP(null);
+
+      const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
       provider.sessionManager.clearSession();
       await provider.sendMessage({ type: "clearConversation" });
     },
@@ -468,21 +437,14 @@ function registerUtilityCommands(
   });
 
   // Command to generate mermaid diagrams
-  const generateMermaidDiagramCommand = vscode.commands.registerCommand('chatgpt-copilot.generateMermaidDiagram', async () => {
-    await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateMermaidDiagram, {});
-  });
-
-  // Command to generate mermaid diagrams for all files in a folder
-  const generateMermaidDiagramsInFolderCommand = vscode.commands.registerCommand(
-    'chatgpt-copilot.generateMermaidDiagramsInFolder',
-    async (target: vscode.Uri, selectedFiles: vscode.Uri[]) => {
+  const generateMermaidDiagramsCommand = vscode.commands.registerCommand(
+    'chatgpt-copilot.generateMermaidDiagrams',
+    async (target: vscode.Uri, selectedFiles?: vscode.Uri[]) => {
       // If there are multiple files selected, use the array of selected files
       const targets = selectedFiles && selectedFiles.length > 0 ? selectedFiles : [target];
 
-      await provider.commandHandler.executeCommand(
-        ChatGPTCommandType.GenerateMermaidDiagramsInFolder,
-        targets
-      );
+      // Execute the unified GenerateMermaidDiagramsCommand with the targets (single file or folder)
+      await provider.commandHandler.executeCommand(ChatGPTCommandType.GenerateMermaidDiagrams, targets);
     }
   );
 
@@ -491,8 +453,7 @@ function registerUtilityCommands(
     exportConversation,
     clearSession,
     generateDocstringsCommand,
-    generateMermaidDiagramCommand,
-    generateMermaidDiagramsInFolderCommand
+    generateMermaidDiagramsCommand,
   );
 }
 
@@ -510,62 +471,89 @@ function handleConfigurationChange(
   logger: CoreLogger,
   setContext: () => void
 ) {
-  if (e.affectsConfiguration("chatgpt.gpt3.modelSource")) {
-    logger.info('modelSource value has changed');
+  const stateManager = StateManager.getInstance();
+
+  const configChanged = (configKey: string) => e.affectsConfiguration(`${ExtensionConfigPrefix}.${configKey}`);
+
+  // Logging changes to the modelSource
+  if (configChanged(ConfigKeys.ModelSource)) {
+    logger.info('Model source value has changed');
   }
 
-  if (e.affectsConfiguration("chatgpt.response.showNotification")) {
-    provider.configurationManager.subscribeToResponse =
-      vscode.workspace
-        .getConfiguration("chatgpt")
-        .get("response.showNotification") || false;
+  // Update provider configuration for notifications and auto-scroll
+  if (configChanged(ConfigKeys.ShowNotification)) {
+    provider.configurationManager.subscribeToResponse = stateManager.getShowNotification();
   }
 
-  if (e.affectsConfiguration("chatgpt.response.autoScroll")) {
-    provider.configurationManager.autoScroll = !!vscode.workspace
-      .getConfiguration("chatgpt")
-      .get("response.autoScroll");
+  if (configChanged(ConfigKeys.AutoScroll)) {
+    provider.configurationManager.autoScroll = stateManager.getAutoScrollSetting();
   }
 
-  if (e.affectsConfiguration("chatgpt.gpt3.model")) {
-    provider.modelManager.model = vscode.workspace
-      .getConfiguration("chatgpt")
-      .get("gpt3.model");
+  // Update model settings when model or custom model changes
+  if (configChanged(ConfigKeys.Model)) {
+    provider.modelManager.model = stateManager.getGpt3Model();
   }
 
-  if (e.affectsConfiguration("chatgpt.gpt3.customModel")) {
-    if (provider.modelManager.model === "custom") {
-      provider.modelManager.model = vscode.workspace
-        .getConfiguration("chatgpt")
-        .get("gpt3.customModel");
-    }
+  if (configChanged(ConfigKeys.CustomModel) && provider.modelManager.model === "custom") {
+    provider.modelManager.model = stateManager.getGpt3Model();
   }
 
-  if (
-    e.affectsConfiguration("chatgpt.gpt3.apiBaseUrl") ||
-    e.affectsConfiguration("chatgpt.gpt3.model") ||
-    e.affectsConfiguration("chatgpt.gpt3.apiKey") ||
-    e.affectsConfiguration("chatgpt.gpt3.customModel") ||
-    e.affectsConfiguration("chatgpt.gpt3.organization") ||
-    e.affectsConfiguration("chatgpt.gpt3.maxTokens") ||
-    e.affectsConfiguration("chatgpt.gpt3.temperature") ||
-    e.affectsConfiguration("chatgpt.systemPrompt") ||
-    e.affectsConfiguration("chatgpt.gpt3.top_p")
-  ) {
+  // Handle multiple configurations related to the conversation manager
+  const conversationRelatedKeys = [
+    ConfigKeys.ApiBaseUrl,
+    ConfigKeys.Model,
+    ConfigKeys.ApiKey,
+    ConfigKeys.CustomModel,
+    ConfigKeys.Organization,
+    ConfigKeys.MaxTokens,
+    ConfigKeys.Temperature,
+    ConfigKeys.SystemPrompt,
+    ConfigKeys.TopP
+  ];
+  if (conversationRelatedKeys.some(configChanged)) {
     provider.conversationManager.prepareConversation(true);
   }
 
-  if (
-    e.affectsConfiguration("chatgpt.promptPrefix") ||
-    e.affectsConfiguration("chatgpt.gpt3.generateCode-enabled") ||
-    e.affectsConfiguration("chatgpt.gpt3.model")
-  ) {
+  // Update command context when related configurations change
+  const contextRelatedKeys = [
+    ConfigKeys.PromptPrefix,
+    ConfigKeys.GenerateCodeEnabled,
+    ConfigKeys.Model
+  ];
+  if (contextRelatedKeys.some(configChanged)) {
     setContext();
   }
 
-  if (e.affectsConfiguration("chatgpt.fileInclusionRegex") || e.affectsConfiguration("chatgpt.fileExclusionRegex")) {
+  // Handle file inclusion/exclusion regex updates
+  const fileRegexKeys = [
+    ConfigKeys.FileInclusionRegex,
+    ConfigKeys.FileExclusionRegex
+  ];
+  if (fileRegexKeys.some(configChanged)) {
     // Handle specific actions when these configurations change
+    logger.info('File inclusion/exclusion regex has changed');
+    // Add any specific actions if needed
   }
 }
+
+function getEditorAndSelection(): { editor: vscode.TextEditor, selection: string; } | null {
+  const editor = vscode.window.activeTextEditor;
+
+  if (!editor) {
+    logger.error("No active editor found.");
+    vscode.window.showErrorMessage("No active editor found.");
+    return null;
+  }
+
+  const selection = editor.document.getText(editor.selection);
+  if (!selection) {
+    logger.error("No text selected.");
+    vscode.window.showErrorMessage("No text selected.");
+    return null;
+  }
+
+  return { editor, selection };
+}
+
 
 export function deactivate() { }

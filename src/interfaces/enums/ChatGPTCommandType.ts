@@ -17,6 +17,5 @@ export enum ChatGPTCommandType {
     ShowConversation = "showConversation",
     StopGenerating = "stopGenerating",
     GenerateDocstrings = "generateDocstrings",
-    GenerateMermaidDiagram = "generateMermaidDiagram",
-    GenerateMermaidDiagramsInFolder = "GenerateMermaidDiagramsInFolder",
+    GenerateMermaidDiagrams = "generateMermaidDiagrams",
 }

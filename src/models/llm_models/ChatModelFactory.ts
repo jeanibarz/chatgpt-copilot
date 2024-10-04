@@ -14,12 +14,12 @@
 
 import { injectable } from "inversify";
 import { GeminiModel, OpenAIModelFactory } from ".";
-import { getConfig } from "../../config/Configuration";
 import { IChatModel } from '../../interfaces/IChatModel';
 import { container } from "../../inversify.config";
 import TYPES from "../../inversify.types";
 import { CoreLogger } from "../../logging/CoreLogger";
 import { ModelManager } from "../../services/ModelManager";
+import { StateManager } from "../../state/StateManager";
 import { AnthropicNormalizer } from "../normalizers/AnthropicNormalizer";
 import { BaseModelNormalizer } from "../normalizers/BaseModelNormalizer";
 import { GeminiNormalizer } from "../normalizers/GeminiNormalizer";
@@ -68,7 +68,7 @@ export class ChatModelFactory {
 
         try {
             // const model = this.modelManager.model as string; // Get the model type
-            const model = getConfig('model');
+            const model = StateManager.getInstance().getConfig('model');
             const modelType = ChatModelFactory.normalizerRegistry.normalize(model);
 
             if (!ChatModelFactory.normalizerRegistry) {

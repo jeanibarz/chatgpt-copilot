@@ -23,12 +23,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { inject, injectable } from "inversify";
-import { defaultSystemPromptForGenerateDocstring } from '../config/Configuration';
 import { IDocstringService } from "../interfaces";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
+import { PromptType, StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 
 @injectable()
@@ -39,7 +39,6 @@ export class GenerateDocstringsCommand implements ICommand {
   constructor(
     @inject(TYPES.IDocstringService) private docstringService: IDocstringService,
   ) { }
-
 
   public async execute(data: any) {
     const activeEditor = vscode.window.activeTextEditor;
@@ -58,22 +57,36 @@ export class GenerateDocstringsCommand implements ICommand {
       return;
     }
 
-    const docstringContent = await this.generateDocstring(text);
-    const editSuccess = await this.applyDocstring(activeEditor, docstringContent);
+    try {
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: "Generating Docstrings...", // Only set the title
+        cancellable: true
+      }, async (progress, token) => {
+        // No need to call progress.report() with a message, just let the title display
+        // Generate the docstring
+        const docstringContent = await this.generateDocstring(text, token);
 
-    if (!editSuccess) {
-      Utility.showError('Failed to update the document with the new docstring.');
-      return;
+        const editSuccess = await this.applyDocstring(activeEditor, docstringContent);
+        if (!editSuccess) {
+          Utility.showError('Failed to update the document with the new docstring.');
+          return;
+        }
+
+        const didSave = await activeEditor.document.save();
+        if (!didSave) {
+          Utility.showError('File could not be saved.');
+          return;
+        }
+
+        // Cleanup and display the diff
+        await this.showDiff(originalFileUri, tempFilePath);
+        this.cleanupTempFile(tempFilePath);
+      });
+    } catch (error) {
+      this.logger.error(`Error generating docstrings: ${(error as Error).message}`);
+      vscode.window.showErrorMessage(`An error occurred: ${(error as Error).message}`);
     }
-
-    const didSave = await activeEditor.document.save();
-    if (!didSave) {
-      Utility.showError('File could not be saved.');
-      return;
-    }
-
-    await this.showDiff(originalFileUri, tempFilePath);
-    this.cleanupTempFile(tempFilePath);
   }
 
   /**
@@ -101,11 +114,21 @@ export class GenerateDocstringsCommand implements ICommand {
    * the docstring generation functionality.
    * @returns A promise that resolves to the generated docstring.
    */
-  private async generateDocstring(text: string): Promise<string> {
-    const docstringPrompt = defaultSystemPromptForGenerateDocstring;
+  private async generateDocstring(text: string, token: vscode.CancellationToken): Promise<string> {
+    const docstringPrompt = StateManager.getInstance().getPrompt(PromptType.GenerateDocstring);
     this.logger.info(`docstringPrompt: ${docstringPrompt}`);
     const prompt = `${docstringPrompt}\n\n${text}\n\n`;
-    return await this.docstringService.generateDocstring(prompt);
+
+    let docstringContent = '';
+
+    // Generate the docstring and update progress
+    docstringContent = await this.docstringService.generateDocstring(prompt, (message) => {
+      if (token.isCancellationRequested) {
+        throw new Error('Operation canceled by the user.');
+      }
+    });
+
+    return docstringContent;
   }
 
   /**

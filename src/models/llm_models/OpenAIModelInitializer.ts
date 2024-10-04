@@ -10,7 +10,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { LanguageModel } from 'ai';
 import { CoreLogger } from '../../logging/CoreLogger';
 import { ModelManager } from '../../services';
-import { getConfig } from '../../config/Configuration';
+import { StateManager } from "../../state/StateManager";
 
 export class OpenAIModelInitializer {
     static logger = CoreLogger.getInstance();
@@ -22,9 +22,13 @@ export class OpenAIModelInitializer {
      * @returns A promise that resolves to the initialized LanguageModel or undefined if initialization fails.
      */
     public static async initialize(modelManager: ModelManager): Promise<LanguageModel | undefined> {
-        if (modelManager.modelConfig.apiBaseUrl.includes("azure")) {
+        const stateManager = StateManager.getInstance();
+        const apiBaseUrl = stateManager.getApiBaseUrl();
+        const apiKey = stateManager.getApiKey();
+
+        if (apiBaseUrl && apiBaseUrl.includes("azure") && apiKey) {
             OpenAIModelInitializer.logger.info('Initializing Azure model...');
-            return await this.initializeAzureModel(modelManager);
+            return await this.initializeAzureModel(modelManager, apiBaseUrl, apiKey);
         } else {
             this.logger.info('Initializing OpenAI model...');
             return await this.initializeOpenAIModel(modelManager);
@@ -37,9 +41,13 @@ export class OpenAIModelInitializer {
      * @param modelManager - The ModelManager instance containing model configuration.
      * @returns A promise that resolves to the initialized LanguageModel or undefined if initialization fails.
      */
-    private static async initializeAzureModel(modelManager: ModelManager): Promise<LanguageModel | undefined> {
-        const instanceName = modelManager.modelConfig.apiBaseUrl.split(".")[0].split("//")[1];
-        const deployName = modelManager.modelConfig.apiBaseUrl.split("/").pop();
+    private static async initializeAzureModel(
+        modelManager: ModelManager,
+        apiBaseUrl: string,
+        apiKey: string,
+    ): Promise<LanguageModel | undefined> {
+        const instanceName = apiBaseUrl.split(".")[0].split("//")[1];
+        const deployName = apiBaseUrl.split("/").pop();
 
         modelManager.model = deployName;
         if (!deployName) {
@@ -49,7 +57,7 @@ export class OpenAIModelInitializer {
 
         const azure = createAzure({
             resourceName: instanceName,
-            apiKey: modelManager.modelConfig.apiKey,
+            apiKey: apiKey,
         });
         return azure.chat(deployName);
     }
@@ -61,12 +69,16 @@ export class OpenAIModelInitializer {
      * @returns A promise that resolves to the initialized LanguageModel.
      */
     private static async initializeOpenAIModel(modelManager: ModelManager): Promise<LanguageModel> {
+        const stateManager = StateManager.getInstance();
+        const apiBaseUrl = stateManager.getApiBaseUrl() || '';
+        const apiKey = stateManager.getApiKey() || '';
+        const organization = stateManager.getOrganization() || '';
         const openai = createOpenAI({
-            baseURL: modelManager.modelConfig.apiBaseUrl,
-            apiKey: modelManager.modelConfig.apiKey,
-            organization: modelManager.modelConfig.organization,
+            baseURL: apiBaseUrl,
+            apiKey: apiKey,
+            organization: organization,
         });
-        const modelName = getConfig('model') || "gpt-4o";
+        const modelName = StateManager.getInstance().getConfig('model') || "gpt-4o";
         return openai.chat(modelName);
     }
 }

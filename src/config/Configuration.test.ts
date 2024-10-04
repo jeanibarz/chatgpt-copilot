@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { getConfig, getJsonCredentialsPath, getRequiredConfig } from './configuration';
+import { getJsonCredentialsPath, } from "../services/CredentialsManager";
+import { StateManager } from "../state/StateManager";
 
 // Mock the Logger class
 jest.mock('../coreLogger', () => {
@@ -39,12 +40,14 @@ jest.mock('vscode', () => ({
 
 // Tests for getConfig and getRequiredConfig
 describe('getConfig', () => {
+    const stateManager = StateManager.getInstance();
+
     afterEach(() => {
         jest.clearAllMocks(); // Clear mocks after each test
     });
 
     it('should return default value if config value is undefined', () => {
-        const result = getConfig<string>('testKey', 'defaultValue');
+        const result = stateManager.getConfig<string>('testKey', 'defaultValue');
         expect(result).toBe('defaultValue');
     });
 
@@ -53,7 +56,7 @@ describe('getConfig', () => {
             get: jest.fn().mockReturnValue('someValue'),
         });
 
-        const result = getConfig<string>('testKey');
+        const result = stateManager.getConfig<string>('testKey');
         expect(result).toBe('someValue');
     });
 
@@ -62,7 +65,7 @@ describe('getConfig', () => {
             get: jest.fn().mockReturnValue(42), // Mock for numeric type
         });
 
-        const result = getConfig<number>('testKey');
+        const result = stateManager.getConfig<number>('testKey');
         expect(result).toBe(42);
     });
 
@@ -71,11 +74,11 @@ describe('getConfig', () => {
             get: jest.fn().mockReturnValue(undefined),
         });
 
-        expect(() => getConfig<string>('nonExistentKey')).not.toThrow();
+        expect(() => stateManager.getConfig<string>('nonExistentKey')).not.toThrow();
     });
 
     it('should throw an error when required config value is not present', () => {
-        expect(() => getRequiredConfig<any>('nonExistentKey')).toThrowError();
+        expect(() => stateManager.getRequiredConfig<any>('nonExistentKey')).toThrowError();
     });
 });
 

@@ -42,21 +42,21 @@ import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
-import { onConfigurationChanged } from "../config/Configuration";
 import { CommandHandler, ResponseHandler, SessionManager } from "../controllers";
 import { ConversationManager } from '../ConversationManager';
 import { ErrorHandler } from "../errors/ErrorHandler";
 import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage } from "../interfaces";
+import { container } from "../inversify.config";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
 import { MessageProcessor } from "../MessageProcessor";
 import { ChatHistoryManager, ConfigurationManager, ContextManager, FileManager, ModelManager } from "../services";
+import { StateManager } from "../state/StateManager";
 import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { Utility } from "../Utility";
 import { WebviewManager } from "./WebviewManager";
 import { WebviewMessageHandler } from "./WebviewMessageHandler";
-
 
 /**
  * The `ChatGptViewProvider` class implements the `vscode.WebviewViewProvider` interface.
@@ -132,7 +132,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   public initializeConfiguration() {
     this.configurationManager.loadConfiguration();
-    onConfigurationChanged(() => {
+    StateManager.getInstance().onConfigurationChanged(() => {
       this.configurationManager.loadConfiguration();
     });
   }
@@ -159,7 +159,8 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken,
   ) {
     this.logger.info("resolveWebviewView called");
-
+    const context = container.get<vscode.ExtensionContext>(TYPES.ExtensionContext);
+    StateManager.initialize(context);
     this.webView = webviewView;
     this.webviewManager.setupWebview(webviewView);
   }

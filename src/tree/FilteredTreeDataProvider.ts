@@ -11,11 +11,11 @@ import { Semaphore } from 'async-mutex';
 import { inject, injectable, LazyServiceIdentifier } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { extensionContext } from "../config/Configuration";
 import { RenderMethod } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ExplicitFilesManager } from "../services";
+import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 import { TreeRenderer } from "./TreeRenderer";
 
@@ -185,6 +185,9 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     }
 
     private loadCachedLineCounts(): void {
+        const stateManager = StateManager.getInstance();
+        const extensionContext = stateManager.getExtensionContext();
+
         const fileLineCounts = extensionContext.workspaceState.get<{ [key: string]: number; }>('filteredFileExplorer.fileLineCounts', {});
         this.cachedLineCounts = new Map(Object.entries(fileLineCounts));
 
@@ -195,6 +198,9 @@ export class FilteredTreeDataProvider implements vscode.TreeDataProvider<vscode.
     }
 
     private saveCachedLineCounts(): void {
+        const stateManager = StateManager.getInstance();
+        const extensionContext = stateManager.getExtensionContext();
+
         const fileLineCounts: { [key: string]: number; } = {};
         this.cachedLineCounts.forEach((count, filePath) => {
             fileLineCounts[filePath] = count;

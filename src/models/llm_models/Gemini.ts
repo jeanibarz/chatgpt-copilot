@@ -14,11 +14,11 @@
 import { createVertex } from '@ai-sdk/google-vertex';
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import { streamText } from 'ai';
-import { getJsonCredentialsPath } from "../../config/Configuration";
 import { ModelConfig } from "../../config/ModelConfig";
 import { ILLMModel } from "../../interfaces";
 import { CoreLogger } from "../../logging/CoreLogger";
 import { MessageRole } from "../../services/ChatHistoryManager";
+import { getJsonCredentialsPath } from "../../services/CredentialsManager";
 import { ChatGptViewProvider } from "../../view/ChatGptViewProvider";
 import { GeminiChatModel } from "./GeminiChatModel";
 

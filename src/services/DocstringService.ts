@@ -1,3 +1,9 @@
+/**
+ * This module provides the DocstringService class, which is responsible for generating 
+ * and formatting docstrings based on user prompts. It utilizes state management through 
+ * StateGraph and integrates with various services to perform its tasks.
+ */
+
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { inject, injectable } from "inversify";
 import { ModelConfig } from "../config/ModelConfig";
@@ -28,6 +34,11 @@ export class DocstringService implements IDocstringService {
         updateResponse: Annotation<(message: string) => void>,
     });
 
+    /**
+     * Creates and compiles the state graph for generating and formatting docstrings.
+     * 
+     * @returns The compiled state graph application.
+     */
     private createGraph() {
         const graph = new StateGraph(this.MyGraphState)
             .addNode("generateDocstringsNode", this.generateDocstringsNode.bind(this))
@@ -81,6 +92,9 @@ export class DocstringService implements IDocstringService {
 
     /**
      * Node responsible for generating the docstrings using the AI model.
+     * 
+     * @param state - The current state of the graph containing necessary data for generation.
+     * @returns A promise that resolves with the generated docstrings.
      */
     private async generateDocstringsNode(state: typeof this.MyGraphState.State) {
         const {
@@ -100,7 +114,7 @@ export class DocstringService implements IDocstringService {
             // Send the prompt to the model and get the response
             const chunks: string[] = [];
             const result = await chatModel.streamText({
-                system: modelConfig.systemPrompt,
+                system: modelConfig.systemPrompt ?? undefined,
                 prompt: userPrompt,
                 maxTokens: modelConfig.maxTokens,
                 topP: modelConfig.topP,
@@ -129,6 +143,9 @@ export class DocstringService implements IDocstringService {
 
     /**
      * Node responsible for formatting the generated docstrings.
+     * 
+     * @param state - The current state of the graph containing the generated docstrings.
+     * @returns A promise that resolves with the formatted docstrings.
      */
     private async formatDocstringsNode(state: typeof this.MyGraphState.State) {
         const { formatDocstringsLogger, generatedDocstrings } = state;
@@ -148,7 +165,12 @@ export class DocstringService implements IDocstringService {
         }
     }
 
-    // Format the generated docstring
+    /**
+     * Formats the generated docstring by trimming unnecessary parts.
+     * 
+     * @param generatedDocstring - The raw generated docstring to format.
+     * @returns The formatted docstring.
+     */
     private formatDocstring(generatedDocstring: string): string {
         let trimmed = generatedDocstring.trim();
         let lines = trimmed.split(/\r?\n/);

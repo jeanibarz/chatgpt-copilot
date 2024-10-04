@@ -1,5 +1,6 @@
+// src/workflows/KnowledgeEnhancedResponseGenerator.ts
+
 /**
- * src/workflows/KnowledgeEnhancedResponseGenerator.ts
  * 
  * This module provides the `KnowledgeEnhancedResponseGenerator` class, which is responsible 
  * for generating responses to user queries by leveraging context from relevant files and 
@@ -18,11 +19,11 @@ import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { CoreMessage } from 'ai';
 import { inject, injectable } from "inversify";
 import { z } from 'zod';
-import { defaultSystemPromptForContextSelection, defaultUserPromptForContextSelection } from "../config/Configuration";
 import { IChatModel, IFileDocstring, ISelectedFile, RenderMethod } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { PromptFormatter } from "../PromptFormatter";
+import { PromptType, StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
 
@@ -260,8 +261,10 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
         selectRelevantFilesLogger.info("Constructing schema for file selection");
 
         try {
+            const stateManager = StateManager.getInstance();
+
             // Construct the prompt using the system prompt
-            const systemPrompt = defaultSystemPromptForContextSelection;
+            const systemPrompt = stateManager.getPrompt(PromptType.SystemContextSelection);
 
             const projectResourcesOverview = PromptFormatter.formatProjectLayout(
                 await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails),
@@ -269,18 +272,26 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const conversationHistory = PromptFormatter.formatConversationHistory(previousMessages);
 
             // Replace the placeholders in the template with actual values
-            const userPrompt = defaultUserPromptForContextSelection
-                .replace('${projectResourcesOverview}', projectResourcesOverview)
+            let userPrompt = stateManager.getPrompt(PromptType.UserContextSelection);
+            if (!userPrompt) {
+                const errorMessage = 'UserContextSelection prompt is missing';
+                selectRelevantFilesLogger.error(errorMessage);
+                throw new Error(errorMessage);
+            }
+
+            // Replace placeholders in the prompt
+            userPrompt = userPrompt.replace('${projectResourcesOverview}', projectResourcesOverview)
                 .replace('${conversationHistory}', conversationHistory)
                 .replace('${userQuestion}', userQuestion);
 
-            // Call the model using `generateObject`
+            // Prepare the messages to be sent to the AI model
             const messages = [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ];
             selectRelevantFilesLogger.info("Messages created", { messages });
 
+            // Call the AI model to generate the object
             const { object } = await chatModel.generateObject({
                 mode: "json",
                 schema: FilesSchema,
@@ -289,6 +300,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
 
             selectRelevantFilesLogger.info('File selection completion', { object });
 
+            // Validate that selected files exist in the available files list
             const validatedSelectedFiles = object.selectedFiles.filter(file =>
                 availableFiles.some(availableFile => availableFile === file.filePath)
             );

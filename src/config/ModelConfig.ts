@@ -28,60 +28,37 @@
  * - Provides a structured way to manage settings related to the AI model.
  */
 
-export class ModelConfig {
-    apiKey: string; // The API key for accessing the AI model
-    apiBaseUrl: string; // The base URL for the API
-    maxTokens: number; // The maximum number of tokens for the model's responses
-    temperature: number; // The temperature setting for controlling randomness in responses
-    topP: number; // The top-p sampling setting for controlling diversity in responses
-    organization: string; // The organization associated with the API key
-    systemPrompt: string; // The system prompt to guide the model's behavior
-    modelSource: string; // The source of the model configuration
-    jsonCredentialsPath?: string; // Optional path to JSON credentials for authentication
+import { StateManager } from "../state/StateManager";
 
-    /**
-     * Constructor for the `ModelConfig` class.
-     * Initializes a new instance of the ModelConfig with the provided settings.
-     * 
-     * @param apiKey - The API key for accessing the AI model.
-     * @param apiBaseUrl - The base URL for the API.
-     * @param maxTokens - The maximum number of tokens for the model's responses.
-     * @param temperature - The temperature setting for controlling randomness in responses.
-     * @param topP - The top-p sampling setting for controlling diversity in responses.
-     * @param organization - The organization associated with the API key.
-     * @param systemPrompt - The system prompt to guide the model's behavior.
-     * @param modelSource - The source of the model configuration.
-     * @param jsonCredentialsPath - Optional path to JSON credentials for authentication.
-     */
-    constructor({
-        apiKey,
-        apiBaseUrl,
-        maxTokens,
-        temperature,
-        topP,
-        organization,
-        systemPrompt,
-        modelSource,
-        jsonCredentialsPath,
-    }: {
-        apiKey: string;
-        apiBaseUrl: string;
-        maxTokens: number;
-        temperature: number;
-        topP: number;
-        organization: string;
-        systemPrompt: string;
-        modelSource: string;
-        jsonCredentialsPath?: string;
-    }) {
-        this.apiKey = apiKey;
-        this.apiBaseUrl = apiBaseUrl;
-        this.maxTokens = maxTokens;
-        this.temperature = temperature;
-        this.topP = topP;
-        this.organization = organization;
-        this.systemPrompt = systemPrompt;
-        this.modelSource = modelSource;
-        this.jsonCredentialsPath = jsonCredentialsPath;
+export class ModelConfig {
+    apiKey: string | null | undefined;
+    apiBaseUrl: string | null | undefined;
+    maxTokens: number | null | undefined;
+    temperature: number | null | undefined;
+    topP: number | null | undefined;
+    organization: string | null | undefined;
+    systemPrompt: string | null | undefined;
+    jsonCredentialsPath: string | null | undefined;
+
+    constructor(
+        apiKey?: string | null,
+        apiBaseUrl?: string | null,
+        maxTokens?: number | null,
+        temperature?: number | null,
+        topP?: number | null,
+        organization?: string | null,
+        systemPrompt?: string | null,
+        jsonCredentialsPath?: string | null,
+    ) {
+        const stateManager = StateManager.getInstance();
+
+        this.apiKey = apiKey ?? stateManager.getApiKey();
+        this.apiBaseUrl = apiBaseUrl ?? stateManager.getApiBaseUrl();
+        this.maxTokens = maxTokens ?? stateManager.getMaxTokens();
+        this.temperature = temperature ?? stateManager.getTemperature();
+        this.topP = topP ?? stateManager.getTopP();
+        this.organization = organization ?? stateManager.getOrganization();
+        this.systemPrompt = systemPrompt ?? stateManager.getDefaultSystemPrompt();
+        this.jsonCredentialsPath = jsonCredentialsPath ?? stateManager.getJsonCredentialsPath();
     }
 }
