@@ -1,5 +1,5 @@
-import { IChatModel } from '../../interfaces/IChatModel';
 import { ChatGptViewProvider } from '../../view/ChatGptViewProvider';
+import { IChatModel } from '../IChatModel';
 import { GeminiModel } from "./Gemini";
 
 export class GeminiChatModel implements IChatModel {

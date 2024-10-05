@@ -112,17 +112,19 @@
       "explorer/context": [
         {
           "command": "chatgpt-copilot.addFileOrFolderToContext",
-          "when": "explorerResourceIsFolder || !explorerResourceIsFolder",
           "group": "navigation"
         },
         {
           "command": "chatgpt-copilot.removeFileOrFolderFromContext",
-          "when": "explorerResourceIsFolder || !explorerResourceIsFolder",
           "group": "navigation"
         },
         {
           "command": "chatgpt-copilot.clearAllFilesFromContext",
           "when": "explorerViewletVisible",
+          "group": "navigation"
+        },
+        {
+          "command": "chatgpt-copilot.generateMermaidDiagrams",
           "group": "navigation"
         }
       ],
@@ -250,8 +252,8 @@
         "title": "Generate/Update Docstrings for current file"
       },
       {
-        "command": "chatgpt-copilot.generateMermaidDiagram",
-        "title": "Generate/Update Mermaid Diagram for current file"
+        "command": "chatgpt-copilot.generateMermaidDiagrams",
+        "title": "Generate Mermaid Diagrams for file(s) or folder(s)"
       },
       {
         "command": "chatgpt-copilot.completeCode",
@@ -487,6 +489,7 @@
             "gpt-3.5-turbo-instruct",
             "gpt-4",
             "gpt-4o",
+            "gpt-4o-mini",
             "gpt-4-0314",
             "gpt-4-0613",
             "gpt-4-1106-preview",
@@ -525,6 +528,7 @@
             "OpenAI API Key - gpt-3.5-turbo-instruct",
             "OpenAI API Key - gpt-4",
             "OpenAI API Key - gpt-4o",
+            "OpenAI API Key - gpt-4o-mini",
             "OpenAI API Key - gpt-4-0314",
             "OpenAI API Key - gpt-4-0613",
             "OpenAI API Key - gpt-4-1106-preview",
@@ -560,6 +564,7 @@
             "gpt-3.5-turbo-instruct",
             "gpt-4",
             "gpt-4o",
+            "gpt-4o-mini",
             "gpt-4-0314",
             "gpt-4-0613",
             "gpt-4-1106-preview",
@@ -644,6 +649,12 @@
           "default": true,
           "description": "Enable or disable conversation history recording.",
           "order": 43
+        },
+        "chatgpt.defaultMermaidOutputFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Default output folder path for generated Mermaid diagrams.",
+          "order": 44
         }
       }
     }
@@ -718,6 +729,7 @@
     "minimatch": "^10.0.1",
     "node-fetch": "2",
     "openai": "^4.61.0",
+    "p-limit": "^6.1.0",
     "p-timeout": "^6.1.2",
     "punycode": "^2.3.1",
     "puppeteer": "^22.13.1",

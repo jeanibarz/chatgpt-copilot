@@ -28,10 +28,10 @@ export class ContextRetriever {
     }
 
     private getRegexConfigs() {
-
+        const configurationStateManager = StateManager.getInstance().getConfigurationStateManager();
         return {
-            inclusionRegex: StateManager.getInstance().getConfig<string>("fileInclusionRegex") ?? ".*",
-            exclusionRegex: StateManager.getInstance().getConfig<string>("fileExclusionRegex")
+            inclusionRegex: configurationStateManager.getConfig<string>("fileInclusionRegex") ?? ".*",
+            exclusionRegex: configurationStateManager.getConfig<string>("fileExclusionRegex")
         };
     }
 

@@ -1,4 +1,4 @@
-// src/controllers/ResponseHandler.ts
+// src/services/response/ResponseHandler.ts
 
 /**
  * This module handles responses for chat interactions, 
@@ -7,13 +7,13 @@
 
 import { inject, injectable } from "inversify";
 import * as vscode from 'vscode';
-import { ErrorHandler } from "../errors/ErrorHandler";
-import TYPES from "../inversify.types";
-import { ChatModelFactory } from "../models/llm_models";
-import { MessageRole } from "../services/ChatHistoryManager";
-import { ConfigurationManager } from '../services/ConfigurationManager';
-import { ModelManager } from '../services/ModelManager';
-import { Utility } from "../Utility";
+import { ErrorHandler } from "../../errors/ErrorHandler";
+import TYPES from "../../inversify.types";
+import { ChatModelFactory } from "../../models/llm_models";
+import { ModelManager } from '../../models/ModelManager';
+import { Utility } from "../../Utility";
+import { MessageRole } from "../ChatHistoryManager";
+import { ConfigurationManager } from '../ConfigurationManager';
 
 /**
  * The `ResponseHandler` class is responsible for managing chat responses.

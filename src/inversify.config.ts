@@ -2,7 +2,7 @@
 
 import { Container, interfaces } from "inversify";
 import * as vscode from 'vscode';
-import { CommandHandler, ResponseHandler, SessionManager } from "./controllers";
+import { CommandHandler, ResponseHandler } from "./controllers";
 import { ConversationManager } from "./ConversationManager";
 import { ErrorHandler } from "./errors/ErrorHandler";
 import { IDocstringService } from "./interfaces";
@@ -12,6 +12,7 @@ import { CoreLogger } from "./logging/CoreLogger";
 import { MermaidDiagramGenerator } from "./MermaidDiagramGenerator";
 import { MessageProcessor } from "./MessageProcessor";
 import { ChatModelFactory, OpenAIModelFactory } from "./models/llm_models";
+import { ModelManager } from "./models/ModelManager";
 import {
     ChatHistoryManager,
     ConfigurationManager,
@@ -21,10 +22,9 @@ import {
     EventHandler,
     ExplicitFilesManager,
     FileManager,
-    ModelManager,
 } from "./services"; // Import all required services and managers
-import { DocstringService } from "./services/DocstringService";
-import { MermaidDiagramService } from "./services/MermaidDiagramService";
+import { DocstringService } from "./services/response/DocstringService";
+import { MermaidDiagramService } from "./services/response/MermaidDiagramService";
 import { FilteredTreeDataProvider, TreeRenderer } from "./tree";
 import { ChatGptViewProvider, WebviewManager, WebviewMessageHandler } from "./view";
 
@@ -60,7 +60,6 @@ export function configureContainer(extensionContext: vscode.ExtensionContext, wo
         const responseHandler = context.container.get<ResponseHandler>(TYPES.ResponseHandler);
         const errorHandler = context.container.get<ErrorHandler>(TYPES.ErrorHandler);
         const mermaidDiagramGenerator = context.container.get<MermaidDiagramGenerator>(TYPES.MermaidDiagramGenerator);
-        const sessionManager = context.container.get<SessionManager>(TYPES.SessionManager);
         const conversationManager = context.container.get<ConversationManager>(TYPES.ConversationManager);
         const messageProcessor = context.container.get<MessageProcessor>(TYPES.MessageProcessor);
 
@@ -79,7 +78,6 @@ export function configureContainer(extensionContext: vscode.ExtensionContext, wo
             errorHandler,
             mermaidDiagramGenerator,
             extensionContext,
-            sessionManager,
             conversationManager,
             messageProcessor
         );
@@ -92,7 +90,6 @@ container.bind<ConfigurationManager>(TYPES.ConfigurationManager).to(Configuratio
 container.bind<ChatHistoryManager>(TYPES.ChatHistoryManager).to(ChatHistoryManager).inSingletonScope();
 container.bind<CommandHandler>(TYPES.CommandHandler).to(CommandHandler).inSingletonScope();
 container.bind<ResponseHandler>(TYPES.ResponseHandler).to(ResponseHandler).inSingletonScope();
-container.bind<SessionManager>(TYPES.SessionManager).to(SessionManager).inSingletonScope();
 container.bind<ConversationManager>(TYPES.ConversationManager).to(ConversationManager).inSingletonScope();
 container.bind<MessageProcessor>(TYPES.MessageProcessor).to(MessageProcessor).inSingletonScope();
 container.bind<WebviewManager>(TYPES.WebviewManager).to(WebviewManager).inSingletonScope();

@@ -6,7 +6,6 @@ const TYPES = {
 
     // Managers and Controllers
     CommandHandler: Symbol.for('CommandHandler'),
-    SessionManager: Symbol.for('SessionManager'),
     ConversationManager: Symbol.for('ConversationManager'),
     ResponseHandler: Symbol.for('ResponseHandler'),
     ErrorHandler: Symbol.for('ErrorHandler'),

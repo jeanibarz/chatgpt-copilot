@@ -1,3 +1,5 @@
+// src/services/response/DocstringService.ts
+
 /**
  * This module provides the DocstringService class, which is responsible for generating 
  * and formatting docstrings based on user prompts. It utilizes state management through 
@@ -6,13 +8,13 @@
 
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { inject, injectable } from "inversify";
-import { ModelConfig } from "../config/ModelConfig";
-import { IChatModel } from "../interfaces/IChatModel";
-import { IDocstringService } from "../interfaces/IDocstringService";
-import TYPES from "../inversify.types";
-import { CoreLogger } from "../logging/CoreLogger";
-import { ChatModelFactory } from "../models/llm_models";
-import { ModelManager } from "../services/ModelManager";
+import { IDocstringService } from "../../interfaces/IDocstringService";
+import TYPES from "../../inversify.types";
+import { CoreLogger } from "../../logging/CoreLogger";
+import { IChatModel } from "../../models/IChatModel";
+import { ChatModelFactory } from "../../models/llm_models";
+import { ModelConfig } from "../../models/ModelConfig";
+import { ModelManager } from "../../models/ModelManager";
 
 @injectable()
 export class DocstringService implements IDocstringService {
@@ -116,9 +118,9 @@ export class DocstringService implements IDocstringService {
             const result = await chatModel.streamText({
                 system: modelConfig.systemPrompt ?? undefined,
                 prompt: userPrompt,
-                maxTokens: modelConfig.maxTokens,
-                topP: modelConfig.topP,
-                temperature: modelConfig.temperature,
+                maxTokens: modelConfig.maxTokens ?? undefined,
+                topP: modelConfig.topP ?? undefined,
+                temperature: modelConfig.temperature ?? undefined,
                 abortSignal: undefined,
             });
 

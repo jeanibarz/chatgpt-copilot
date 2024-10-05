@@ -9,8 +9,8 @@ import { createAzure } from '@ai-sdk/azure';
 import { createOpenAI } from '@ai-sdk/openai';
 import { LanguageModel } from 'ai';
 import { CoreLogger } from '../../logging/CoreLogger';
-import { ModelManager } from '../../services';
 import { StateManager } from "../../state/StateManager";
+import { ModelManager } from '../ModelManager';
 
 export class OpenAIModelInitializer {
     static logger = CoreLogger.getInstance();
@@ -23,8 +23,8 @@ export class OpenAIModelInitializer {
      */
     public static async initialize(modelManager: ModelManager): Promise<LanguageModel | undefined> {
         const stateManager = StateManager.getInstance();
-        const apiBaseUrl = stateManager.getApiBaseUrl();
-        const apiKey = stateManager.getApiKey();
+        const apiBaseUrl = stateManager.getModelConfigStateManager().getApiBaseUrl();
+        const apiKey = stateManager.getApiCredentialsStateManager().getApiKey();
 
         if (apiBaseUrl && apiBaseUrl.includes("azure") && apiKey) {
             OpenAIModelInitializer.logger.info('Initializing Azure model...');
@@ -70,15 +70,18 @@ export class OpenAIModelInitializer {
      */
     private static async initializeOpenAIModel(modelManager: ModelManager): Promise<LanguageModel> {
         const stateManager = StateManager.getInstance();
-        const apiBaseUrl = stateManager.getApiBaseUrl() || '';
-        const apiKey = stateManager.getApiKey() || '';
-        const organization = stateManager.getOrganization() || '';
+        const modelConfigStateManager = stateManager.getModelConfigStateManager();
+        const configurationStateManager = stateManager.getConfigurationStateManager();
+
+        const apiBaseUrl = modelConfigStateManager.getApiBaseUrl() || '';
+        const apiKey = stateManager.getApiCredentialsStateManager().getApiKey() || '';
+        const organization = modelConfigStateManager.getOrganization() || '';
         const openai = createOpenAI({
             baseURL: apiBaseUrl,
             apiKey: apiKey,
             organization: organization,
         });
-        const modelName = StateManager.getInstance().getConfig('model') || "gpt-4o";
+        const modelName = configurationStateManager.getConfig<string>('model') || "gpt-4o";
         return openai.chat(modelName);
     }
 }

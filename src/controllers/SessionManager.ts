@@ -10,7 +10,6 @@ import { inject, injectable } from 'inversify';
 import { ConversationManager } from '../ConversationManager';
 import TYPES from '../inversify.types';
 import { CoreLogger } from '../logging/CoreLogger';
-import { Utility } from "../Utility";
 
 /**
  * The SessionManager class is responsible for managing user sessions,
@@ -39,13 +38,7 @@ export class SessionManager {
      * @returns A promise that resolves to void.
      */
     public async clearSession(): Promise<void> {
-        try {
-            await Utility.stopGenerationRequest();
-            this.conversationManager.clearConversation();
-            this.logger.info("Session cleared successfully");
-        } catch (error) {
-            this.logger.error("Failed to clear session", { error });
-        }
+
     }
 
 

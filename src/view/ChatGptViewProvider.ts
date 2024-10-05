@@ -42,7 +42,8 @@ import { OpenAIChatLanguageModel, OpenAICompletionLanguageModel } from "@ai-sdk/
 import { LanguageModelV1 } from "@ai-sdk/provider";
 import { inject, injectable } from "inversify";
 import * as vscode from "vscode";
-import { CommandHandler, ResponseHandler, SessionManager } from "../controllers";
+import { ExtensionConfigPrefix } from "../constants/ConfigKeys";
+import { CommandHandler, ResponseHandler } from "../controllers";
 import { ConversationManager } from '../ConversationManager';
 import { ErrorHandler } from "../errors/ErrorHandler";
 import { ApiRequestOptions, ChatGPTCommandType, IChatGPTMessage } from "../interfaces";
@@ -51,7 +52,8 @@ import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { MermaidDiagramGenerator } from "../MermaidDiagramGenerator";
 import { MessageProcessor } from "../MessageProcessor";
-import { ChatHistoryManager, ConfigurationManager, ContextManager, FileManager, ModelManager } from "../services";
+import { ModelManager } from "../models/ModelManager";
+import { ChatHistoryManager, ConfigurationManager, ContextManager, FileManager } from "../services";
 import { StateManager } from "../state/StateManager";
 import { FilteredTreeDataProvider, TreeRenderer } from "../tree";
 import { Utility } from "../Utility";
@@ -102,7 +104,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param errorHandler - The handler for managing errors.
    * @param mermaidDiagramGenerator - The generator for creating Mermaid diagrams.
    * @param extensionContext - The context of the extension.
-   * @param sessionManager - The manager for handling session-related operations.
    * @param conversationManager - The manager for handling conversations.
    */
   constructor(
@@ -120,7 +121,6 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
     @inject(TYPES.ErrorHandler) public errorHandler: ErrorHandler,
     @inject(TYPES.MermaidDiagramGenerator) public mermaidDiagramGenerator: MermaidDiagramGenerator,
     @inject(TYPES.ExtensionContext) public extensionContext: vscode.ExtensionContext,
-    @inject(TYPES.SessionManager) public sessionManager: SessionManager,
     @inject(TYPES.ConversationManager) public conversationManager: ConversationManager,
     @inject(TYPES.MessageProcessor) private messageProcessor: MessageProcessor,
   ) {
@@ -132,7 +132,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    */
   public initializeConfiguration() {
     this.configurationManager.loadConfiguration();
-    StateManager.getInstance().onConfigurationChanged(() => {
+    StateManager.getInstance().getConfigurationStateManager().onConfigurationChanged(() => {
       this.configurationManager.loadConfiguration();
     });
   }
@@ -143,7 +143,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns The workspace configuration object for the "chatgpt" extension.
    */
   public getWorkspaceConfiguration() {
-    return vscode.workspace.getConfiguration("chatgpt");
+    return vscode.workspace.getConfiguration(ExtensionConfigPrefix);
   }
 
   /**

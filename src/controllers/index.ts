@@ -1,6 +1,5 @@
 // src/services/index.ts
 
+export { ResponseHandler } from '../services/response/ResponseHandler';
 export { CommandHandler } from "./CommandHandler";
-export { ResponseHandler } from './ResponseHandler';
-export { SessionManager } from './SessionManager';
 

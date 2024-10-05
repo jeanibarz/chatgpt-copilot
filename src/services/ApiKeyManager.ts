@@ -8,12 +8,12 @@ const logger = CoreLogger.getInstance();
 
 export async function getApiKey(): Promise<string | undefined> {
     const stateManager = StateManager.getInstance();
-    let apiKey = stateManager.getApiKey();
+    let apiKey = stateManager.getApiCredentialsStateManager().getApiKey();
 
     if (!apiKey) {
         apiKey = await promptForApiKey();
         if (apiKey) {
-            await stateManager.setApiKey(apiKey);
+            await stateManager.getApiCredentialsStateManager().setApiKey(apiKey);
         } else {
             throw new Error(`Can't proceed without a valid API key`);
         }

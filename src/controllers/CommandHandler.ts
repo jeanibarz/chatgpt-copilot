@@ -27,7 +27,7 @@ import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { MermaidDiagramService } from "../services/MermaidDiagramService";
+import { MermaidDiagramService } from "../services/response/MermaidDiagramService";
 
 /**
  * The `CommandHandler` class manages the execution of various commands 

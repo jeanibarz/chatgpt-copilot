@@ -5,13 +5,13 @@ import { StateManager } from '../state/StateManager';
 
 const logger = CoreLogger.getInstance();
 
-export function getMermaidOutputFolder(): string | undefined {
+export function getMermaidOutputFolder(): string | null | undefined {
     const stateManager = StateManager.getInstance();
-    return stateManager.getMermaidOutputFolder();
+    return stateManager.getFileManagementStateManager().getMermaidOutputFolder();
 }
 
 export async function setMermaidOutputFolder(folderPath: string): Promise<void> {
     const stateManager = StateManager.getInstance();
-    await stateManager.setMermaidOutputFolder(folderPath);
+    await stateManager.getFileManagementStateManager().setMermaidOutputFolder(folderPath);
     logger.info(`Mermaid output folder set to: ${folderPath}`);
 }

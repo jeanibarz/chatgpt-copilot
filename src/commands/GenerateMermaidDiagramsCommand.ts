@@ -118,7 +118,7 @@ export class GenerateMermaidDiagramsCommand implements ICommand {
      */
     private async promptForOutputFolder(): Promise<vscode.Uri | undefined> {
         const previousFolder: string | undefined = getMermaidOutputFolder();
-        const configDefaultFolder = StateManager.getInstance().getConfig<string>('defaultMermaidOutputFolder', '');
+        const configDefaultFolder = StateManager.getInstance().getConfigurationStateManager().getConfig<string>('defaultMermaidOutputFolder', '');
 
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,

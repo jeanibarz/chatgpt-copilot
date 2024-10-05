@@ -231,7 +231,7 @@ export class Utility {
                 value: provider.response,
                 done: true,
                 id: provider.currentMessageId,
-                autoScroll: provider.configurationManager.autoScroll,
+                autoScroll: provider.configurationManager.autoScroll ?? false,
                 responseInMarkdown,
             });
 
@@ -240,5 +240,9 @@ export class Utility {
         } catch (error) {
             logger.error(`Failed to stop generation: ${(error as Error).message}`);
         }
+    }
+
+    public static getExtensionContext(): vscode.ExtensionContext {
+        return container.get<vscode.ExtensionContext>(TYPES.ExtensionContext);
     }
 }

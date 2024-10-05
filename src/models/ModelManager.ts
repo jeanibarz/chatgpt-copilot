@@ -19,15 +19,15 @@
  */
 
 import { inject, injectable } from "inversify";
-import { ModelConfig } from "../config/ModelConfig";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { ChatModelFactory, GeminiModel } from "../models/llm_models";
 import { initClaudeModel } from '../models/llm_models/Anthropic';
 import { initGptLegacyModel } from '../models/llm_models/OpenAI-legacy';
+import { getApiKey } from "../services/ApiKeyManager";
 import { ConfigurationManager } from '../services/ConfigurationManager';
 import { StateManager } from "../state/StateManager";
-import { getApiKey } from "./ApiKeyManager";
+import { ModelConfig } from "./ModelConfig";
 
 @injectable()
 export class ModelManager {
@@ -54,7 +54,7 @@ export class ModelManager {
 
         if (this.model === "custom") {
             this.logger.info("custom model, retrieving model name");
-            this.model = stateManager.getCustomModelName();
+            this.model = stateManager.getModelConfigStateManager().getCustomModelName();
         }
 
         // Check if a new model needs to be initialized based on configuration or if the model has changed

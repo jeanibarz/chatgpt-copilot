@@ -16,4 +16,3 @@ export { ExplicitFilesManager } from './ExplicitFilesManager';
 export { FileContentFormatter } from './FileContentFormatter';
 export { FileManager } from './FileManager';
 export { InclusionStateManager } from './InclusionStateManager';
-export { ModelManager } from './ModelManager';

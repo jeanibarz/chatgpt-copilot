@@ -13,20 +13,20 @@
  */
 
 import { injectable } from "inversify";
-import { GeminiModel, OpenAIModelFactory } from ".";
-import { IChatModel } from '../../interfaces/IChatModel';
-import { container } from "../../inversify.config";
-import TYPES from "../../inversify.types";
-import { CoreLogger } from "../../logging/CoreLogger";
-import { ModelManager } from "../../services/ModelManager";
-import { StateManager } from "../../state/StateManager";
-import { AnthropicNormalizer } from "../normalizers/AnthropicNormalizer";
-import { BaseModelNormalizer } from "../normalizers/BaseModelNormalizer";
-import { GeminiNormalizer } from "../normalizers/GeminiNormalizer";
-import { OpenAINormalizer } from "../normalizers/OpenAINormalizer";
-import { AnthropicChatModel } from './AnthropicChatModel';
-import { ModelNormalizerRegistry } from "./ModelNormalizerRegistry";
-import { OpenAIModelInitializer } from "./OpenAIModelInitializer";
+import { container } from "../inversify.config";
+import TYPES from "../inversify.types";
+import { CoreLogger } from "../logging/CoreLogger";
+import { StateManager } from "../state/StateManager";
+import { IChatModel } from './IChatModel';
+import { GeminiModel, OpenAIModelFactory } from "./llm_models";
+import { AnthropicChatModel } from './llm_models/AnthropicChatModel';
+import { ModelNormalizerRegistry } from "./llm_models/ModelNormalizerRegistry";
+import { OpenAIModelInitializer } from "./llm_models/OpenAIModelInitializer";
+import { ModelManager } from "./ModelManager";
+import { AnthropicNormalizer } from "./normalizers/AnthropicNormalizer";
+import { BaseModelNormalizer } from "./normalizers/BaseModelNormalizer";
+import { GeminiNormalizer } from "./normalizers/GeminiNormalizer";
+import { OpenAINormalizer } from "./normalizers/OpenAINormalizer";
 
 @injectable()
 export class ChatModelFactory {
@@ -68,7 +68,7 @@ export class ChatModelFactory {
 
         try {
             // const model = this.modelManager.model as string; // Get the model type
-            const model = StateManager.getInstance().getConfig('model');
+            const model = StateManager.getInstance().getModelConfigStateManager().getModel() ?? '';
             const modelType = ChatModelFactory.normalizerRegistry.normalize(model);
 
             if (!ChatModelFactory.normalizerRegistry) {
@@ -76,14 +76,13 @@ export class ChatModelFactory {
             }
 
             ChatModelFactory.logger.info(`Creating model with type: ${modelType}`);
-
             switch (modelType) {
                 case 'openai':
                     ChatModelFactory.logger.info("Creating OpenAI model...");
 
                     // InversifyJS will inject dependencies into OpenAIModel
-                    const chatModel = await OpenAIModelInitializer.initialize(modelManager);
-                    if (!chatModel) {
+                    const openAIChatModel = await OpenAIModelInitializer.initialize(modelManager);
+                    if (!openAIChatModel) {
                         const error_msg = 'Creation failed: model initialization failed';
                         ChatModelFactory.logger.error(error_msg);
                         throw new Error(error_msg);
@@ -91,10 +90,9 @@ export class ChatModelFactory {
 
                     // Use the container to resolve OpenAIModel
                     const openAIModelFactory = container.get<OpenAIModelFactory>(TYPES.OpenAIModelFactory);
-                    const openAIModel = openAIModelFactory.create(chatModel);
+                    const openAIModel = openAIModelFactory.create(openAIChatModel);
                     ChatModelFactory.logger.info("OpenAI model created successfully");
                     return openAIModel;
-
                 case 'gemini':
                     ChatModelFactory.logger.info("Creating Gemini model...");
                     const geminiModel = await new GeminiModel().initModel(modelManager.modelConfig);
@@ -104,6 +102,23 @@ export class ChatModelFactory {
                 case 'anthropic':
                     ChatModelFactory.logger.info("Creating Anthropic model...");
                     return new AnthropicChatModel();
+
+                case 'custom':
+                    ChatModelFactory.logger.info("Creating OpenAI model...");
+
+                    // InversifyJS will inject dependencies into OpenAIModel
+                    const customChatModel = await OpenAIModelInitializer.initialize(modelManager);
+                    if (!customChatModel) {
+                        const error_msg = 'Creation failed: model initialization failed';
+                        ChatModelFactory.logger.error(error_msg);
+                        throw new Error(error_msg);
+                    }
+
+                    // Use the container to resolve OpenAIModel
+                    const customModelFactory = container.get<OpenAIModelFactory>(TYPES.OpenAIModelFactory);
+                    const customModel = customModelFactory.create(customChatModel);
+                    ChatModelFactory.logger.info("OpenAI model created successfully");
+                    return customModel;
 
                 default:
                     ChatModelFactory.logger.error(`Unsupported model type: ${modelType}`);

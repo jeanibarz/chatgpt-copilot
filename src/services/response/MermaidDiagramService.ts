@@ -1,16 +1,19 @@
+// src/services/response/MermaidDiagramService.ts
+
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import * as fs from 'fs';
 import { inject, injectable } from "inversify";
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { ModelConfig } from "../config/ModelConfig";
-import { IChatModel } from "../interfaces/IChatModel";
-import { IMermaidDiagramService } from "../interfaces/IMermaidDiagramService";
-import TYPES from "../inversify.types";
-import { CoreLogger } from "../logging/CoreLogger";
-import { ChatModelFactory } from "../models/llm_models";
-import { ModelManager } from "../services/ModelManager";
-import { PromptType, StateManager } from "../state/StateManager";
+import { PromptType } from "../../constants/PromptType";
+import { IMermaidDiagramService } from "../../interfaces/IMermaidDiagramService";
+import TYPES from "../../inversify.types";
+import { CoreLogger } from "../../logging/CoreLogger";
+import { IChatModel } from "../../models/IChatModel";
+import { ChatModelFactory } from "../../models/llm_models";
+import { ModelConfig } from "../../models/ModelConfig";
+import { ModelManager } from "../../models/ModelManager";
+import { StateManager } from "../../state/StateManager";
 
 @injectable()
 export class MermaidDiagramService implements IMermaidDiagramService {
@@ -195,15 +198,15 @@ export class MermaidDiagramService implements IMermaidDiagramService {
         generateDiagramLogger.info("Generating mermaid diagram with prompt...");
 
         try {
-            const userPrompt = StateManager.getInstance().getPrompt(PromptType.UserGenerateMermaidDiagram);
+            const userPrompt = StateManager.getInstance().getPromptStateManager().getPrompt(PromptType.UserGenerateMermaidDiagram);
             const prompt = `${userPrompt}\n\n${fileContent}\n\n`;
             const chunks: string[] = [];
             const result = await chatModel.streamText({
-                system: modelConfig.systemPrompt,
+                system: modelConfig.systemPrompt ?? undefined,
                 prompt: prompt,
-                maxTokens: modelConfig.maxTokens,
-                topP: modelConfig.topP,
-                temperature: modelConfig.temperature,
+                maxTokens: modelConfig.maxTokens ?? undefined,
+                topP: modelConfig.topP ?? undefined,
+                temperature: modelConfig.temperature ?? undefined,
                 abortSignal: undefined,
             });
 

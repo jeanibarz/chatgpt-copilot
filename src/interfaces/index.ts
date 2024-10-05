@@ -3,10 +3,10 @@
 import * as vscode from 'vscode';
 
 // Interfaces
+export * from '../models/IChatModel';
 export * from './IApiRequestOptions';
 export * from './IAssistantResponse';
 export * from './IChatGPTMessage';
-export * from './IChatModel';
 export * from './ICommand';
 export * from './IDocstringService';
 export * from './IFileDocstring';

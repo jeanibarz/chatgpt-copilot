@@ -51,14 +51,17 @@ export class ModelConfig {
         jsonCredentialsPath?: string | null,
     ) {
         const stateManager = StateManager.getInstance();
+        const modelConfigStateManager = stateManager.getModelConfigStateManager();
+        const apiCredentialsStateManager = stateManager.getApiCredentialsStateManager();
+        const promptStateManager = stateManager.getPromptStateManager();
 
-        this.apiKey = apiKey ?? stateManager.getApiKey();
-        this.apiBaseUrl = apiBaseUrl ?? stateManager.getApiBaseUrl();
-        this.maxTokens = maxTokens ?? stateManager.getMaxTokens();
-        this.temperature = temperature ?? stateManager.getTemperature();
-        this.topP = topP ?? stateManager.getTopP();
-        this.organization = organization ?? stateManager.getOrganization();
-        this.systemPrompt = systemPrompt ?? stateManager.getDefaultSystemPrompt();
-        this.jsonCredentialsPath = jsonCredentialsPath ?? stateManager.getJsonCredentialsPath();
+        this.apiKey = apiKey ?? apiCredentialsStateManager.getApiKey();
+        this.apiBaseUrl = apiBaseUrl ?? modelConfigStateManager.getApiBaseUrl();
+        this.maxTokens = maxTokens ?? modelConfigStateManager.getMaxTokens();
+        this.temperature = temperature ?? modelConfigStateManager.getTemperature();
+        this.topP = topP ?? modelConfigStateManager.getTopP();
+        this.organization = organization ?? modelConfigStateManager.getOrganization();
+        this.systemPrompt = systemPrompt ?? promptStateManager.getDefaultSystemPrompt();
+        this.jsonCredentialsPath = jsonCredentialsPath ?? apiCredentialsStateManager.getJsonCredentialsPath();
     }
 }

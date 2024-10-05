@@ -32,8 +32,8 @@ import { createAzure } from '@ai-sdk/azure';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { CoreLogger } from "../../logging/CoreLogger";
-import { ModelConfig } from "../../config/ModelConfig";
 import { ChatGptViewProvider } from "../../view/ChatGptViewProvider";
+import { ModelConfig } from "../ModelConfig";
 
 const logger = CoreLogger.getInstance();
 

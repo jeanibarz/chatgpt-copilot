@@ -23,12 +23,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { inject, injectable } from "inversify";
+import { PromptType } from "../constants/PromptType";
 import { IDocstringService } from "../interfaces";
 import { ChatGPTCommandType } from "../interfaces/enums/ChatGPTCommandType";
 import { ICommand } from '../interfaces/ICommand';
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
-import { PromptType, StateManager } from "../state/StateManager";
+import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 
 @injectable()
@@ -115,7 +116,7 @@ export class GenerateDocstringsCommand implements ICommand {
    * @returns A promise that resolves to the generated docstring.
    */
   private async generateDocstring(text: string, token: vscode.CancellationToken): Promise<string> {
-    const docstringPrompt = StateManager.getInstance().getPrompt(PromptType.GenerateDocstring);
+    const docstringPrompt = StateManager.getInstance().getPromptStateManager().getPrompt(PromptType.GenerateDocstring);
     this.logger.info(`docstringPrompt: ${docstringPrompt}`);
     const prompt = `${docstringPrompt}\n\n${text}\n\n`;
 

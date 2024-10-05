@@ -43,12 +43,14 @@ import fetch, {
   Request,
   Response
 } from 'node-fetch';
+import { ConfigKeys, ExtensionConfigPrefix } from "./constants/ConfigKeys";
 import { ChatGPTCommandType } from "./interfaces/enums/ChatGPTCommandType";
 import { configureContainer, container } from "./inversify.config";
 import TYPES from "./inversify.types";
 import { CoreLogger } from "./logging/CoreLogger";
-import { ConfigKeys, ExtensionConfigPrefix, StateManager } from "./state/StateManager";
+import { StateManager } from "./state/StateManager";
 import { FilteredTreeDataProvider } from './tree/FilteredTreeDataProvider';
+import { Utility } from "./Utility";
 import { ChatGptViewProvider } from "./view/ChatGptViewProvider";
 
 if (!globalThis.fetch) {
@@ -127,7 +129,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const logger = CoreLogger.getInstance();
 
   // Retrieve the adhoc command prefix from global state
-  let adhocCommandPrefix = stateManager.getAdhocCommandPrefix();
+  let adhocCommandPrefix = stateManager.getCommandStateManager().getAdhocCommandPrefix();
 
   // Instantiate the ChatGptViewProvider
   const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
@@ -177,12 +179,12 @@ export async function activate(context: vscode.ExtensionContext) {
       const enabled = !!vscode.workspace
         .getConfiguration(`${ExtensionConfigPrefix}.${ConfigKeys.PromptPrefix}`)
         .get<boolean>(`${command}-enabled`);
-      stateManager.setCommandEnabledState(command, enabled);
+      stateManager.getCommandStateManager().setCommandEnabledState(command, enabled);
     });
 
     // Handle generateCode command separately
-    const generateCodeEnabled = stateManager.isGenerateCodeEnabled();
-    stateManager.setCommandEnabledState('generateCode', generateCodeEnabled);
+    const generateCodeEnabled = stateManager.getModelConfigStateManager().isGenerateCodeEnabled();
+    stateManager.getCommandStateManager().setCommandEnabledState('generateCode', generateCodeEnabled);
   }
 }
 
@@ -337,7 +339,7 @@ function registerSpecialCommands(
           }
 
           adhocCommandPrefix = value.trim() || "";
-          stateManager.setAdhocCommandPrefix(adhocCommandPrefix);
+          stateManager.getCommandStateManager().setAdhocCommandPrefix(adhocCommandPrefix);
         });
 
       if (!dismissed && adhocCommandPrefix && adhocCommandPrefix.length > 0) {
@@ -414,19 +416,28 @@ function registerUtilityCommands(
     "chatgpt-copilot.clearSession",
     async () => {
       const stateManager = StateManager.getInstance();
+      const apiCredentialsStateManager = stateManager.getApiCredentialsStateManager();
+      const modelConfigStateManager = stateManager.getModelConfigStateManager();
+      const sessionStateManager = stateManager.getSessionStateManager();
 
-      await stateManager.setSessionToken(null);
-      await stateManager.setClearanceToken(null);
-      await stateManager.setUserAgent(null);
-      await stateManager.setApiKey(null);
-      await stateManager.setOrganization(null);
-      await stateManager.setMaxTokens(null);
-      await stateManager.setTemperature(null);
-      await stateManager.setSystemPrompt(null);
-      await stateManager.setTopP(null);
+      await sessionStateManager.setSessionToken(null);
+      await sessionStateManager.setClearanceToken(null);
+      await sessionStateManager.setUserAgent(null);
+      await apiCredentialsStateManager.setApiKey(null);
+      await modelConfigStateManager.setOrganization(null);
+      await modelConfigStateManager.setMaxTokens(null);
+      await modelConfigStateManager.setTemperature(null);
+      await modelConfigStateManager.setSystemPrompt(null);
+      await modelConfigStateManager.setTopP(null);
 
       const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
-      provider.sessionManager.clearSession();
+      try {
+        await Utility.stopGenerationRequest();
+        provider.conversationManager.clearConversation();
+        logger.info("Session cleared successfully");
+      } catch (error) {
+        logger.error("Failed to clear session", { error });
+      }
       await provider.sendMessage({ type: "clearConversation" });
     },
   );
@@ -482,20 +493,20 @@ function handleConfigurationChange(
 
   // Update provider configuration for notifications and auto-scroll
   if (configChanged(ConfigKeys.ShowNotification)) {
-    provider.configurationManager.subscribeToResponse = stateManager.getShowNotification();
+    provider.configurationManager.subscribeToResponse = stateManager.getUserPreferencesStateManager().getShowNotification();
   }
 
   if (configChanged(ConfigKeys.AutoScroll)) {
-    provider.configurationManager.autoScroll = stateManager.getAutoScrollSetting();
+    provider.configurationManager.autoScroll = stateManager.getUserPreferencesStateManager().getAutoScrollSetting();
   }
 
   // Update model settings when model or custom model changes
   if (configChanged(ConfigKeys.Model)) {
-    provider.modelManager.model = stateManager.getGpt3Model();
+    provider.modelManager.model = stateManager.getModelConfigStateManager().getGpt3Model();
   }
 
   if (configChanged(ConfigKeys.CustomModel) && provider.modelManager.model === "custom") {
-    provider.modelManager.model = stateManager.getGpt3Model();
+    provider.modelManager.model = stateManager.getModelConfigStateManager().getGpt3Model();
   }
 
   // Handle multiple configurations related to the conversation manager
@@ -530,9 +541,7 @@ function handleConfigurationChange(
     ConfigKeys.FileExclusionRegex
   ];
   if (fileRegexKeys.some(configChanged)) {
-    // Handle specific actions when these configurations change
     logger.info('File inclusion/exclusion regex has changed');
-    // Add any specific actions if needed
   }
 }
 

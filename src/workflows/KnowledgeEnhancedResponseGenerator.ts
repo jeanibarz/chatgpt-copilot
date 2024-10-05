@@ -19,11 +19,12 @@ import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { CoreMessage } from 'ai';
 import { inject, injectable } from "inversify";
 import { z } from 'zod';
+import { PromptType } from "../constants/PromptType";
 import { IChatModel, IFileDocstring, ISelectedFile, RenderMethod } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { PromptFormatter } from "../PromptFormatter";
-import { PromptType, StateManager } from "../state/StateManager";
+import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
 
@@ -193,11 +194,11 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
 
             const chunks = [];
             const result = await chatModel.streamText({
-                system: provider.modelManager.modelConfig.systemPrompt,
+                system: provider.modelManager.modelConfig.systemPrompt ?? undefined,
                 messages: messagesCopy,
-                maxTokens: provider.modelManager.modelConfig.maxTokens,
-                topP: provider.modelManager.modelConfig.topP,
-                temperature: provider.modelManager.modelConfig.temperature,
+                maxTokens: provider.modelManager.modelConfig.maxTokens ?? undefined,
+                topP: provider.modelManager.modelConfig.topP ?? undefined,
+                temperature: provider.modelManager.modelConfig.temperature ?? undefined,
                 abortSignal: provider.abortController ? provider.abortController.signal : undefined,
             });
 
@@ -264,7 +265,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const stateManager = StateManager.getInstance();
 
             // Construct the prompt using the system prompt
-            const systemPrompt = stateManager.getPrompt(PromptType.SystemContextSelection);
+            const systemPrompt = stateManager.getPromptStateManager().getPrompt(PromptType.SystemContextSelection);
 
             const projectResourcesOverview = PromptFormatter.formatProjectLayout(
                 await provider.contextManager.generateProjectOverview(RenderMethod.FullPathDetails),
@@ -272,7 +273,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const conversationHistory = PromptFormatter.formatConversationHistory(previousMessages);
 
             // Replace the placeholders in the template with actual values
-            let userPrompt = stateManager.getPrompt(PromptType.UserContextSelection);
+            let userPrompt = stateManager.getPromptStateManager().getPrompt(PromptType.UserContextSelection);
             if (!userPrompt) {
                 const errorMessage = 'UserContextSelection prompt is missing';
                 selectRelevantFilesLogger.error(errorMessage);

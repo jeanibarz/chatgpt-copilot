@@ -10,9 +10,9 @@ import * as vscode from 'vscode';
 
 import { injectable } from "inversify";
 import { CoreLogger } from "../logging/CoreLogger";
+import { ModelManager } from "../models/ModelManager";
 import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
-import { ModelManager } from "./ModelManager";
 
 /**
  * Interface for the configuration manager that defines the methods 
@@ -37,7 +37,7 @@ export class ConfigurationManager implements IConfigurationManager {
     public subscribeToResponse: boolean | undefined | null = false; // Flag to determine if responses should be subscribed to
     public autoScroll: boolean | undefined | null = false; // Flag to enable auto-scrolling of responses
     public conversationHistoryEnabled: boolean = true; // Flag to enable conversation history
-    public apiBaseUrl?: string; // Base URL for API calls
+    public apiBaseUrl?: string | null; // Base URL for API calls
 
     constructor() { }
 
@@ -50,16 +50,16 @@ export class ConfigurationManager implements IConfigurationManager {
         const modelManager: ModelManager = (await Utility.getProvider()).modelManager;
 
         // Load the model configuration and response settings
-        modelManager.model = stateManager.getRequiredConfig<string>("gpt3.model");
-        this.subscribeToResponse = stateManager.getConfig<boolean>("response.showNotification", false);
-        this.autoScroll = !!stateManager.getConfig<boolean>("response.autoScroll", false);
-        this.conversationHistoryEnabled = stateManager.getConfig<boolean>("conversationHistoryEnabled", true);
+        modelManager.model = stateManager.getModelConfigStateManager().getModel();
+        this.subscribeToResponse = stateManager.getUserPreferencesStateManager().getShowNotification();
+        this.autoScroll = !!stateManager.getUserPreferencesStateManager().getShowNotification();
+        this.conversationHistoryEnabled = stateManager.getUserPreferencesStateManager().getConversationHistoryEnabled() ?? true;
 
         // Check for custom model configuration
         if (modelManager.model === "custom") {
-            modelManager.model = stateManager.getRequiredConfig<string>("gpt3.customModel");
+            modelManager.model = stateManager.getModelConfigStateManager().getCustomModelName();
         }
-        this.apiBaseUrl = stateManager.getRequiredConfig<string>("gpt3.apiBaseUrl");
+        this.apiBaseUrl = stateManager.getModelConfigStateManager().getApiBaseUrl() ?? null;
 
         // Ensure Azure model names are valid
         if (this.apiBaseUrl?.includes("azure")) {
