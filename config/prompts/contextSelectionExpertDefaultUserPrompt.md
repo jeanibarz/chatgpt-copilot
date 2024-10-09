@@ -1,22 +1,17 @@
-### PROJECT RESOURCES OVERVIEW
-${projectResourcesOverview}
+<PROJECT RESOURCES OVERVIEW>
+{{projectResourcesOverview}}
+</PROJECT RESOURCES OVERVIEW>
 
----
+<CONVERSATION HISTORY>
+{{conversationHistory}}
+</CONVERSATION HISTORY>
 
-### CONVERSATION HISTORY
-${conversationHistory}
+<USER QUESTION>
+{{userQuestion}}
+</USER QUESTION>
 
----
-
-### USER QUESTION:
-${userQuestion}
-
----
-
-### INSTRUCTIONS:
+<INSTRUCTIONS>
 **You are a Context Selection Expert AI agent.** Your task is to **explicitly select relevant project resources (files, folders, symbols)** for inclusion, providing the optimal context to answer the user's question. **No resources are included by default**, so it is up to you to specify all resources that should be retrieved.
-
----
 
 ### Guidelines:
 
@@ -51,35 +46,24 @@ ${userQuestion}
    - All fileOrFolderPath entries must be absolute paths.
    - Relative paths are not supported and will result in errors.
 
----
-
-### INSTRUCTIONS
-
-You are responsible for selecting all the necessary project resources (files, folders, and symbols) required to answer the user's question. By default, no resources are included, so you must explicitly choose which files, folders, and symbols should be retrieved to provide the best possible context for generating an accurate response.
-
----
-
 ### OUTPUT FORMAT:
 Provide a JSON array where each element follows this structure:
 {
-    "command": "add" | "remove",
-    "fileOrFolderPath": "absolute/path/to/the/file_or_folder",
-    "symbols": ["Symbol1, "Symbol2", ...], // Optional: List specific symbols. Leave empty to include or exclude the entire file or folder.
-    "reason": "Brief explanation (1-5 lines) for adding or removing the folder, file, or specific symbols within the file."
+    "filePath": "absolute/path/to/the/file",
+    "reason": "Brief explanation (1-5 lines) for adding file."
 }
 
 Example:
-[
-  {
-    "command": "add",
-    "fileOrFolderPath": "/path/to/relevantFile.ts",
-    "symbols": ["relevantMethod"],
-    "reason": "This method handles the core chatCompletion logic."
-  },
-  {
-    "command": "remove",
-    "fileOrFolderPath": "/path/to/irrelevantFile.ts",
-    "symbols": [],
-    "reason": "This file is unrelated to the chatCompletion workflow."
-  }
-]
+{
+  "selectedFiles": [
+    {
+      "filePath": "/path/to/relevantFile.ts",
+      "reason": "[justification about why this file content might be interesting to retrieve]"
+    },
+    {
+      "filePath": "/path/to/anotherRelevantFile.ts",
+      "reason": "[another justification about why this file content might be interesting to retrieve]"
+    }
+  ]
+}
+</INSTRUCTIONS>
