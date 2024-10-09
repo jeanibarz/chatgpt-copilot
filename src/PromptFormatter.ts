@@ -19,7 +19,7 @@ export class PromptFormatter {
      * @returns The formatted conversation history as a string.
      */
     static formatConversationHistory(previousMessages: CoreMessage[]): string {
-        return `${previousMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n')}`;
+        return `${previousMessages.map(msg => `- ${msg.role}: ${msg.content}`).join('\n')}`;
     }
 
     /**

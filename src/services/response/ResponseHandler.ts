@@ -12,7 +12,7 @@ import TYPES from "../../inversify.types";
 import { ChatModelFactory } from "../../models/llm_models";
 import { ModelManager } from '../../models/ModelManager';
 import { Utility } from "../../Utility";
-import { MessageRole } from "../ChatHistoryManager";
+import { KnowledgeEnhancedResponseGenerator } from "../../workflows/KnowledgeEnhancedResponseGenerator";
 import { ConfigurationManager } from '../ConfigurationManager';
 
 /**
@@ -52,6 +52,7 @@ export class ResponseHandler {
         additionalContext: string,
         options: { command: string; previousAnswer?: string; }
     ) {
+        this.currentMessageId = Utility.getRandomId();
         const responseInMarkdown = this.modelManager.isCodexModel;
         const updateResponse = (message: string) => {
             this.response += message;
@@ -59,12 +60,26 @@ export class ResponseHandler {
         };
 
         try {
-            const model = await ChatModelFactory.createChatModel();
-            await model.generate(prompt, additionalContext, updateResponse, 'advanced');
-            (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.User, prompt);
-            await this.finalizeResponse(options);
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Thinking",
+                cancellable: true
+            }, async (progress, token) => {
+                const chatModel = await ChatModelFactory.createChatModel();
+                const generator = new KnowledgeEnhancedResponseGenerator(chatModel);
+
+                // Pass the progress reporter and token to the generate method
+                await generator.generate(prompt, updateResponse, progress, token);
+
+                // After generation is complete
+                await this.finalizeResponse(options);
+            });
         } catch (error) {
-            await this.errorHandler.handleApiError(error, options, (message: any) => this.sendResponseUpdate.bind(this)(message));
+            if ((error as Error).message === 'Operation canceled by the user.') {
+                console.info('User canceled the operation.');
+            } else {
+                await this.errorHandler.handleApiError(error, options, (message: any) => this.sendResponseUpdate.bind(this)(message));
+            }
         }
     }
 
@@ -79,15 +94,13 @@ export class ResponseHandler {
             this.response = options.previousAnswer + this.response; // Combine with previous answer
         }
 
-        // Mediate adding assistant message to chat history
-        (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.Assistant, this.response);
-
         if (this.isResponseIncomplete()) {
             await this.promptToContinue(options);
         }
 
         this.sendResponseUpdate(true); // Send final response indicating completion
         this.response = '';
+        this.currentMessageId = undefined;
     }
 
     /**
@@ -105,7 +118,10 @@ export class ResponseHandler {
             responseInMarkdown: !this.modelManager.isCodexModel,
         };
 
-        await (await Utility.getProvider()).sendMessage(message);
+        (await Utility.getProvider()).sendMessage({
+            ...message,
+            autoScroll: message.autoScroll ?? undefined
+        });
     }
 
     /**

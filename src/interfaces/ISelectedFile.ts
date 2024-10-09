@@ -4,5 +4,5 @@
 
 export interface ISelectedFile {
     filePath: string;
-    reason: string; // Reason for selection
+    initialReason: string; // Reason for selection
 }

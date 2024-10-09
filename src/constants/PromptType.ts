@@ -5,5 +5,9 @@ export enum PromptType {
     GenerateDocstring = 'generateUpdateDocstringsPrompt',
     UserGenerateMermaidDiagram = 'generateMermaidDiagramPrompt',
     UserContextSelection = 'contextSelectionExpertDefaultUserPrompt',
-    SystemContextSelection = 'contextSelectionExpertDefaultSystemPrompt'
+    SystemContextSelection = 'contextSelectionExpertDefaultSystemPrompt',
+    FilterContentUserPrompt = "FilterContentUserPrompt",
+    FilterContentSystemPrompt = "FilterContentSystemPrompt",
+    ScoreFilteredContentsUserPrompt = "ScoreFilteredContentsUserPrompt",
+    ScoreFilteredContentsSystemPrompt = "ScoreFilteredContentsSystemPrompt"
 }

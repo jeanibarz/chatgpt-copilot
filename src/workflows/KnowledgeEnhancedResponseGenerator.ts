@@ -17,13 +17,16 @@
 
 import { Annotation, START, StateGraph } from "@langchain/langgraph";
 import { CoreMessage } from 'ai';
+import Handlebars from 'handlebars';
 import { inject, injectable } from "inversify";
+import { CancellationToken, Progress } from "vscode";
 import { z } from 'zod';
 import { PromptType } from "../constants/PromptType";
-import { IChatModel, IFileDocstring, ISelectedFile, RenderMethod } from "../interfaces";
+import { IChatModel, IFileDocstring, RenderMethod } from "../interfaces";
 import TYPES from "../inversify.types";
 import { CoreLogger } from "../logging/CoreLogger";
 import { PromptFormatter } from "../PromptFormatter";
+import { MessageRole } from "../services/ChatHistoryManager";
 import { StateManager } from "../state/StateManager";
 import { Utility } from "../Utility";
 import { ChatGptViewProvider } from "../view/ChatGptViewProvider";
@@ -39,6 +42,8 @@ const MyGraphState = Annotation.Root({
     selectRelevantFilesLogger: Annotation<CoreLogger>,
     generateAnswerNodeLogger: Annotation<CoreLogger>,
     retrieveFileContentLogger: Annotation<CoreLogger>,
+    filterRetrievedContentsLogger: Annotation<CoreLogger>,
+    scoreFilteredContentsLogger: Annotation<CoreLogger>,
     assessResponseNodeLogger: Annotation<CoreLogger>,
     retryCount: Annotation<number>,
     shouldReroute: Annotation<boolean>,
@@ -47,13 +52,18 @@ const MyGraphState = Annotation.Root({
     previousMessages: Annotation<CoreMessage[]>,
     userQuestion: Annotation<string>,
     docstrings: Annotation<IFileDocstring[]>,
-    selectedFiles: Annotation<ISelectedFile[]>,
-    retrievedContents: Annotation<string>,
+    selectedFiles: Annotation<Array<{ filePath: string; initialReason: string; }>>,
+    retrievedFileContents: Annotation<Array<{ filePath: string; content: string; initialReason: string; }>>,
+    filteredFileContents: Annotation<Array<{ filePath: string; content: string; initialReason: string; }>>,
+    scoredFileContents: Annotation<Array<{ filePath: string; content: string; initialReason: string; finalReason: string; score: number; }>>,
+    scoreThreshold: Annotation<number>,
     retrievedFilePaths: Annotation<Set<string>>,
     answer: Annotation<string>,
     provider: Annotation<ChatGptViewProvider>,
     chatModel: Annotation<IChatModel>,
     updateResponse: Annotation<(message: string) => void>,
+    progress: Annotation<Progress<{ message?: string; increment?: number; }>>,
+    token: Annotation<CancellationToken>,
 });
 
 /**
@@ -87,6 +97,8 @@ export class KnowledgeEnhancedResponseGenerator {
         const graph = new StateGraph(MyGraphState)
             .addNode("selectRelevantFiles", this.selectRelevantFilesNode)
             .addNode("retrieveFileContentsNode", this.retrieveFileContentsNode)
+            .addNode("filterRetrievedContentsNode", this.filterRetrievedContentsNode)
+            .addNode("scoreFilteredContentsNode", this.scoreFilteredContentsNode)
             .addNode("handleInput", this.generateAnswerNode)
             .addNode("displayUsedFilesNode", this.displayUsedFilesNode)
             .addConditionalEdges(START, this.determineInitialRouteNode, {
@@ -94,7 +106,9 @@ export class KnowledgeEnhancedResponseGenerator {
                 selectRelevantFiles: "selectRelevantFiles",
             })
             .addEdge("selectRelevantFiles", "retrieveFileContentsNode")
-            .addEdge("retrieveFileContentsNode", "handleInput")
+            .addEdge("retrieveFileContentsNode", "filterRetrievedContentsNode")
+            .addEdge("filterRetrievedContentsNode", "scoreFilteredContentsNode")
+            .addEdge("scoreFilteredContentsNode", "handleInput")
             .addEdge("handleInput", "displayUsedFilesNode");
 
         // Compile the graph
@@ -103,14 +117,21 @@ export class KnowledgeEnhancedResponseGenerator {
     }
 
     /**
-     * Generates a response to the user's question by invoking the state graph with the current 
+     * Generates a response to the user's question by invoking the state graph with the current
      * messages and context. It logs the interaction and handles any errors that may arise.
-     * 
+     *
      * @param question - The user's question to be answered.
      * @param updateResponse - A callback function to update the response in the UI.
+     * @param progress - Progress reporter to update the progress bar.
+     * @param token - Cancellation token to handle user cancellation.
      * @returns A promise that resolves when the response generation is complete.
      */
-    async generate(question: string, updateResponse: (message: string) => void): Promise<void> {
+    async generate(
+        question: string,
+        updateResponse: (message: string) => void,
+        progress: Progress<{ message?: string; increment?: number; }>,
+        token: CancellationToken,
+    ): Promise<void> {
         try {
             // Retrieve the provider using the mediator service
             const provider = await Utility.getProvider();
@@ -123,12 +144,17 @@ export class KnowledgeEnhancedResponseGenerator {
 
             // Invoke the graph with the current messages
             const inputs = {
-                routeLogger: CoreLogger.getInstance({ loggerName: "Route Based on Context" }),
-                selectRelevantFilesLogger: CoreLogger.getInstance({ loggerName: "Context / Select relevant files" }),
-                generateAnswerNodeLogger: CoreLogger.getInstance({ loggerName: "GenerateAnswerNode" }),
-                retrieveFileContentLogger: CoreLogger.getInstance({ loggerName: "Context / Retrieve file contents" }),
-                assessResponseNodeLogger: CoreLogger.getInstance({ loggerName: "Context / Assess response" }),
-                retrievedContents: "",
+                routeLogger: CoreLogger.getInstance({ loggerName: "KERG - Route Based on Context" }),
+                selectRelevantFilesLogger: CoreLogger.getInstance({ loggerName: "KERG - Select relevant files" }),
+                generateAnswerNodeLogger: CoreLogger.getInstance({ loggerName: "KERG - Generate answer" }),
+                retrieveFileContentLogger: CoreLogger.getInstance({ loggerName: "KERG - Retrieve file contents" }),
+                filterRetrievedContentsLogger: CoreLogger.getInstance({ loggerName: "KERG - Filter Retrieved Contents" }),
+                scoreFilteredContentsLogger: CoreLogger.getInstance({ loggerName: "KERG - Score Filtered Contents" }),
+                assessResponseNodeLogger: CoreLogger.getInstance({ loggerName: "KERG - Assess response" }),
+                retrievedFileContents: [],
+                filteredFileContents: [],
+                scoreThreshold: 5,
+                scoredFileContents: [],
                 retrievedFilePaths: new Set(),
                 previousMessages: provider.chatHistoryManager.getHistory(),
                 userQuestion: question,
@@ -140,7 +166,12 @@ export class KnowledgeEnhancedResponseGenerator {
                 selectedFiles: [],
                 hasContextFiles: hasContextFiles,
                 availableFiles: availableFiles,
+                progress: progress,
+                token: token,
             };
+
+            progress.report({ increment: 0, message: "Starting..." });
+
             await this.createGraph().invoke(inputs);
         } catch (error) {
             this.logger.logError(error, 'Error generating a response');
@@ -157,33 +188,27 @@ export class KnowledgeEnhancedResponseGenerator {
      * @returns A promise that resolves with the generated answer and updated previous messages.
      */
     private async generateAnswerNode(state: typeof MyGraphState.State) {
-        const { generateAnswerNodeLogger, previousMessages, retrievedContents, userQuestion, provider, chatModel, updateResponse } = state;
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 40, message: "Generating answer..." });
+
+        const { generateAnswerNodeLogger, previousMessages, scoredFileContents, userQuestion, provider, chatModel, updateResponse } = state;
 
         generateAnswerNodeLogger.info('Invoking model with messages:', previousMessages);
 
         try {
             // Retrieve matched files and their ASCII layout
-            const matchedFilesAscii = await provider.contextManager.treeDataProvider.renderTree(RenderMethod.FullPathDetails);
+            const projectLayout = await provider.contextManager.treeDataProvider.renderTree(RenderMethod.FullPathDetails);
 
-            // Use the utility function to create a formatted user prompt
-            let userPrompt = undefined;
-            if (retrievedContents) {
-                userPrompt = `
-${PromptFormatter.formatProjectLayout(matchedFilesAscii)}
+            // Sort the scoredFileContents by score descending
+            const sortedContents = scoredFileContents
+                .sort((a, b) => b.score - a.score)
+                .map(fc => fc.content)
+                .join('\n');
 
-${PromptFormatter.formatRetrievedContent(retrievedContents)}
-
-${PromptFormatter.formatConversationHistory(previousMessages)}
-
-### USER QUESTION: ${userQuestion}`;
-            } else {
-                userPrompt = `
-${PromptFormatter.formatProjectLayout(matchedFilesAscii)}
-
-${PromptFormatter.formatConversationHistory(previousMessages)}
-
-### USER QUESTION: ${userQuestion}`;
-            }
+            // Use the new prompt builder method
+            const userPrompt = this.buildUserPrompt(userQuestion, projectLayout, sortedContents);
             generateAnswerNodeLogger.info(userPrompt);
 
             // Make a copy of the previousMessages array
@@ -193,17 +218,27 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             messagesCopy.push({ role: "user", content: userPrompt });
 
             const chunks = [];
+
+            // Create an AbortController to handle cancellation
+            const abortController = new AbortController();
+            state.token.onCancellationRequested(() => {
+                abortController.abort();
+            });
+
             const result = await chatModel.streamText({
                 system: provider.modelManager.modelConfig.systemPrompt ?? undefined,
                 messages: messagesCopy,
                 maxTokens: provider.modelManager.modelConfig.maxTokens ?? undefined,
                 topP: provider.modelManager.modelConfig.topP ?? undefined,
                 temperature: provider.modelManager.modelConfig.temperature ?? undefined,
-                abortSignal: provider.abortController ? provider.abortController.signal : undefined,
+                abortSignal: abortController.signal,
             });
 
             // Process the streamed response
             for await (const textPart of result.textStream) {
+                if (state.token.isCancellationRequested) {
+                    throw new Error('Operation canceled by the user.');
+                }
                 updateResponse(textPart);
                 chunks.push(textPart);
             }
@@ -212,12 +247,16 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const response = chunks.join("");
             provider.response = response;
 
+            (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.User, userQuestion);
+            (await Utility.getProvider()).chatHistoryManager.addMessage(MessageRole.Assistant, response);
+
             // Update previousMessages with the assistant's reply
             const updatedPreviousMessages = [
                 ...previousMessages,
                 { role: "user", content: userQuestion },
                 { role: "assistant", content: response },
             ];
+
 
             return {
                 answer: response,
@@ -226,6 +265,34 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
         } catch (error) {
             generateAnswerNodeLogger.error('Model invocation error:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Builds the user prompt based on the question, project layout, and retrieved content.
+     * 
+     * @param userQuestion - The user's question
+     * @param projectLayout - The ASCII representation of the project layout
+     * @param retrievedContent - The sorted and filtered content from relevant files
+     * @returns The formatted user prompt
+     */
+    private buildUserPrompt(userQuestion: string, projectLayout: string, retrievedContent: string): string {
+        const basePrompt = `
+${userQuestion}
+
+---
+
+<CONTEXT>
+${PromptFormatter.formatProjectLayout(projectLayout)}
+`;
+
+        if (retrievedContent) {
+            return `${basePrompt}
+${PromptFormatter.formatRetrievedContent(retrievedContent)}
+</CONTEXT>`;
+        } else {
+            return `${basePrompt}
+</CONTEXT>`;
         }
     }
 
@@ -239,6 +306,11 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
      * @returns A promise that resolves to an array of SelectedFile objects.
      */
     async selectRelevantFilesNode(state: typeof MyGraphState.State) {
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 20, message: "Selecting relevant files..." });
+
         const {
             availableFiles,
             selectRelevantFilesLogger,
@@ -251,7 +323,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
         // Define the schema for the structured output
         const FileSchema = z.object({
             filePath: z.string(),
-            reason: z.string(),
+            initialReason: z.string(),
             symbols: z.array(z.string()).optional(),
         });
 
@@ -273,17 +345,25 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const conversationHistory = PromptFormatter.formatConversationHistory(previousMessages);
 
             // Replace the placeholders in the template with actual values
-            let userPrompt = stateManager.getPromptStateManager().getPrompt(PromptType.UserContextSelection);
-            if (!userPrompt) {
+            const userPromptTemplate = stateManager.getPromptStateManager().getPrompt(PromptType.UserContextSelection);
+            if (!userPromptTemplate) {
                 const errorMessage = 'UserContextSelection prompt is missing';
                 selectRelevantFilesLogger.error(errorMessage);
                 throw new Error(errorMessage);
             }
 
-            // Replace placeholders in the prompt
-            userPrompt = userPrompt.replace('${projectResourcesOverview}', projectResourcesOverview)
-                .replace('${conversationHistory}', conversationHistory)
-                .replace('${userQuestion}', userQuestion);
+            // Compile the Handlebars template
+            const template = Handlebars.compile(userPromptTemplate);
+
+            // Define the context for replacement
+            const context = {
+                userQuestion,
+                projectResourcesOverview,
+                conversationHistory,
+            };
+
+            // Generate the final user prompt
+            const userPrompt = template(context);
 
             // Prepare the messages to be sent to the AI model
             const messages = [
@@ -296,7 +376,7 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
             const { object } = await chatModel.generateObject({
                 mode: "json",
                 schema: FilesSchema,
-                messages: messages
+                messages: messages as CoreMessage[],
             });
 
             selectRelevantFilesLogger.info('File selection completion', { object });
@@ -330,12 +410,17 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
      * @returns A promise that resolves with the updated retrieved contents and file paths.
      */
     async retrieveFileContentsNode(state: typeof MyGraphState.State) {
-        const { retrieveFileContentLogger, selectedFiles, provider, retrievedContents, retrievedFilePaths } = state;
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 25, message: "Retrieving file contents..." });
+
+        const { retrieveFileContentLogger, selectedFiles, provider, retrievedFileContents, retrievedFilePaths } = state;
 
         try {
             if (!selectedFiles || selectedFiles.length === 0) {
                 retrieveFileContentLogger.warn('No selected files to retrieve content from.');
-                return { retrievedContents, retrievedFilePaths };
+                return { retrievedFileContents, retrievedFilePaths };
             }
 
             // Initialize retrievedFilePaths if undefined
@@ -346,33 +431,208 @@ ${PromptFormatter.formatConversationHistory(previousMessages)}
 
             if (newFiles.length === 0) {
                 retrieveFileContentLogger.info('No new files to retrieve content from.');
-                return { retrievedContents, retrievedFilePaths: alreadyRetrieved };
+                return { retrievedFileContents, retrievedFilePaths: alreadyRetrieved };
             }
 
-            // Map newFiles to an array of file paths
-            const newFilePaths = new Set(newFiles.map(file => file.filePath));
+            // Retrieve the file contents for new files
+            const newContents = await Promise.all(
+                newFiles.map(async (file) => {
+                    const content = provider.fileManager.readFileContent(file.filePath);
+                    return { filePath: file.filePath, content, initialReason: file.initialReason };
+                })
+            );
 
-            // Retrieve the file contents
-            const newContents = await provider.contextManager.getFilesContent(newFilePaths);
             retrieveFileContentLogger.info('Retrieved new file contents:', { newContents });
 
-            // Accumulate the retrieved contents
-            const updatedRetrievedContents = retrievedContents
-                ? retrievedContents + "\n" + newContents
-                : newContents;
+            // Accumulate the retrieved contents into the array of objects
+            const updatedRetrievedContents = retrievedFileContents.concat(newContents);
 
             // Update the set of retrieved file paths
-            newFilePaths.forEach(filePath => alreadyRetrieved.add(filePath));
+            newFiles.forEach(file => alreadyRetrieved.add(file.filePath));
 
             // Update the state with the retrieved file contents
             return {
-                retrievedContents: updatedRetrievedContents,
+                retrievedFileContents: updatedRetrievedContents,
                 retrievedFilePaths: alreadyRetrieved,
             };
         } catch (error) {
             retrieveFileContentLogger.error('Error retrieving file contents', { error });
             throw error;
         }
+    }
+
+
+    /**
+     * Filters out irrelevant information from the retrieved file contents using an LLM.
+     * The processing occurs in parallel for each file being filtered.
+     * The output of the LLM is the remaining file content after the filtering.
+     * 
+     * @param state - The current state containing retrieved file contents and context.
+     * @returns A promise that resolves with the filtered file contents.
+     */
+    private async filterRetrievedContentsNode(state: typeof MyGraphState.State): Promise<{ filteredFileContents: Array<{ filePath: string; content: string; }>; }> {
+        const { retrievedFileContents, chatModel, token, progress, filterRetrievedContentsLogger, provider, userQuestion } = state;
+
+        if (token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        progress.report({ increment: 30, message: "Filtering retrieved contents..." });
+
+        filterRetrievedContentsLogger.info('Starting filtering of retrieved contents.');
+
+        const systemPrompt = StateManager.getInstance().getPromptStateManager().getPrompt(PromptType.FilterContentSystemPrompt);
+        const userPromptTemplate = StateManager.getInstance().getPromptStateManager().getPrompt(PromptType.FilterContentUserPrompt);
+        const template = Handlebars.compile(userPromptTemplate);
+
+        // Process each file's content in parallel
+        const filteredFileContents = await Promise.all(
+            retrievedFileContents.map(async (fileContent) => {
+                const { filePath, content, initialReason } = fileContent;
+
+                // Generate the dynamic user prompt by replacing the placeholders
+                const userPrompt = template({ userQuestion, content });
+
+                const messages = [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ];
+
+                try {
+                    const abortController = new AbortController();
+                    token.onCancellationRequested(() => {
+                        abortController.abort();
+                    });
+
+                    const chunks = [];
+                    const result = await chatModel.streamText({
+                        messages: messages as CoreMessage[],
+                        maxTokens: provider.modelManager.modelConfig.maxTokens ?? undefined,
+                        topP: provider.modelManager.modelConfig.topP ?? undefined,
+                        temperature: provider.modelManager.modelConfig.temperature ?? undefined,
+                        abortSignal: abortController.signal,
+                    });
+
+                    // Process the streamed response
+                    for await (const textPart of result.textStream) {
+                        if (state.token.isCancellationRequested) {
+                            throw new Error('Operation canceled by the user.');
+                        }
+                        chunks.push(textPart);
+                    }
+
+                    // Return the final response
+                    const filteredContent = chunks.join("");
+                    filterRetrievedContentsLogger.info(`Filtered content for file: ${filePath}`);
+
+                    return { filePath, content: filteredContent, initialReason };
+
+                } catch (error) {
+                    filterRetrievedContentsLogger.error(`Error filtering content for file: ${filePath}`, { error });
+                    // Return an empty string for content if filtering fails
+                    return { filePath, content: '', initialReason };
+                }
+            })
+        );
+
+        filterRetrievedContentsLogger.info('Completed filtering of retrieved contents.');
+
+        return { filteredFileContents };
+    }
+
+    /**
+     * Scores the filtered file contents to prioritize the most relevant content.
+     * This method uses the AI model to assign a relevance score to each filtered content.
+     * Any content that receives a score below the specified threshold is automatically filtered out.
+     * 
+     * @param state - The current state containing filtered file contents and context.
+     * @param scoreThreshold - The minimum score required to keep a file. Default is 5.
+     * @returns A promise that resolves with the scored file contents.
+     */
+    private async scoreFilteredContentsNode(state: typeof MyGraphState.State) {
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 35, message: "Scoring filtered contents..." });
+
+        const { filteredFileContents, userQuestion, chatModel, provider, token, scoreThreshold, scoreFilteredContentsLogger } = state;
+
+        scoreFilteredContentsLogger.info('Starting scoring of filtered contents.');
+
+        // Define the schema for the structured output
+        const ScoredFileSchema = z.object({
+            filePath: z.string(),
+            score: z.number(),
+            finalReason: z.string(),
+        });
+
+
+        // Get the prompt state manager
+        const promptStateManager = StateManager.getInstance().getPromptStateManager();
+
+        const scoringSystemPrompt = promptStateManager.getPrompt(
+            PromptType.ScoreFilteredContentsSystemPrompt
+        );
+
+        // Prepare messages to ask the model to score relevance
+        const scoringUserPromptTemplate = promptStateManager.getPrompt(
+            PromptType.ScoreFilteredContentsUserPrompt
+        );
+
+        const scoredFileContents = await Promise.all(
+            filteredFileContents.map(async (fileContent) => {
+                const { filePath, content, initialReason } = fileContent;
+
+                if (!content || content.trim() === '') {
+                    scoreFilteredContentsLogger.info(`Skipping empty content for file: ${filePath}`);
+                    return null;
+                }
+
+                // Generate the dynamic user prompt for each file
+                const scoringUserPrompt = Handlebars.compile(scoringUserPromptTemplate)({
+                    userQuestion,
+                    filePath,
+                    content,
+                });
+
+                const messages = [
+                    { role: 'system', content: scoringSystemPrompt },
+                    { role: 'user', content: scoringUserPrompt },
+                ];
+
+                try {
+                    scoreFilteredContentsLogger.info(`Generating score for file: ${filePath}`);
+                    const { object } = await chatModel.generateObject({
+                        messages: messages as CoreMessage[],
+                        mode: "json",
+                        schema: ScoredFileSchema,
+                    });
+
+                    // Assuming the object has the correct format with `filePath` and `score`
+                    const { filePath: scoredFilePath, score, finalReason } = object;
+
+                    scoreFilteredContentsLogger.info(`File ${scoredFilePath} received score: ${score}. Final Reason: ${finalReason}`);
+
+                    if (score >= scoreThreshold) {
+                        scoreFilteredContentsLogger.info(`File ${scoredFilePath} meets threshold (${scoreThreshold}). Including in results.`);
+                        return { filePath: scoredFilePath, content, initialReason, finalReason, score };
+                    } else {
+                        scoreFilteredContentsLogger.info(`File ${scoredFilePath} below threshold (${scoreThreshold}). Excluding from results.`);
+                        return null;
+                    }
+                } catch (error) {
+                    scoreFilteredContentsLogger.error(`Error occurred while scoring file: ${filePath}`, { error });
+                    scoreFilteredContentsLogger.info(`Excluding file ${filePath} due to scoring error.`);
+                    return null;
+                }
+            })
+        );
+
+        // Filter out null entries
+        const filteredScoredFileContents = scoredFileContents.filter(file => file !== null);
+
+        scoreFilteredContentsLogger.info(`Scoring process completed. ${filteredScoredFileContents.length} files passed the threshold of ${scoreThreshold}.`);
+
+        return { scoredFileContents: filteredScoredFileContents };
     }
 
     /**
@@ -405,7 +665,7 @@ ${userQuestion}
 ${provider.response}
 
 ### FILES ALREADY INCLUDED:
-${selectedFiles.map(f => `- ${f.filePath}: ${f.reason}`).join('\n')}
+${selectedFiles.map(f => `- ${f.filePath}: ${f.initialReason}`).join('\n')}
 
 ### REMAINING FILE DOCSTRINGS:
 ${PromptFormatter.formatDocstrings(remainingDocstrings)}
@@ -434,7 +694,7 @@ If no additional files are needed, respond with an empty array.`;
             });
 
             const { object } = await chatModel.generateObject({
-                messages: messages,
+                messages: messages as CoreMessage[],
                 mode: "json",
                 schema: FilesSchema,
             });
@@ -461,29 +721,37 @@ If no additional files are needed, respond with an empty array.`;
     }
 
     /**
-     * Displays the used files in the response and updates the UI with the relevant information.
-     * 
-     * @param state - The current state containing selected files and the update response function.
-     * @returns An empty object to signify the end of the graph processing.
-     */
+ * Displays the used files in the response and updates the UI with the relevant information.
+ * Only files that passed the scoring threshold and were kept will be displayed.
+ * 
+ * @param state - The current state containing scored file contents and the update response function.
+ * @returns An empty object to signify the end of the graph processing.
+ */
     async displayUsedFilesNode(state: typeof MyGraphState.State) {
-        const { selectedFiles, updateResponse } = state;
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 10, message: "Finalizing..." });
 
-        if (selectedFiles.length > 0) {
-            // Construct the message with a list of used files, including reasons
+        const { scoredFileContents, updateResponse } = state;
+
+        if (scoredFileContents.length > 0) {
             const sourcedFilesMessage = `
 <hr>
 <em>The following files were used to generate the response:
 
-${selectedFiles.map((f, index) => `[${index + 1}] ${f.filePath}: ${f.reason}`).join("\n\n")}
+${scoredFileContents.map((f, index) => `[${index + 1}] ${f.filePath}
+Score: ${f.score}
+Initial Thought: ${f.initialReason}
+Final Thought: ${f.finalReason}`).join("\n\n")}
 </em>`;
 
-            updateResponse(sourcedFilesMessage); // Send the message to the user
+            updateResponse(sourcedFilesMessage);
         } else {
-            updateResponse('\n<hr>\n<em>No specific files were used to generate the response.<em>');
+            updateResponse('\n<hr>\n<em>No specific files were used to generate the response.</em>');
         }
 
-        return {}; // End the graph processing
+        return {};
     }
 
     /**
@@ -501,6 +769,11 @@ ${selectedFiles.map((f, index) => `[${index + 1}] ${f.filePath}: ${f.reason}`).j
     }
 
     async determineInitialRouteNode(state: typeof MyGraphState.State) {
+        if (state.token.isCancellationRequested) {
+            throw new Error('Operation canceled by the user.');
+        }
+        state.progress.report({ increment: 5, message: "Determining initial route..." });
+
         if (state.hasContextFiles) {
             return "selectRelevantFiles";
         } else {
