@@ -120,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ? workspaceFolders[0].uri.fsPath : null;
 
   if (!workspaceRoot) {
-    throw Error('No workspace root');
+    throw new Error('No workspace root');
   }
 
   // Pass the context to the container configuration
@@ -134,12 +134,17 @@ export async function activate(context: vscode.ExtensionContext) {
   // Instantiate the ChatGptViewProvider
   const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
   if (!provider) {
-    throw Error("provider not instantiated ");
+    throw new Error("provider not instantiated ");
   }
 
   provider.commandHandler.registerAllCommands();
   await provider.configurationManager.loadConfiguration();
   provider.initializeConfiguration();
+
+  // Instantiate and register the Tree Data Provider
+  const treeDataProvider = container.get<FilteredTreeDataProvider>(TYPES.FilteredTreeDataProvider);
+  vscode.window.registerTreeDataProvider('chatgpt-copilot.project-explorer', treeDataProvider);
+
 
   // Register the webview provider
   const view = vscode.window.registerWebviewViewProvider(
@@ -201,49 +206,39 @@ function registerContextCommands(
 ) {
   // Command to add a specific file or folder to the context
   const addFileOrFolderToContext = vscode.commands.registerCommand('chatgpt-copilot.addFileOrFolderToContext', async (target: vscode.Uri | vscode.TreeItem) => {
-    let uri: vscode.Uri | undefined;
-
-    // Check if the target is a URI directly (Project Explorer)
-    if (target instanceof vscode.Uri) {
-      uri = target;
-    }
-    // Check if the target is a TreeItem (Custom Tree View)
-    else if (target instanceof vscode.TreeItem && target.resourceUri) {
-      uri = target.resourceUri;
-    }
+    const uri = getUriFromTarget(target);
 
     if (uri && uri.fsPath) {
       await treeDataProvider.explicitFilesManager.addResource(uri);
       treeDataProvider.refresh();
-      vscode.window.showInformationMessage(`Added resource to ChatGPT-Copilot Context: ${uri.fsPath}`);
+      vscode.window.showInformationMessage(`Added to ChatGPT-Copilot Context: ${uri.fsPath}`);
     } else {
-      vscode.window.showErrorMessage("No file or folder selected.");
+      vscode.window.showErrorMessage("Please select a valid file or folder to add to the context.");
     }
   });
 
   // Command to remove a specific file or folder from the context
   const removeFileOrFolderFromContext = vscode.commands.registerCommand('chatgpt-copilot.removeFileOrFolderFromContext', async (target: vscode.Uri | vscode.TreeItem) => {
-    let uri: vscode.Uri | undefined;
-
-    // Check if the target is a URI directly (Project Explorer)
-    if (target instanceof vscode.Uri) {
-      uri = target;
-    }
-    // Check if the target is a TreeItem (Custom Tree View)
-    else if (target instanceof vscode.TreeItem && target.resourceUri) {
-      uri = target.resourceUri;
-    }
+    const uri = getUriFromTarget(target);
 
     if (uri && uri.fsPath) {
-      console.log(`Removing resource to E: ${uri.fsPath}`);
       await treeDataProvider.explicitFilesManager.removeResource(uri);
-      // Refresh the tree or other views as needed
       treeDataProvider.refresh();
       vscode.window.showInformationMessage(`Removed from ChatGPT-Copilot Context: ${uri.fsPath}`);
     } else {
-      vscode.window.showErrorMessage("No file or folder selected.");
+      vscode.window.showErrorMessage("Please select a valid file or folder to remove from the context.");
     }
   });
+
+  // Helper function to get URI from target
+  function getUriFromTarget(target: vscode.Uri | vscode.TreeItem): vscode.Uri | undefined {
+    if (target instanceof vscode.Uri) {
+      return target;
+    } else if (target instanceof vscode.TreeItem && target.resourceUri) {
+      return target.resourceUri;
+    }
+    return undefined;
+  }
 
   // Command to clear all explicitly added files and folders
   const clearAllFilesFromContext = vscode.commands.registerCommand('chatgpt-copilot.clearAllFilesFromContext', async () => {
