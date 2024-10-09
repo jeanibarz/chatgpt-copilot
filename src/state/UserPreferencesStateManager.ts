@@ -14,6 +14,7 @@ export class UserPreferencesStateManager {
 
     constructor() {
         this.logger = CoreLogger.getInstance();
+        this.logger.info('UserPreferencesStateManager: Initialized');
     }
 
     /**
@@ -23,7 +24,9 @@ export class UserPreferencesStateManager {
      * @returns A boolean indicating whether auto-scrolling is enabled.
      */
     public getAutoScrollSetting(): boolean {
-        return !!vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.AutoScroll);
+        const autoScroll = !!vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.AutoScroll);
+        this.logger.debug(`UserPreferencesStateManager: Auto-scroll setting retrieved - ${autoScroll}`);
+        return autoScroll;
     }
 
     /**
@@ -33,7 +36,9 @@ export class UserPreferencesStateManager {
      * @returns A boolean indicating whether notifications are enabled, or null/undefined if not set.
      */
     public getShowNotification(): boolean | null | undefined {
-        return vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.ShowNotification);
+        const showNotification = vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.ShowNotification);
+        this.logger.debug(`UserPreferencesStateManager: Show notification setting retrieved - ${showNotification}`);
+        return showNotification;
     }
 
     /**
@@ -42,6 +47,8 @@ export class UserPreferencesStateManager {
      * @returns A boolean indicating whether conversation history is enabled, or null/undefined if not set.
      */
     public getConversationHistoryEnabled(): boolean | null | undefined {
-        return vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.ConversationHistoryEnabled);
+        const conversationHistoryEnabled = vscode.workspace.getConfiguration(ExtensionConfigPrefix).get<boolean>(ConfigKeys.ConversationHistoryEnabled);
+        this.logger.debug(`UserPreferencesStateManager: Conversation history enabled setting retrieved - ${conversationHistoryEnabled}`);
+        return conversationHistoryEnabled;
     }
 }

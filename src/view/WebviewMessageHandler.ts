@@ -25,7 +25,9 @@ export class WebviewMessageHandler {
      */
     constructor(
         @inject(TYPES.CommandHandler) private commandHandler: CommandHandler
-    ) { }
+    ) {
+        this.logger.info("WebviewMessageHandler initialized");
+    }
 
     /**
      * Sets up the message listener for the webview.
@@ -34,19 +36,23 @@ export class WebviewMessageHandler {
      * @param webviewView - The webview instance to listen for messages from.
      */
     public handleMessages(webviewView: vscode.WebviewView): void {
+        this.logger.info("Setting up message listener for webview");
         webviewView.webview.onDidReceiveMessage(async (data: {
             type: ChatGPTCommandType; // The type of command to execute
             value: any; // The value associated with the command
             language?: string; // Optional language information
         }) => {
-            this.logger.info(`Message received of type: ${data.type}`);
+            this.logger.info(`Received message of type: ${data.type}`, { messageData: JSON.stringify(data) });
 
             try {
+                this.logger.debug(`Executing command: ${data.type}`);
                 // Execute the command based on the type received from the webview
                 await this.commandHandler.executeCommand(data.type, data);
+                this.logger.info(`Successfully executed command: ${data.type}`);
             } catch (error) {
-                this.logger.logError(error, `Error handling command ${data.type}`); // Log any errors
+                this.logger.error(`Error handling command ${data.type}`, { error: error instanceof Error ? error.message : String(error) });
             }
         });
+        this.logger.info("Message listener setup completed");
     }
 }

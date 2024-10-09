@@ -29,21 +29,23 @@ export class ConversationManager {
      * @returns A promise that resolves to true if the conversation was prepared successfully, otherwise false.
      */
     public async prepareConversation(modelChanged = false, conversationId?: string): Promise<boolean> {
-        this.logger.info("Preparing conversation", { modelChanged });
+        this.logger.info("Initiating conversation preparation", { modelChanged, providedConversationId: !!conversationId });
 
         try {
             if (conversationId) {
                 this.conversationId = conversationId;
-                this.logger.info("Using provided conversation ID", { conversationId: this.conversationId });
+                this.logger.info("Adopting provided conversation ID for session", { conversationId: this.conversationId });
             } else if (!this.conversationId) {
                 this.conversationId = Utility.getRandomId();
-                this.logger.info("Generated new conversation ID", { conversationId: this.conversationId });
+                this.logger.info("Generated new unique conversation identifier", { conversationId: this.conversationId });
+            } else {
+                this.logger.info("Continuing with existing conversation ID", { conversationId: this.conversationId });
             }
 
-            this.logger.info("Conversation prepared successfully");
+            this.logger.info("Conversation context successfully established");
             return true;
         } catch (error) {
-            this.logger.error("Failed to prepare conversation", { error });
+            this.logger.error("Encountered error during conversation preparation", { error: error instanceof Error ? error.message : String(error) });
             return false;
         }
     }
@@ -52,8 +54,9 @@ export class ConversationManager {
      * Clears the current conversation context and ID.
      */
     public clearConversation(): void {
+        const previousId = this.conversationId;
         this.conversationId = undefined;
-        this.logger.info("Conversation cleared");
+        this.logger.info("Conversation context reset", { previousConversationId: previousId });
     }
 
     /**

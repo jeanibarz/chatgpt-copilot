@@ -165,38 +165,63 @@ export class FileManager {
         exclusionPattern?: RegExp
     ): string[] {
         const matchedFiles: string[] = [];
-        this.logger.info("Starting to find matching files.");
-        this.logger.info("Explicit files and folders", { explicitFiles });
+        this.logger.info("Initiating file matching process.");
+        this.logger.info("Processing explicit files and folders:", { count: explicitFiles.length, files: explicitFiles });
 
         if (explicitFiles.length === 0) {
-            this.logger.info('No files or folders are explicitly added to the ChatGPT context.');
+            this.logger.warn('No explicit files or folders provided for ChatGPT context. Returning empty result.');
             return matchedFiles;
         }
 
+        this.logger.info("Applying inclusion pattern:", { pattern: inclusionPattern.toString() });
+        if (exclusionPattern) {
+            this.logger.info("Applying exclusion pattern:", { pattern: exclusionPattern.toString() });
+        }
+
         for (const filePath of explicitFiles) {
+            this.logger.debug(`Processing path: ${filePath}`);
             this.processFileOrFolder(filePath, inclusionPattern, exclusionPattern, matchedFiles);
         }
 
-        this.logger.info("Final matched files", { matchedFiles });
+        this.logger.info("File matching process completed.", {
+            totalMatched: matchedFiles.length,
+            matchedFiles: matchedFiles
+        });
         return matchedFiles;
     }
 
+    /**
+     * Processes a file or folder, applying inclusion and exclusion patterns to find matching files.
+     * 
+     * @param filePath - The path of the file or folder to process.
+     * @param inclusionPattern - The regex pattern for including files.
+     * @param exclusionPattern - The optional regex pattern for excluding files.
+     * @param matchedFiles - The array to store matched file paths.
+     */
     private processFileOrFolder(filePath: string, inclusionPattern: RegExp, exclusionPattern: RegExp | undefined, matchedFiles: string[]): void {
         try {
             const stat = fs.statSync(filePath);
-            this.logger.info(`Processing ${stat.isDirectory() ? 'directory' : 'file'}: ${filePath}`);
+            const entityType = stat.isDirectory() ? 'directory' : 'file';
+            this.logger.info(`Processing ${entityType}: ${filePath}`);
+
             const files = stat.isDirectory() ? this.walk(filePath) : [filePath];
+            this.logger.debug(`Found ${files.length} file(s) in ${entityType}: ${filePath}`);
 
             const filteredFiles = files.filter(file => {
                 const isIncluded = inclusionPattern.test(file);
                 const isExcluded = exclusionPattern ? exclusionPattern.test(file) : false;
+                this.logger.debug(`File: ${file}, Included: ${isIncluded}, Excluded: ${isExcluded}`);
                 return isIncluded && !isExcluded;
             });
 
             matchedFiles.push(...filteredFiles);
-            this.logger.info(`Matched files from ${filePath}: ${filteredFiles}`);
+            this.logger.info(`Matched ${filteredFiles.length} file(s) from ${filePath}`);
+            this.logger.debug(`Matched files: ${JSON.stringify(filteredFiles)}`);
         } catch (error) {
-            this.logger.warn(`Failed to process file or folder: ${filePath}, error: ${Utility.getErrorMessage(error)}`);
+            this.logger.warn(`Failed to process ${filePath}`, {
+                error: Utility.getErrorMessage(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
         }
     }
 
@@ -225,38 +250,72 @@ export class FileManager {
      * @returns The resolved absolute path if found, or the original path if it is valid.
      */
     public resolvePath(filePath: string): string {
-        let normalizedFilePath = filePath.replace(/\/+/g, '/'); // Normalize the input filePath.
-        const workspaceRootNormalized = this.workspaceRoot.replace(/\/$/, ''); // Ensure no trailing slash in workspaceRoot.
+        this.logger.debug(`Attempting to resolve path: ${filePath}`);
+        let normalizedFilePath = filePath.replace(/\/+/g, '/');
+        const workspaceRootNormalized = this.workspaceRoot.replace(/\/$/, '');
+        this.logger.debug(`Normalized input path: ${normalizedFilePath}`);
+        this.logger.debug(`Normalized workspace root: ${workspaceRootNormalized}`);
 
-        // Step 1: If the filePath is absolute, check directly if it exists.
         if (path.isAbsolute(normalizedFilePath) && this.pathExists(normalizedFilePath)) {
-            return normalizedFilePath; // Return the absolute path if it exists.
+            this.logger.info(`Resolved absolute path: ${normalizedFilePath}`);
+            return normalizedFilePath;
         }
 
         normalizedFilePath = normalizedFilePath.startsWith('/') ? normalizedFilePath.slice(1) : normalizedFilePath;
         let combinedPath = path.join(workspaceRootNormalized, normalizedFilePath).replace(/\/+/g, '/');
+        this.logger.debug(`Attempting to resolve combined path: ${combinedPath}`);
 
         if (this.pathExists(combinedPath)) {
+            this.logger.info(`Resolved combined path: ${combinedPath}`);
             return combinedPath;
         }
 
+        this.logger.debug(`Unable to resolve path directly, attempting to handle redundant parts`);
         return this.handleRedundantPathParts(normalizedFilePath, workspaceRootNormalized, filePath);
     }
 
+    /**
+     * Handles potential redundant path parts in file paths.
+     * 
+     * This method attempts to resolve file paths that may contain redundant parts,
+     * particularly when the workspace root folder name is repeated in the file path.
+     * 
+     * @param normalizedFilePath - The normalized file path to handle.
+     * @param workspaceRootNormalized - The normalized workspace root path.
+     * @param originalPath - The original, unmodified file path.
+     * @returns The resolved file path if successful, or the original path if unable to resolve.
+     */
     private handleRedundantPathParts(normalizedFilePath: string, workspaceRootNormalized: string, originalPath: string): string {
         const workspaceLastFolder = path.basename(workspaceRootNormalized);
         const filePathParts = normalizedFilePath.split(path.sep).filter(Boolean);
+
+        this.logger.debug(`Handling potential redundant path parts for: ${originalPath}`, {
+            workspaceLastFolder,
+            filePathParts,
+            normalizedFilePath,
+            workspaceRootNormalized
+        });
 
         if (filePathParts.length > 0 && workspaceLastFolder === filePathParts[0]) {
             const trimmedFilePath = filePathParts.slice(1).join(path.sep);
             const combinedPath = path.join(workspaceRootNormalized, trimmedFilePath).replace(/\/+/g, '/');
 
+            this.logger.debug(`Attempting to resolve path with redundant parts removed: ${combinedPath}`);
+
             if (this.pathExists(combinedPath)) {
+                this.logger.info(`Successfully resolved path with redundant parts removed: ${combinedPath}`);
                 return combinedPath;
+            } else {
+                this.logger.debug(`Path does not exist after removing redundant parts: ${combinedPath}`);
             }
+        } else {
+            this.logger.debug(`No redundant parts detected in the path`);
         }
 
-        this.logger.warn(`Unable to resolve path: ${originalPath}. It does not exist.`);
+        this.logger.warn(`Unable to resolve path: ${originalPath}`, {
+            reason: "Path does not exist",
+            attemptedResolutions: [normalizedFilePath, path.join(workspaceRootNormalized, normalizedFilePath)]
+        });
         return originalPath;
     }
 }

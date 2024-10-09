@@ -14,11 +14,12 @@
  * - Initializes webviews with customizable HTML content.
  * - Supports message sending to the webview.
  * - Generates resource URIs for scripts and stylesheets.
- * - Handles error logging related to webview operations.
+ * - Handles detailed error logging related to webview operations.
  */
 
 import * as fs from "fs";
 import { inject, injectable } from "inversify";
+import * as path from "path";
 import * as vscode from "vscode";
 import { WebviewMessageHandler } from ".";
 import TYPES from "../inversify.types";
@@ -41,6 +42,7 @@ export class WebviewManager {
     @inject(TYPES.WebviewMessageHandler) messageHandler: WebviewMessageHandler,
   ) {
     this.messageHandler = messageHandler;
+    this.logger.info("WebviewManager initialized");
   }
 
   /**
@@ -58,21 +60,21 @@ export class WebviewManager {
     const extensionContext = stateManager.getExtensionContext();
 
     this.webviewView = webviewView;
-    this.logger.info("Webview set");
+    this.logger.info("Webview instance set successfully");
     this.webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [extensionContext.extensionUri],
     };
+    this.logger.debug("Webview options configured", { enableScripts: true, localResourceRoots: extensionContext.extensionUri.toString() });
 
     try {
       this.webviewView.webview.html = this.generateWebviewHtml(nonce);
-      this.logger.info("Webview HTML set");
+      this.logger.info("Webview HTML content generated and set successfully");
     } catch (error) {
-      // Type guard to check if error is an instance of Error
       if (error instanceof Error) {
-        this.logger.error(`Failed to generate webview HTML: ${error.message}`);
+        this.logger.error(`Failed to generate webview HTML: ${error.message}`, { stack: error.stack });
       } else {
-        this.logger.error(`Failed to generate webview HTML: ${String(error)}`);
+        this.logger.error(`Failed to generate webview HTML: Unexpected error type`, { error: String(error) });
       }
       throw error;
     }
@@ -80,9 +82,11 @@ export class WebviewManager {
 
   public setupWebview(webviewView: vscode.WebviewView) {
     this.webviewView = webviewView;
-    this.initializeWebView(webviewView, Utility.getRandomId());
+    const nonce = Utility.getRandomId();
+    this.logger.debug("Setting up webview", { nonce });
+    this.initializeWebView(webviewView, nonce);
     this.messageHandler.handleMessages(webviewView);
-    // TODO: find a way to provide viewProvider or remove it from required args
+    this.logger.info("Webview setup completed successfully");
   }
 
   /** 
@@ -93,8 +97,9 @@ export class WebviewManager {
   public sendMessage(message: any) {
     if (this.webviewView) {
       this.webviewView.webview.postMessage(message);
+      this.logger.debug("Message sent to webview", { messageType: message.type });
     } else {
-      this.logger.error("Failed to send message: Webview is not set");
+      this.logger.error("Failed to send message: Webview is not set", { message });
     }
   }
 
@@ -107,17 +112,21 @@ export class WebviewManager {
    */
   private generateWebviewHtml(nonce: string): string {
     if (!this.webviewView) {
-      throw new Error("Cannot generate HTML without a valid webview.");
+      const error = new Error("Cannot generate HTML without a valid webview.");
+      this.logger.error(error.message);
+      throw error;
     }
 
     const stateManager = StateManager.getInstance();
     const extensionContext = stateManager.getExtensionContext();
 
-    const webviewHtmlPath = vscode.Uri.joinPath(extensionContext.extensionUri, "media", "webview.html");
+    const webviewHtmlPath = vscode.Uri.file(path.join(extensionContext.extensionUri.fsPath, "media", "webview.html"));
+    this.logger.debug("Reading webview HTML template", { path: webviewHtmlPath.fsPath });
     let html = fs.readFileSync(webviewHtmlPath.fsPath, "utf8");
 
     const resourceUris = this.generateResourceUris();
     html = this.replacePlaceholders(html, resourceUris, nonce);
+    this.logger.info("Webview HTML content generated successfully");
     return html;
   }
 
@@ -129,78 +138,40 @@ export class WebviewManager {
   private generateResourceUris() {
     const extensionUri = StateManager.getInstance().getExtensionContext().extensionUri;
     const webview = this.webviewView!.webview;
-    return {
+    const uris = {
       scriptUri: webview.asWebviewUri(
-        vscode.Uri.joinPath(extensionUri, "media", "main.js"),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "main.js")),
       ),
       stylesMainUri: webview.asWebviewUri(
-        vscode.Uri.joinPath(extensionUri, "media", "main.css"),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "main.css")),
       ),
       vendorHighlightCss: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "highlight.min.css",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "highlight.min.css")),
       ),
       vendorJqueryUICss: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "hjquery-ui.css",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "jquery-ui.css")),
       ),
       vendorHighlightJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "highlight.min.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "highlight.min.js")),
       ),
       vendorJqueryUIMinJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "jquery-ui.min.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "jquery-ui.min.js")),
       ),
       vendorJqueryJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "jquery-3.5.1.min.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "jquery-3.5.1.min.js")),
       ),
       vendorMarkedJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "marked.min.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "marked.min.js")),
       ),
       vendorTailwindJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "tailwindcss.3.2.4.min.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "tailwindcss.3.2.4.min.js")),
       ),
       vendorTurndownJs: webview.asWebviewUri(
-        vscode.Uri.joinPath(
-          extensionUri,
-          "media",
-          "vendor",
-          "turndown.js",
-        ),
+        vscode.Uri.file(path.join(extensionUri.fsPath, "media", "vendor", "turndown.js")),
       ),
     };
+    this.logger.debug("Resource URIs generated", { uris: Object.keys(uris) });
+    return uris;
   }
 
   /**
@@ -212,7 +183,7 @@ export class WebviewManager {
    * @returns The HTML content with placeholders replaced.
    */
   private replacePlaceholders(html: string, resourceUris: any, nonce: string): string {
-    return html
+    const replacedHtml = html
       .replace("${stylesMainUri}", resourceUris.stylesMainUri.toString())
       .replace("${vendorHighlightCss}", resourceUris.vendorHighlightCss?.toString())
       .replace("${vendorJqueryUICss}", resourceUris.vendorJqueryUICss?.toString())
@@ -224,5 +195,8 @@ export class WebviewManager {
       .replace("${vendorJqueryUIMinJs}", resourceUris.vendorJqueryUIMinJs?.toString())
       .replace("${scriptUri}", resourceUris.scriptUri?.toString())
       .replace(/\${nonce}/g, nonce);
+
+    this.logger.debug("Placeholders replaced in HTML content");
+    return replacedHtml;
   }
 }

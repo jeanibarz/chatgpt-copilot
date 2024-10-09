@@ -26,6 +26,7 @@ export class ApiCredentialsStateManager {
     constructor(globalState: vscode.Memento) {
         this.globalState = globalState;
         this.logger = CoreLogger.getInstance();
+        this.logger.info('ApiCredentialsStateManager initialized');
     }
 
     /**
@@ -34,7 +35,9 @@ export class ApiCredentialsStateManager {
      * @returns The API key as a string, or null/undefined if not set.
      */
     public getApiKey(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.ApiKey);
+        const apiKey = this.globalState.get<string>(ConfigKeys.ApiKey);
+        this.logger.debug(`Retrieved API key from global state. Key ${apiKey ? 'exists' : 'does not exist'}`);
+        return apiKey;
     }
 
     /**
@@ -45,6 +48,7 @@ export class ApiCredentialsStateManager {
      */
     public async setApiKey(apiKey: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.ApiKey, apiKey);
+        this.logger.info(`API key ${apiKey ? 'updated' : 'removed'} in global state`);
     }
 
     /**
@@ -53,7 +57,9 @@ export class ApiCredentialsStateManager {
      * @returns The path to the JSON credentials as a string, or null/undefined if not set.
      */
     public getJsonCredentialsPath(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.JsonCredentialsPath);
+        const path = this.globalState.get<string>(ConfigKeys.JsonCredentialsPath);
+        this.logger.debug(`Retrieved JSON credentials path from global state. Path ${path ? 'exists' : 'does not exist'}`);
+        return path;
     }
 
     /**
@@ -64,5 +70,6 @@ export class ApiCredentialsStateManager {
      */
     public async setJsonCredentialsPath(path: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.JsonCredentialsPath, path);
+        this.logger.info(`JSON credentials path ${path ? 'updated' : 'removed'} in global state`);
     }
 }

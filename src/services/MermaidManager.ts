@@ -13,5 +13,5 @@ export function getMermaidOutputFolder(): string | null | undefined {
 export async function setMermaidOutputFolder(folderPath: string): Promise<void> {
     const stateManager = StateManager.getInstance();
     await stateManager.getFileManagementStateManager().setMermaidOutputFolder(folderPath);
-    logger.info(`Mermaid output folder set to: ${folderPath}`);
+    logger.info(`Mermaid output folder updated: "${folderPath}" is now set as the output destination`);
 }

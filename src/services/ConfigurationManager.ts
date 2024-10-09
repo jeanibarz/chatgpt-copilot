@@ -46,28 +46,40 @@ export class ConfigurationManager implements IConfigurationManager {
      * Initializes various configuration flags and settings based on the loaded values.
      */
     public async loadConfiguration(): Promise<void> {
+        this.logger.info("Starting configuration loading process");
         const stateManager = StateManager.getInstance();
         const modelManager: ModelManager = (await Utility.getProvider()).modelManager;
 
         // Load the model configuration and response settings
         modelManager.model = stateManager.getModelConfigStateManager().getModel();
+        this.logger.debug(`Loaded model: ${modelManager.model}`);
+
         this.subscribeToResponse = stateManager.getUserPreferencesStateManager().getShowNotification();
+        this.logger.debug(`Subscribe to response: ${this.subscribeToResponse}`);
+
         this.autoScroll = !!stateManager.getUserPreferencesStateManager().getShowNotification();
+        this.logger.debug(`Auto-scroll enabled: ${this.autoScroll}`);
+
         this.conversationHistoryEnabled = stateManager.getUserPreferencesStateManager().getConversationHistoryEnabled() ?? true;
+        this.logger.debug(`Conversation history enabled: ${this.conversationHistoryEnabled}`);
 
         // Check for custom model configuration
         if (modelManager.model === "custom") {
             modelManager.model = stateManager.getModelConfigStateManager().getCustomModelName();
+            this.logger.info(`Using custom model: ${modelManager.model}`);
         }
+
         this.apiBaseUrl = stateManager.getModelConfigStateManager().getApiBaseUrl() ?? null;
+        this.logger.debug(`API Base URL: ${this.apiBaseUrl}`);
 
         // Ensure Azure model names are valid
         if (this.apiBaseUrl?.includes("azure")) {
+            const originalModel = modelManager.model;
             modelManager.model = modelManager.model?.replace(".", "");
+            this.logger.info(`Adjusted Azure model name from ${originalModel} to ${modelManager.model}`);
         }
 
-        // Log that the configuration has been successfully loaded
-        this.logger.info("Configuration loaded");
+        this.logger.info("Configuration loading process completed successfully");
     }
 
     /**

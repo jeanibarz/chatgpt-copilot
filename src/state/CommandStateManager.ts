@@ -26,6 +26,7 @@ export class CommandStateManager {
     constructor(globalState: vscode.Memento) {
         this.globalState = globalState;
         this.logger = CoreLogger.getInstance();
+        this.logger.info('CommandStateManager initialized');
     }
 
     /**
@@ -34,7 +35,9 @@ export class CommandStateManager {
      * @returns The ad-hoc command prefix as a string, or null/undefined if not set.
      */
     public getAdhocCommandPrefix(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.AdhocPrompt);
+        const prefix = this.globalState.get<string>(ConfigKeys.AdhocPrompt);
+        this.logger.debug(`Retrieved ad-hoc command prefix: ${prefix}`);
+        return prefix;
     }
 
     /**
@@ -45,6 +48,7 @@ export class CommandStateManager {
      */
     public async setAdhocCommandPrefix(prefix: string): Promise<void> {
         await this.globalState.update(ConfigKeys.AdhocPrompt, prefix);
+        this.logger.info(`Ad-hoc command prefix updated to: ${prefix}`);
     }
 
     /**
@@ -56,5 +60,6 @@ export class CommandStateManager {
      */
     public async setCommandEnabledState(command: string, enabled: boolean): Promise<void> {
         await vscode.commands.executeCommand('setContext', `${command}-enabled`, enabled);
+        this.logger.info(`Command '${command}' enabled state set to: ${enabled}`);
     }
 }

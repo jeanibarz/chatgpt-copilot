@@ -7,13 +7,17 @@ import { promptForJsonCredentialsPath } from './UserPrompts';
 const logger = CoreLogger.getInstance();
 
 export async function getJsonCredentialsPath(): Promise<string> {
+    logger.debug('Attempting to retrieve JSON credentials path');
     const stateManager = StateManager.getInstance();
-    let jsonCredentialsPath = stateManager.getJsonCredentialsPath();
+    let jsonCredentialsPath = stateManager.getApiCredentialsStateManager().getJsonCredentialsPath();
 
     if (!jsonCredentialsPath) {
+        logger.info('JSON credentials path not found in state, prompting user');
         jsonCredentialsPath = await promptForJsonCredentialsPath();
-        await stateManager.setJsonCredentialsPath(jsonCredentialsPath);
-        logger.info(`JSON credentials path set to: ${jsonCredentialsPath}`);
+        await stateManager.getApiCredentialsStateManager().setJsonCredentialsPath(jsonCredentialsPath);
+        logger.info(`JSON credentials path set and saved to state: ${jsonCredentialsPath}`);
+    } else {
+        logger.debug(`Retrieved existing JSON credentials path: ${jsonCredentialsPath}`);
     }
 
     return jsonCredentialsPath;

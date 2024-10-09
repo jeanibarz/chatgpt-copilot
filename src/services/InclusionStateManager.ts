@@ -20,15 +20,17 @@ export class InclusionStateManager {
      */
     updateNodeInclusionState(node: ITreeNode | null | undefined, inclusionState: InclusionState): void {
         if (!node) {
-            this.logger.warn('Node not found or invalid node.');
+            this.logger.warn('Attempted to update inclusion state of a null or undefined node.');
             return;
         }
 
         if (node.path) {
+            this.logger.info(`Updating inclusion state for node: ${node.path}`, { inclusionState });
             this.setInclusionStateRecursively(node, inclusionState);
             this.updateParentInclusionStates(node);
+            this.logger.info(`Successfully updated inclusion state for node: ${node.path} and its descendants.`);
         } else {
-            this.logger.warn(`Node does not have a path property.`);
+            this.logger.warn(`Cannot update inclusion state for node without a path property.`, { node });
         }
     }
 

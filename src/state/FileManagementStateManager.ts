@@ -28,6 +28,7 @@ export class FileManagementStateManager {
         private configurationStateManager: ConfigurationStateManager,
     ) {
         this.logger = CoreLogger.getInstance();
+        this.logger.info('FileManagementStateManager initialized');
     }
 
     /**
@@ -36,7 +37,9 @@ export class FileManagementStateManager {
      * @returns The Mermaid output folder path, or null/undefined if not set.
      */
     public getMermaidOutputFolder(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.MermaidOutputFolder);
+        const folderPath = this.globalState.get<string>(ConfigKeys.MermaidOutputFolder);
+        this.logger.debug(`Retrieved Mermaid output folder: ${folderPath || 'Not set'}`);
+        return folderPath;
     }
 
     /**
@@ -47,6 +50,7 @@ export class FileManagementStateManager {
      */
     public async setMermaidOutputFolder(folderPath: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.MermaidOutputFolder, folderPath);
+        this.logger.info(`Mermaid output folder ${folderPath ? `updated to: ${folderPath}` : 'cleared'}`);
     }
 
     /**
@@ -55,7 +59,9 @@ export class FileManagementStateManager {
      * @returns The inclusion regex pattern, or null/undefined if not set.
      */
     public getInclusionRegex(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.FileInclusionRegex);
+        const inclusionRegex = this.configurationStateManager.getConfig<string>(ConfigKeys.FileInclusionRegex);
+        this.logger.debug(`Retrieved file inclusion regex: ${inclusionRegex || 'Not set'}`);
+        return inclusionRegex;
     }
 
     /**
@@ -64,6 +70,8 @@ export class FileManagementStateManager {
      * @returns The exclusion regex pattern, or null/undefined if not set.
      */
     public getExclusionRegex(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.FileExclusionRegex);
+        const exclusionRegex = this.configurationStateManager.getConfig<string>(ConfigKeys.FileExclusionRegex);
+        this.logger.debug(`Retrieved file exclusion regex: ${exclusionRegex || 'Not set'}`);
+        return exclusionRegex;
     }
 }

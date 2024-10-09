@@ -54,10 +54,12 @@ export class ExplicitFilesManager {
     private updateWorkspaceFolders(): void {
         if (vscode.workspace.workspaceFolders) {
             this.workspaceFolders = vscode.workspace.workspaceFolders.map(folder => folder.uri.fsPath);
-            this.logger.debug(`Workspace folders updated: ${this.workspaceFolders.join(', ')}`);
+            this.logger.info(`Workspace folders updated. Current workspace folders: ${this.workspaceFolders.join(', ')}`);
+            this.logger.debug(`Total number of workspace folders: ${this.workspaceFolders.length}`);
         } else {
             this.workspaceFolders = [];
-            this.logger.warn('No workspace folders found.');
+            this.logger.warn('No workspace folders found. This may affect file management operations.');
+            this.logger.debug('Cleared workspace folders list due to absence of workspace folders.');
         }
     }
 
@@ -80,10 +82,13 @@ export class ExplicitFilesManager {
     public async addResource(resourceUri: vscode.Uri): Promise<void> {
         const fsPath = path.normalize(resourceUri.fsPath);
 
+        this.logger.info(`Attempting to add resource: ${fsPath}`);
+
         // Check if the path is inside the workspace
         if (!this.isPathInWorkspace(fsPath)) {
-            vscode.window.showWarningMessage(`Cannot add "${fsPath}" because it is outside the workspace.`);
-            this.logger.warn(`Attempted to add resource outside workspace: ${fsPath}`);
+            const warningMessage = `Cannot add "${fsPath}" because it is outside the workspace.`;
+            vscode.window.showWarningMessage(warningMessage);
+            this.logger.warn(`${warningMessage} Resource addition aborted.`);
             return;
         }
 
@@ -91,15 +96,21 @@ export class ExplicitFilesManager {
             const stat = await promises.stat(fsPath);
 
             if (stat.isDirectory()) {
+                this.logger.info(`Adding folder and its contents: ${fsPath}`);
                 await this.addFolderAndContents(fsPath);
             } else if (stat.isFile()) {
+                this.logger.info(`Adding file: ${fsPath}`);
                 this.addFile(fsPath);
+            } else {
+                this.logger.warn(`Unrecognized resource type for: ${fsPath}. Neither file nor directory.`);
             }
 
+            this.logger.debug('Saving changes and emitting update event');
             this.saveAndEmit();
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to add resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`);
-            this.logger.error(`Failed to add resource: ${fsPath}`, { error });
+            const errorMessage = `Failed to add resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`;
+            vscode.window.showErrorMessage(errorMessage);
+            this.logger.error(errorMessage, { error, resourcePath: fsPath });
         }
     }
 
@@ -110,46 +121,50 @@ export class ExplicitFilesManager {
     public async removeResource(resourceUri: vscode.Uri): Promise<void> {
         const fsPath = path.normalize(resourceUri.fsPath);
 
+        this.logger.info(`Attempting to remove resource: ${fsPath}`);
+
         // Check if the path is inside the workspace
         if (!this.isPathInWorkspace(fsPath)) {
-            vscode.window.showWarningMessage(`Cannot remove "${fsPath}" because it is outside the workspace.`);
-            this.logger.warn(`Attempted to remove resource outside workspace: ${fsPath}`);
+            const warningMessage = `Cannot remove "${fsPath}" because it is outside the workspace.`;
+            vscode.window.showWarningMessage(warningMessage);
+            this.logger.warn(`${warningMessage} Resource removal aborted.`);
             return;
         }
 
         try {
             // Remove from explicitFiles and explicitFolders
             if (this.explicitFiles.delete(fsPath)) {
-                this.logger.debug(`Removed file from explicitFiles: ${fsPath}`);
+                this.logger.info(`Removed file from explicitFiles: ${fsPath}`);
             }
 
             if (this.explicitFolders.delete(fsPath)) {
-                this.logger.debug(`Removed folder from explicitFolders: ${fsPath}`);
+                this.logger.info(`Removed folder from explicitFolders: ${fsPath}`);
             }
 
             let stat;
             try {
                 stat = await promises.stat(fsPath);
             } catch (error) {
-                if (error.code === 'ENOENT') {
-                    // File or directory does not exist, no need to proceed further
-                    this.logger.debug(`File or directory does not exist: ${fsPath}`);
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                    this.logger.info(`Resource no longer exists on filesystem: ${fsPath}`);
                     stat = null;
                 } else {
+                    this.logger.error(`Unexpected error while checking resource status: ${fsPath}`, { error });
                     throw error; // Re-throw unexpected errors
                 }
             }
 
             if (stat && stat.isDirectory()) {
+                this.logger.info(`Removing contents of directory: ${fsPath}`);
                 // Recursively remove contents of the folder
                 let entries: string[] = [];
                 try {
                     entries = await promises.readdir(fsPath);
                 } catch (error) {
-                    if (error.code === 'ENOENT') {
-                        // Directory no longer exists
-                        this.logger.debug(`Directory does not exist: ${fsPath}`);
+                    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+                        this.logger.info(`Directory no longer exists: ${fsPath}`);
                     } else {
+                        this.logger.error(`Unexpected error while reading directory contents: ${fsPath}`, { error });
                         throw error; // Re-throw unexpected errors
                     }
                 }
@@ -161,6 +176,7 @@ export class ExplicitFilesManager {
                 try {
                     for (const entry of entries) {
                         const entryPath = path.join(fsPath, entry);
+                        this.logger.debug(`Recursively removing: ${entryPath}`);
                         await this.removeResource(vscode.Uri.file(entryPath));
                     }
                 } finally {
@@ -169,10 +185,12 @@ export class ExplicitFilesManager {
                 }
             }
 
+            this.logger.info(`Successfully removed resource: ${fsPath}`);
             this.saveAndEmit();
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to remove resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`);
-            this.logger.error(`Failed to remove resource: ${fsPath}`, { error });
+            const errorMessage = `Failed to remove resource: ${fsPath}. Error: ${Utility.getErrorMessage(error)}`;
+            vscode.window.showErrorMessage(errorMessage);
+            this.logger.error(errorMessage, { error, resourcePath: fsPath });
         }
     }
 
@@ -239,33 +257,41 @@ export class ExplicitFilesManager {
         try {
             const savedFiles = this.context.workspaceState.get<string[]>('chatgpt.explicitFiles', []);
             if (!Array.isArray(savedFiles)) {
-                this.logger.error(`Expected savedFiles to be an array, but got: ${savedFiles}`);
+                this.logger.error(`Failed to load explicit files: Expected an array, but received ${typeof savedFiles}`, { savedFiles });
                 return;
             }
             savedFiles.forEach((filePath, index) => {
                 if (filePath) {
                     this.explicitFiles.add(filePath);
-                    this.logger.debug(`Loaded file from workspace state: ${filePath}`);
+                    this.logger.debug(`Successfully loaded explicit file: ${filePath}`, { index });
                 } else {
-                    this.logger.warn(`File path at index ${index} is undefined. Skipping.`);
+                    this.logger.warn(`Skipped loading undefined file path`, { index });
                 }
             });
 
             const savedFolders = this.context.workspaceState.get<string[]>('chatgpt.explicitFolders', []);
             if (!Array.isArray(savedFolders)) {
-                this.logger.error(`Expected savedFolders to be an array, but got: ${savedFolders}`);
+                this.logger.error(`Failed to load explicit folders: Expected an array, but received ${typeof savedFolders}`, { savedFolders });
                 return;
             }
             savedFolders.forEach((folderPath, index) => {
                 if (folderPath) {
                     this.explicitFolders.add(folderPath);
-                    this.logger.debug(`Loaded folder from workspace state: ${folderPath}`);
+                    this.logger.debug(`Successfully loaded explicit folder: ${folderPath}`, { index });
                 } else {
-                    this.logger.warn(`Folder path at index ${index} is undefined. Skipping.`);
+                    this.logger.warn(`Skipped loading undefined folder path`, { index });
                 }
             });
+
+            this.logger.info(`Completed loading explicit files and folders`, {
+                fileCount: this.explicitFiles.size,
+                folderCount: this.explicitFolders.size
+            });
         } catch (error) {
-            this.logger.error(`Failed to load explicit files and folders from state: ${Utility.getErrorMessage(error)}`, { error });
+            this.logger.error(`Failed to load explicit files and folders`, {
+                error: Utility.getErrorMessage(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
         }
     }
 
@@ -275,23 +301,27 @@ export class ExplicitFilesManager {
      */
     private async addFolderAndContents(folderPath: string): Promise<void> {
         if (!folderPath) {
-            this.logger.warn('Received an undefined folderPath. Skipping.');
+            this.logger.warn('Attempted to add an undefined folder path. Operation aborted.');
             return;
         }
 
         // Check if the folder is inside the workspace
         if (!this.isPathInWorkspace(folderPath)) {
-            this.logger.warn(`Cannot add folder "${folderPath}" because it is outside the workspace.`);
+            this.logger.warn(`Cannot add folder "${folderPath}". It is located outside the workspace boundaries.`);
             return;
         }
 
         const normalizedFolderPath = path.normalize(folderPath);
         if (!this.explicitFolders.has(normalizedFolderPath)) {
             this.explicitFolders.add(normalizedFolderPath);
-            this.logger.debug(`Added folder to explicitFolders: ${normalizedFolderPath}`);
+            this.logger.info(`Successfully added root folder to explicit folders: ${normalizedFolderPath}`);
+        } else {
+            this.logger.info(`Root folder already exists in explicit folders: ${normalizedFolderPath}`);
         }
 
         const stack: string[] = [folderPath];
+        let addedFolders = 0;
+        let addedFiles = 0;
 
         while (stack.length > 0) {
             const currentPath = stack.pop()!;
@@ -303,23 +333,27 @@ export class ExplicitFilesManager {
                         const normalizedEntryPath = path.normalize(entryPath);
                         if (!this.explicitFolders.has(normalizedEntryPath)) {
                             this.explicitFolders.add(normalizedEntryPath);
-                            this.logger.debug(`Added subfolder to explicitFolders: ${normalizedEntryPath}`);
+                            addedFolders++;
+                            this.logger.debug(`Added subfolder to explicit folders: ${normalizedEntryPath}`);
                         }
                         stack.push(entryPath); // Add subdirectory to stack
                     } else if (entry.isFile()) {
                         const normalizedFilePath = path.normalize(entryPath);
                         if (!this.explicitFiles.has(normalizedFilePath)) {
                             this.explicitFiles.add(normalizedFilePath);
-                            this.logger.debug(`Added file to explicitFiles: ${normalizedFilePath}`);
+                            addedFiles++;
+                            this.logger.debug(`Added file to explicit files: ${normalizedFilePath}`);
                         }
                     } else {
-                        this.logger.warn(`Entry "${entryPath}" is neither a file nor a directory. Skipping.`);
+                        this.logger.warn(`Skipped entry "${entryPath}". It is neither a file nor a directory.`);
                     }
                 }
             } catch (error) {
-                this.logger.error(`Failed to read directory: ${currentPath}: ${Utility.getErrorMessage(error)}`, { error });
+                this.logger.error(`Failed to process directory: ${currentPath}. Error: ${Utility.getErrorMessage(error)}`, { error });
             }
         }
+
+        this.logger.info(`Folder addition complete. Added ${addedFolders} folders and ${addedFiles} files to explicit sets.`);
     }
 
     /**
@@ -329,14 +363,16 @@ export class ExplicitFilesManager {
     private addFile(filePath: string): void {
         // Check if the file is inside the workspace
         if (!this.isPathInWorkspace(filePath)) {
-            this.logger.warn(`Cannot add file "${filePath}" because it is outside the workspace.`);
+            this.logger.warn(`Attempted to add file "${filePath}" which is outside the workspace. Operation aborted.`);
             return;
         }
 
         const normalizedFilePath = path.normalize(filePath);
         if (!this.explicitFiles.has(normalizedFilePath)) {
             this.explicitFiles.add(normalizedFilePath);
-            this.logger.debug(`Added file to explicitFiles: ${normalizedFilePath}`);
+            this.logger.info(`Successfully added file to explicit files: ${normalizedFilePath}`);
+        } else {
+            this.logger.debug(`File "${normalizedFilePath}" already exists in explicit files. No action taken.`);
         }
     }
 

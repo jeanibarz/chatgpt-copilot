@@ -26,6 +26,7 @@ export class SessionStateManager {
     constructor(globalState: vscode.Memento) {
         this.logger = CoreLogger.getInstance();
         this.globalState = globalState;
+        this.logger.info('SessionStateManager initialized');
     }
 
     /**
@@ -34,7 +35,9 @@ export class SessionStateManager {
      * @returns The session token as a string, or null/undefined if not set.
      */
     public getSessionToken(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.SessionToken);
+        const token = this.globalState.get<string>(ConfigKeys.SessionToken);
+        this.logger.debug(`Retrieved session token: ${token ? 'Found' : 'Not found'}`);
+        return token;
     }
 
     /**
@@ -44,6 +47,7 @@ export class SessionStateManager {
      */
     public async setSessionToken(token: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.SessionToken, token);
+        this.logger.info(`Session token ${token ? 'updated' : 'cleared'}`);
     }
 
     /**
@@ -52,7 +56,9 @@ export class SessionStateManager {
      * @returns The clearance token as a string, or null/undefined if not set.
      */
     public getClearanceToken(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.ClearanceToken);
+        const token = this.globalState.get<string>(ConfigKeys.ClearanceToken);
+        this.logger.debug(`Retrieved clearance token: ${token ? 'Found' : 'Not found'}`);
+        return token;
     }
 
     /**
@@ -62,6 +68,7 @@ export class SessionStateManager {
      */
     public async setClearanceToken(token: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.ClearanceToken, token);
+        this.logger.info(`Clearance token ${token ? 'updated' : 'cleared'}`);
     }
 
     /**
@@ -70,7 +77,9 @@ export class SessionStateManager {
      * @returns The user agent as a string, or null/undefined if not set.
      */
     public getUserAgent(): string | null | undefined {
-        return this.globalState.get<string>(ConfigKeys.UserAgent);
+        const agent = this.globalState.get<string>(ConfigKeys.UserAgent);
+        this.logger.debug(`Retrieved user agent: ${agent ? 'Found' : 'Not found'}`);
+        return agent;
     }
 
     /**
@@ -80,5 +89,6 @@ export class SessionStateManager {
      */
     public async setUserAgent(agent: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.UserAgent, agent);
+        this.logger.info(`User agent ${agent ? 'updated' : 'cleared'}`);
     }
 }

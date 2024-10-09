@@ -171,7 +171,7 @@ export class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * 
    * @param message - The message to be sent to the webview.
    */
-  public async sendMessage(message: IChatGPTMessage) {
+  public sendMessage(message: IChatGPTMessage) {
     this.webviewManager.sendMessage(message);
   }
 

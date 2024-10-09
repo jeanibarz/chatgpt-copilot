@@ -117,7 +117,7 @@ export class MermaidDiagramService implements IMermaidDiagramService {
         const entries = await vscode.workspace.fs.readDirectory(folderUri);
 
         for (const [name, type] of entries) {
-            const entryUri = vscode.Uri.joinPath(folderUri, name);
+            const entryUri = vscode.Uri.file(path.join(folderUri.fsPath, name));
 
             if (type === vscode.FileType.Directory) {
                 const subFiles = await this.getAllFilesInFolder(entryUri);

@@ -12,6 +12,7 @@
  */
 
 import * as vscode from 'vscode';
+import { CoreLogger } from '../logging/CoreLogger';
 import { ApiCredentialsStateManager } from './ApiCredentialsStateManager';
 import { CommandStateManager } from './CommandStateManager';
 import { ConfigurationStateManager } from './ConfigurationStateManager';
@@ -31,8 +32,12 @@ export class StateManager {
     private promptStateManager: PromptStateManager;
     private sessionStateManager: SessionStateManager;
     private userPreferencesStateManager: UserPreferencesStateManager;
+    private logger: CoreLogger;
 
     private constructor(private extensionContext: vscode.ExtensionContext) {
+        this.logger = CoreLogger.getInstance();
+        this.logger.info('StateManager: Initializing state managers');
+
         const globalState = extensionContext.globalState;
 
         this.configurationStateManager = new ConfigurationStateManager();
@@ -43,6 +48,8 @@ export class StateManager {
         this.apiCredentialsStateManager = new ApiCredentialsStateManager(globalState);
         this.fileManagementStateManager = new FileManagementStateManager(globalState, this.configurationStateManager);
         this.modelConfigStateManager = new ModelConfigStateManager(globalState, this.configurationStateManager);
+
+        this.logger.info('StateManager: All state managers initialized successfully');
     }
 
     /**
@@ -53,6 +60,9 @@ export class StateManager {
     public static initialize(extensionContext: vscode.ExtensionContext): void {
         if (!StateManager.instance) {
             StateManager.instance = new StateManager(extensionContext);
+            CoreLogger.getInstance().info('StateManager: Singleton instance initialized');
+        } else {
+            CoreLogger.getInstance().warn('StateManager: Attempted to initialize an already existing instance');
         }
     }
 
@@ -64,6 +74,7 @@ export class StateManager {
      */
     public static getInstance(): StateManager {
         if (!StateManager.instance) {
+            CoreLogger.getInstance().error('StateManager: Attempted to get instance before initialization');
             throw new Error('StateManager not initialized. Call initialize() first.');
         }
         return StateManager.instance;
@@ -75,6 +86,7 @@ export class StateManager {
      * @returns The vscode.ExtensionContext associated with the StateManager.
      */
     public getExtensionContext(): vscode.ExtensionContext {
+        this.logger.debug('StateManager: Retrieving extension context');
         return this.extensionContext;
     }
 
@@ -84,6 +96,7 @@ export class StateManager {
      * @returns The ApiCredentialsStateManager instance.
      */
     public getApiCredentialsStateManager(): ApiCredentialsStateManager {
+        this.logger.debug('StateManager: Retrieving ApiCredentialsStateManager');
         return this.apiCredentialsStateManager;
     }
 
@@ -93,6 +106,7 @@ export class StateManager {
      * @returns The CommandStateManager instance.
      */
     public getCommandStateManager(): CommandStateManager {
+        this.logger.debug('StateManager: Retrieving CommandStateManager');
         return this.commandStateManager;
     }
 
@@ -102,6 +116,7 @@ export class StateManager {
      * @returns The ConfigurationStateManager instance.
      */
     public getConfigurationStateManager(): ConfigurationStateManager {
+        this.logger.debug('StateManager: Retrieving ConfigurationStateManager');
         return this.configurationStateManager;
     }
 
@@ -111,6 +126,7 @@ export class StateManager {
      * @returns The FileManagementStateManager instance.
      */
     public getFileManagementStateManager(): FileManagementStateManager {
+        this.logger.debug('StateManager: Retrieving FileManagementStateManager');
         return this.fileManagementStateManager;
     }
 
@@ -120,6 +136,7 @@ export class StateManager {
      * @returns The ModelConfigStateManager instance.
      */
     public getModelConfigStateManager(): ModelConfigStateManager {
+        this.logger.debug('StateManager: Retrieving ModelConfigStateManager');
         return this.modelConfigStateManager;
     }
 
@@ -129,6 +146,7 @@ export class StateManager {
      * @returns The PromptStateManager instance.
      */
     public getPromptStateManager(): PromptStateManager {
+        this.logger.debug('StateManager: Retrieving PromptStateManager');
         return this.promptStateManager;
     }
 
@@ -138,6 +156,7 @@ export class StateManager {
      * @returns The SessionStateManager instance.
      */
     public getSessionStateManager(): SessionStateManager {
+        this.logger.debug('StateManager: Retrieving SessionStateManager');
         return this.sessionStateManager;
     }
 
@@ -147,6 +166,7 @@ export class StateManager {
      * @returns The UserPreferencesStateManager instance.
      */
     public getUserPreferencesStateManager(): UserPreferencesStateManager {
+        this.logger.debug('StateManager: Retrieving UserPreferencesStateManager');
         return this.userPreferencesStateManager;
     }
 }

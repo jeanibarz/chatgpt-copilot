@@ -20,6 +20,7 @@ export class ModelConfigStateManager {
         private configurationStateManager: ConfigurationStateManager,
     ) {
         this.logger = CoreLogger.getInstance();
+        this.logger.info('ModelConfigStateManager initialized');
     }
 
     /**
@@ -29,6 +30,7 @@ export class ModelConfigStateManager {
      */
     public async setOrganization(organization: string | null): Promise<void> {
         await this.globalState.update('chatgpt-gpt3.organization', organization);
+        this.logger.info(`Organization ${organization ? `set to: ${organization}` : 'cleared'}`);
     }
 
     /**
@@ -38,6 +40,7 @@ export class ModelConfigStateManager {
      */
     public async setMaxTokens(maxTokens: number | null): Promise<void> {
         await this.globalState.update(ConfigKeys.MaxTokens, maxTokens);
+        this.logger.info(`Max tokens ${maxTokens !== null ? `set to: ${maxTokens}` : 'cleared'}`);
     }
 
     /**
@@ -47,6 +50,7 @@ export class ModelConfigStateManager {
      */
     public async setTemperature(temperature: number | null): Promise<void> {
         await this.globalState.update(ConfigKeys.Temperature, temperature);
+        this.logger.info(`Temperature ${temperature !== null ? `set to: ${temperature}` : 'cleared'}`);
     }
 
     /**
@@ -56,6 +60,7 @@ export class ModelConfigStateManager {
      */
     public async setSystemPrompt(systemPrompt: string | null): Promise<void> {
         await this.globalState.update(ConfigKeys.SystemPrompt, systemPrompt);
+        this.logger.info(`System prompt ${systemPrompt ? 'updated' : 'cleared'}`);
     }
 
     /**
@@ -65,6 +70,7 @@ export class ModelConfigStateManager {
      */
     public async setTopP(topP: number | null): Promise<void> {
         await this.globalState.update(ConfigKeys.TopP, topP);
+        this.logger.info(`Top P ${topP !== null ? `set to: ${topP}` : 'cleared'}`);
     }
 
     /**
@@ -73,7 +79,9 @@ export class ModelConfigStateManager {
      * @returns The organization name, or null if not set.
      */
     public getOrganization(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.Organization);
+        const org = this.configurationStateManager.getConfig<string>(ConfigKeys.Organization);
+        this.logger.debug(`Retrieved organization: ${org || 'Not set'}`);
+        return org;
     }
 
     /**
@@ -82,7 +90,9 @@ export class ModelConfigStateManager {
      * @returns The maximum tokens value, or null if not set.
      */
     public getMaxTokens(): number | null | undefined {
-        return this.configurationStateManager.getConfig<number>(ConfigKeys.MaxTokens);
+        const maxTokens = this.configurationStateManager.getConfig<number>(ConfigKeys.MaxTokens);
+        this.logger.debug(`Retrieved max tokens: ${maxTokens !== undefined ? maxTokens : 'Not set'}`);
+        return maxTokens;
     }
 
     /**
@@ -91,7 +101,9 @@ export class ModelConfigStateManager {
      * @returns The temperature value, or null if not set.
      */
     public getTemperature(): number | null | undefined {
-        return this.configurationStateManager.getConfig<number>(ConfigKeys.Temperature);
+        const temp = this.configurationStateManager.getConfig<number>(ConfigKeys.Temperature);
+        this.logger.debug(`Retrieved temperature: ${temp !== undefined ? temp : 'Not set'}`);
+        return temp;
     }
 
     /**
@@ -100,7 +112,9 @@ export class ModelConfigStateManager {
      * @returns The top P value, or null if not set.
      */
     public getTopP(): number | null | undefined {
-        return this.configurationStateManager.getConfig<number>(ConfigKeys.TopP);
+        const topP = this.configurationStateManager.getConfig<number>(ConfigKeys.TopP);
+        this.logger.debug(`Retrieved top P: ${topP !== undefined ? topP : 'Not set'}`);
+        return topP;
     }
 
     /**
@@ -109,7 +123,9 @@ export class ModelConfigStateManager {
      * @returns The GPT-3 model name, or null if not set.
      */
     public getGpt3Model(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.Gpt3Model);
+        const model = this.configurationStateManager.getConfig<string>(ConfigKeys.Gpt3Model);
+        this.logger.debug(`Retrieved GPT-3 model: ${model || 'Not set'}`);
+        return model;
     }
 
     /**
@@ -118,7 +134,9 @@ export class ModelConfigStateManager {
      * @returns The model source, or null if not set.
      */
     public getModelSource(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.ModelSource);
+        const source = this.configurationStateManager.getConfig<string>(ConfigKeys.ModelSource);
+        this.logger.debug(`Retrieved model source: ${source || 'Not set'}`);
+        return source;
     }
 
     /**
@@ -127,7 +145,9 @@ export class ModelConfigStateManager {
      * @returns The custom model name, or null if not set.
      */
     public getCustomModelName(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.CustomModel);
+        const customModel = this.configurationStateManager.getConfig<string>(ConfigKeys.CustomModel);
+        this.logger.debug(`Retrieved custom model name: ${customModel || 'Not set'}`);
+        return customModel;
     }
 
     /**
@@ -136,7 +156,9 @@ export class ModelConfigStateManager {
      * @returns The API base URL, or null if not set.
      */
     public getApiBaseUrl(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.ApiBaseUrl);
+        const baseUrl = this.configurationStateManager.getConfig<string>(ConfigKeys.ApiBaseUrl);
+        this.logger.debug(`Retrieved API base URL: ${baseUrl || 'Not set'}`);
+        return baseUrl;
     }
 
     /**
@@ -145,7 +167,9 @@ export class ModelConfigStateManager {
      * @returns The model name, or null if not set.
      */
     public getModel(): string | null | undefined {
-        return this.configurationStateManager.getConfig<string>(ConfigKeys.Model);
+        const model = this.configurationStateManager.getConfig<string>(ConfigKeys.Model);
+        this.logger.debug(`Retrieved model: ${model || 'Not set'}`);
+        return model;
     }
 
     /**
@@ -154,7 +178,9 @@ export class ModelConfigStateManager {
      * @returns True if the model is custom, otherwise false.
      */
     public isCustomModel(): boolean {
-        return this.getModel() === "custom";
+        const isCustom = this.getModel() === "custom";
+        this.logger.debug(`Is custom model: ${isCustom}`);
+        return isCustom;
     }
 
     /**
@@ -165,6 +191,8 @@ export class ModelConfigStateManager {
     public isGenerateCodeEnabled(): boolean {
         const generateCodeEnabled = !!this.configurationStateManager.getConfig<boolean>(ConfigKeys.GenerateCodeEnabled);
         const model = this.getModel() ?? '';
-        return generateCodeEnabled && model.startsWith('code-');
+        const isEnabled = generateCodeEnabled && model.startsWith('code-');
+        this.logger.debug(`Code generation enabled: ${isEnabled}`);
+        return isEnabled;
     }
 }

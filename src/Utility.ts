@@ -35,6 +35,7 @@ export class Utility {
         for (let i = 0; i < 32; i++) {
             text += possible.charAt(Math.floor(Math.random() * possible.length));
         }
+        logger.debug(`Generated random ID: ${text}`);
         return text;
     }
 
@@ -45,6 +46,7 @@ export class Utility {
      * @returns A Promise that resolves after the specified delay.
      */
     public static delay(ms: number): Promise<void> {
+        logger.debug(`Delaying execution for ${ms} milliseconds`);
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
@@ -59,12 +61,14 @@ export class Utility {
      * @returns The constructed node path.
      */
     public static getNodePath(parentPath: string, label: string): string {
-        // If the label is a symbol, append with '::'
+        let result: string;
         if (parentPath.includes('::')) {
-            return `${parentPath}::${label}`;
+            result = `${parentPath}::${label}`;
         } else {
-            return path.join(parentPath, label);
+            result = path.join(parentPath, label);
         }
+        logger.debug(`Constructed node path: ${result}`);
+        return result;
     }
 
     /**
@@ -74,7 +78,9 @@ export class Utility {
      * @returns An array of path components.
      */
     public static parseNodePath(nodePath: string): string[] {
-        return nodePath.split(path.sep);
+        const components = nodePath.split(path.sep);
+        logger.debug(`Parsed node path ${nodePath} into ${components.length} components`);
+        return components;
     }
 
     /**
@@ -93,14 +99,17 @@ export class Utility {
             return new Promise((resolve, reject) => {
                 if (timeout) {
                     clearTimeout(timeout);
+                    logger.debug(`Debounce: Cleared existing timeout`);
                 }
 
                 timeout = setTimeout(async () => {
                     timeout = null;
+                    logger.debug(`Debounce: Executing debounced function after ${wait}ms`);
                     try {
                         const result = await func(...args);
                         resolve(result);
                     } catch (error) {
+                        logger.error(`Debounce: Error in debounced function execution`, { error });
                         reject(error);
                     }
                 }, wait);
@@ -120,6 +129,7 @@ export class Utility {
         if (normalizedPath !== path.parse(normalizedPath).root) {
             normalizedPath = normalizedPath.replace(new RegExp(`${path.sep}+$`), '');
         }
+        logger.debug(`Normalized path from ${p} to ${normalizedPath}`);
         return normalizedPath;
     }
 
@@ -140,7 +150,9 @@ export class Utility {
      * @returns A string containing the error message.
      */
     public static getErrorMessage(error: unknown): string {
-        return error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
+        logger.debug(`Extracted error message: ${message}`);
+        return message;
     }
 
     /**
@@ -150,21 +162,28 @@ export class Utility {
      * @returns A string describing the symbol kind, or null if unknown.
      */
     public static getSymbolKindDescription(kind: vscode.SymbolKind): string | null {
+        let description: string | null;
         switch (kind) {
             case vscode.SymbolKind.Class:
-                return 'Class';
+                description = 'Class';
+                break;
             case vscode.SymbolKind.Method:
-                return 'Method';
+                description = 'Method';
+                break;
             case vscode.SymbolKind.Function:
-                return 'Function';
+                description = 'Function';
+                break;
             case vscode.SymbolKind.Interface:
-                return 'Interface';
+                description = 'Interface';
+                break;
             case vscode.SymbolKind.Enum:
-                return 'Enum';
-            // Add more kinds as needed
+                description = 'Enum';
+                break;
             default:
-                return null; // Skip unknown symbol kinds
+                description = null;
         }
+        logger.debug(`Symbol kind ${kind} described as: ${description}`);
+        return description;
     }
 
     /**
@@ -176,8 +195,11 @@ export class Utility {
     public static async isDirectory(path: string): Promise<boolean> {
         try {
             const stat = await vscode.workspace.fs.stat(vscode.Uri.file(path));
-            return stat.type === vscode.FileType.Directory;
+            const isDir = stat.type === vscode.FileType.Directory;
+            logger.debug(`Path ${path} is${isDir ? '' : ' not'} a directory`);
+            return isDir;
         } catch (error) {
+            logger.warn(`Failed to check if path ${path} is a directory`, { error });
             return false; // If stat fails, it's not a directory
         }
     }
@@ -188,6 +210,7 @@ export class Utility {
      * @param message - The error message to display.
      */
     public static showError(message: string) {
+        logger.error(`Displaying error message to user: ${message}`);
         vscode.window.showErrorMessage(message);
     }
 
@@ -200,8 +223,10 @@ export class Utility {
     public static async getProvider(): Promise<ChatGptViewProvider> {
         const provider = container.get<ChatGptViewProvider>(TYPES.ChatGptViewProvider);
         if (!provider) {
+            logger.error("ChatGptViewProvider not found in container");
             throw new Error("Provider not found");
         }
+        logger.debug("ChatGptViewProvider retrieved successfully");
         return provider;
     }
 
@@ -214,7 +239,7 @@ export class Utility {
                 provider.abortController.abort();
                 logger.info("Generation stopped successfully");
             } else {
-                logger.warn("No generation process to stop");
+                logger.warn("No active generation process to stop");
             }
 
             // Update the view state to reflect the stopped generation
@@ -223,6 +248,7 @@ export class Utility {
                 type: "showInProgress",
                 inProgress: provider.inProgress
             });
+            logger.debug("View state updated to reflect stopped generation");
 
             // Optionally finalize and send a response update to the view
             const responseInMarkdown = !provider.modelManager.isCodexModel;
@@ -234,15 +260,23 @@ export class Utility {
                 autoScroll: provider.configurationManager.autoScroll ?? false,
                 responseInMarkdown,
             });
+            logger.debug("Final response sent to view");
 
             provider.response = '';  // Reset the response after stopping
+            logger.debug("Response reset after stopping generation");
 
         } catch (error) {
-            logger.error(`Failed to stop generation: ${(error as Error).message}`);
+            logger.error(`Failed to stop generation: ${(error as Error).message}`, { error });
         }
     }
 
     public static getExtensionContext(): vscode.ExtensionContext {
-        return container.get<vscode.ExtensionContext>(TYPES.ExtensionContext);
+        const context = container.get<vscode.ExtensionContext>(TYPES.ExtensionContext);
+        if (!context) {
+            logger.error("Failed to retrieve ExtensionContext from container");
+            throw new Error("ExtensionContext not found");
+        }
+        logger.debug("ExtensionContext retrieved successfully");
+        return context;
     }
 }

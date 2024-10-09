@@ -44,11 +44,18 @@ export class ContextRetriever {
      */
     public getMatchedFiles(explicitFiles: string[]): string[] {
         const { inclusionRegex, exclusionRegex } = this.regexConfigs;
-        return this.fileManager.findMatchingFiles(
+        this.logger.info(`Applying file matching with inclusion regex: ${inclusionRegex} and exclusion regex: ${exclusionRegex || 'None'}`);
+
+        const matchedFiles = this.fileManager.findMatchingFiles(
             explicitFiles,
             new RegExp(inclusionRegex),
             exclusionRegex ? new RegExp(exclusionRegex) : undefined
         );
+
+        this.logger.info(`Found ${matchedFiles.length} matching files out of ${explicitFiles.length} explicit files`);
+        this.logger.debug(`Matched files: ${matchedFiles.join(', ')}`);
+
+        return matchedFiles;
     }
 
     /**
@@ -63,17 +70,32 @@ export class ContextRetriever {
         const contextTitle = "### Context from Project Files:\n\n";
 
         let totalLines = 0;
+        let successfulReads = 0;
+        let failedReads = 0;
+
+        this.logger.info(`Starting to process ${files.size} files for content retrieval.`);
+
         for (const file of files) {
             try {
                 const { content, lineCount } = await this.fileManager.readFileContentWithLineCount(file);
                 fileContents.push(this.fileContentFormatter.formatFileContent(file, content));
                 totalLines += lineCount;
+                successfulReads++;
+                this.logger.debug(`Successfully read and formatted content from file: ${file}. Lines: ${lineCount}`);
             } catch (error) {
-                this.logger.error(`Error reading file: ${file}`, { error });
+                failedReads++;
+                this.logger.error(`Failed to read file: ${file}`, { error, errorMessage: error instanceof Error ? error.message : 'Unknown error' });
             }
         }
 
-        this.logger.info(`Added ${files.size} files to context. Total lines: ${totalLines}.`);
+        const successRate = (successfulReads / files.size) * 100;
+        this.logger.info(`File content retrieval completed. Success rate: ${successRate.toFixed(2)}%`);
+        this.logger.info(`Successfully processed ${successfulReads} files. Total lines: ${totalLines}. Failed reads: ${failedReads}.`);
+
+        if (failedReads > 0) {
+            this.logger.warn(`${failedReads} file(s) could not be read. This may affect the completeness of the context.`);
+        }
+
         return contextTitle + fileContents.join('\n\n');
     }
 
@@ -88,11 +110,24 @@ export class ContextRetriever {
      */
     public async retrieveContextForPrompt(explicitFiles: string[]): Promise<string> {
         try {
-            this.logger.info("Finding matching files");
+            this.logger.info(`Starting context retrieval for prompt with ${explicitFiles.length} explicit files`);
+            this.logger.debug(`Explicit files: ${explicitFiles.join(', ')}`);
+
+            this.logger.info("Finding matching files based on explicit files");
             const matchedFiles = new Set(this.getMatchedFiles(explicitFiles));
-            return await this.getFilesContent(matchedFiles);
+            this.logger.info(`Found ${matchedFiles.size} matching files`);
+
+            this.logger.info("Retrieving and formatting content from matched files");
+            const content = await this.getFilesContent(matchedFiles);
+            this.logger.info(`Successfully retrieved and formatted content for ${matchedFiles.size} files`);
+
+            return content;
         } catch (error) {
-            this.logger.logError(error, "retrieveContextForPrompt");
+            this.logger.error("Failed to retrieve context for prompt", {
+                error,
+                errorMessage: error instanceof Error ? error.message : 'Unknown error',
+                explicitFilesCount: explicitFiles.length
+            });
             throw new Error("Failed to retrieve context for prompt");
         }
     }
