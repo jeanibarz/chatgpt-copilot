@@ -719,6 +719,7 @@
     "delay": "^6.0.0",
     "eventsource-parser": "^1.1.2",
     "gpt3-tokenizer": "^1.1.5",
+    "handlebars": "^4.7.8",
     "inversify": "^6.0.2",
     "isomorphic-fetch": "^3.0.0",
     "jest-mock-extended": "^4.0.0-beta1",
