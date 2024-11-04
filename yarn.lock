@@ -2,13 +2,13 @@
 # yarn lockfile v1
 
 
-"@ai-sdk/anthropic@^0.0.30":
-  version "0.0.30"
-  resolved "https://registry.npmjs.org/@ai-sdk/anthropic/-/anthropic-0.0.30.tgz"
-  integrity sha512-iPJjKtIH8yk2cf5BNXLN6sn6TTghOh8puWothX4pPVBM/OKC4RWVjYTEELwUv2VDPIw918KBg2j/T0RfTgu+bw==
+"@ai-sdk/anthropic@^0.0.55":
+  version "0.0.55"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/anthropic/-/anthropic-0.0.55.tgz#ea12cd0a417f948126fa74e1beec3a216ec03ffb"
+  integrity sha512-SIPGu8on4PKl+PIdbjOniT5/AiE82Yw8HOE/W0GEb2bNGq2KhfkjVt5MBhppg+ZRme5w2iexB4bl66eRa2o89g==
   dependencies:
-    "@ai-sdk/provider" "0.0.12"
-    "@ai-sdk/provider-utils" "1.0.2"
+    "@ai-sdk/provider" "0.0.26"
+    "@ai-sdk/provider-utils" "1.0.22"
 
 "@ai-sdk/azure@^0.0.14":
   version "0.0.14"
@@ -18,15 +18,6 @@
     "@ai-sdk/openai" "0.0.37"
     "@ai-sdk/provider" "0.0.12"
     "@ai-sdk/provider-utils" "1.0.2"
-
-"@ai-sdk/google-vertex@^0.0.36":
-  version "0.0.36"
-  resolved "https://registry.yarnpkg.com/@ai-sdk/google-vertex/-/google-vertex-0.0.36.tgz#2e33dd59cfe336f1e04fa86368bb1d603fd0016a"
-  integrity sha512-LtjbkurNt5K5IWWVL2ROmsxyMW9XNJV5XxIeL5+xrWNwt+smxFDGnnLDQDT/U3tbapRNvLmXmtVc8emSjbDFSg==
-  dependencies:
-    "@ai-sdk/provider" "0.0.23"
-    "@ai-sdk/provider-utils" "1.0.18"
-    json-schema "0.4.0"
 
 "@ai-sdk/google@^0.0.27":
   version "0.0.27"
@@ -54,16 +45,6 @@
     nanoid "3.3.6"
     secure-json-parse "2.7.0"
 
-"@ai-sdk/provider-utils@1.0.18":
-  version "1.0.18"
-  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-1.0.18.tgz#bd30948d6b4ad73a3fbc94f3beeb92f4fa198ded"
-  integrity sha512-9u/XE/dB1gsIGcxiC5JfGOLzUz+EKRXt66T8KYWwDg4x8d02P+fI/EPOgkf+T4oLBrcQgvs4GPXPKoXGPJxBbg==
-  dependencies:
-    "@ai-sdk/provider" "0.0.23"
-    eventsource-parser "1.1.2"
-    nanoid "3.3.6"
-    secure-json-parse "2.7.0"
-
 "@ai-sdk/provider-utils@1.0.2":
   version "1.0.2"
   resolved "https://registry.npmjs.org/@ai-sdk/provider-utils/-/provider-utils-1.0.2.tgz"
@@ -73,6 +54,16 @@
     eventsource-parser "1.1.2"
     nanoid "3.3.6"
     secure-json-parse "2.7.0"
+
+"@ai-sdk/provider-utils@1.0.22":
+  version "1.0.22"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-1.0.22.tgz#5397a193587709796d012fc04e2df9903b70852f"
+  integrity sha512-YHK2rpj++wnLVc9vPGzGFP3Pjeld2MwhKinetA0zKXOoHAT/Jit5O8kZsxcSlJPu9wvcGT1UGZEjZrtO7PfFOQ==
+  dependencies:
+    "@ai-sdk/provider" "0.0.26"
+    eventsource-parser "^1.1.2"
+    nanoid "^3.3.7"
+    secure-json-parse "^2.7.0"
 
 "@ai-sdk/provider@0.0.10":
   version "0.0.10"
@@ -88,12 +79,12 @@
   dependencies:
     json-schema "0.4.0"
 
-"@ai-sdk/provider@0.0.23":
-  version "0.0.23"
-  resolved "https://registry.yarnpkg.com/@ai-sdk/provider/-/provider-0.0.23.tgz#a69a9103854bbfb500dddf0b44a399edf3db4735"
-  integrity sha512-oAc49O5+xypVrKM7EUU5P/Y4DUL4JZUWVxhejoAVOTOl3WZUEWsMbP3QZR+TrimQIsS0WR/n9UuF6U0jPdp0tQ==
+"@ai-sdk/provider@0.0.26":
+  version "0.0.26"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider/-/provider-0.0.26.tgz#52c3d5eb65cf7592c77c78decadf77cbec978934"
+  integrity sha512-dQkfBDs2lTYpKM8389oopPdQgIU007GQyCbuPPrV+K6MtSII3HBfE0stUIMXUb44L+LK1t6GXPP7wjSzjO6uKg==
   dependencies:
-    json-schema "0.4.0"
+    json-schema "^0.4.0"
 
 "@ai-sdk/react@0.0.25":
   version "0.0.25"
@@ -4753,7 +4744,7 @@ json-schema-traverse@^1.0.0:
   resolved "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz"
   integrity sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==
 
-json-schema@0.4.0:
+json-schema@0.4.0, json-schema@^0.4.0:
   version "0.4.0"
   resolved "https://registry.npmjs.org/json-schema/-/json-schema-0.4.0.tgz"
   integrity sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==
@@ -5440,6 +5431,11 @@ nanoid@3.3.6:
   version "3.3.6"
   resolved "https://registry.npmjs.org/nanoid/-/nanoid-3.3.6.tgz"
   integrity sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==
+
+nanoid@^3.3.7:
+  version "3.3.7"
+  resolved "https://registry.yarnpkg.com/nanoid/-/nanoid-3.3.7.tgz#d0c301a691bc8d54efa0a2226ccf3fe2fd656bd8"
+  integrity sha512-eSRppjcPIatRIMC1U6UngP8XFcz8MQWGQdt1MTBQ7NaAmvXDfvNxbvWV3x2y6CdEUciCSsDHDQZbhYaB8QEo2g==
 
 napi-build-utils@^1.0.1:
   version "1.0.2"
@@ -6188,7 +6184,7 @@ schema-utils@^3.1.1, schema-utils@^3.2.0:
     ajv "^6.12.5"
     ajv-keywords "^3.5.2"
 
-secure-json-parse@2.7.0:
+secure-json-parse@2.7.0, secure-json-parse@^2.7.0:
   version "2.7.0"
   resolved "https://registry.npmjs.org/secure-json-parse/-/secure-json-parse-2.7.0.tgz"
   integrity sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==
